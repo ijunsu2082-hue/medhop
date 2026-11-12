@@ -145,7 +145,17 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
 
   return (
     <div className="run-steps">
-      <h2 id="h-run">{sim ? "Station run (simulator)" : "Station run"}</h2>
+      <h2 id="h-run">
+        Station run
+        {sim && (
+          <>
+            {" "}
+            <span className="chip run-title-chip">
+              <span className="sr-only">(</span>simulator<span className="sr-only">)</span>
+            </span>
+          </>
+        )}
+      </h2>
       <ol className="run-step-list">
         {step(
           1,
@@ -154,22 +164,26 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
             <HoldButton
               hold={hold}
               disabled={takeoffBlocked !== null}
-              label="Takeoff / Land (toggle)"
-              sub="Press and hold 0.6 s. Key: hold T"
+              label={
+                <>
+                  Takeoff / Land <span className="takeoff-paren">(toggle)</span>
+                </>
+              }
+              sub="Press and hold for 0.6 s"
               subId="takeoff-step-desc"
               keyShortcut="T"
               className="takeoff-large"
             />
-            <p className="run-step-text">Hold T, or press and hold this button for 0.6 s.</p>
+            <p className="run-step-text small muted">Hold T, or press and hold this button for 0.6 s.</p>
             <p className="run-step-live" role="status">
               {liveLine}
             </p>
             {status.pilot.estop_active && (
-              <button type="button" className="btn btn-primary run-step-reset" onClick={onResetEstop} disabled={!controlOpen}>
+              <button type="button" className="btn btn-lg run-step-reset" onClick={onResetEstop} disabled={!controlOpen}>
                 Reset emergency stop
               </button>
             )}
-            <p className="hint small">The drone does not report that it is in the air. You confirm that in step 2.</p>
+            <p className="hint small">The drone does not report that it is airborne. You confirm that in step 2.</p>
           </>,
         )}
 
@@ -214,7 +228,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                   </span>
                   {runDose && <span>For: {runDose.label}</span>}
                 </div>
-                <button type="button" className="btn btn-danger run-wide" onClick={() => void abort()} disabled={busy === "abort"}>
+                <button type="button" className="btn btn-danger btn-lg btn-block run-wide" onClick={() => void abort()} disabled={busy === "abort"}>
                   Abort run
                 </button>
               </div>
@@ -222,13 +236,13 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
               <>
                 {m.state === "done" && (
                   <div className="run-outcome" aria-live="polite" aria-atomic="true">
-                    <IconCheck size={28} />
-                    <div>
+                    <IconCheck size={24} />
+                    <div className="run-outcome-body">
                       <strong>{missionStateText("done")}</strong>
                       <p>{doneMessage(m.last_landing)}</p>
                       <p className="mono small">Elapsed {m.elapsed_s.toFixed(1)} s</p>
                       {runDose && <p className="small">For: {runDose.label}</p>}
-                      <Link to="/care" className="run-care-link">
+                      <Link to="/care" className="btn run-care-link">
                         Open the Care page
                       </Link>
                     </div>
@@ -243,7 +257,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                       {runDose && <span>For: {runDose.label}</span>}
                     </div>
                     <div className="abort-notice" role="alert">
-                      <IconWarn size={28} />
+                      <IconWarn size={20} />
                       <div>
                         <strong>Take manual control and land</strong>
                         <p>The run stopped and will not land the drone for you. {abortText(m.reason)}</p>
@@ -269,6 +283,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                       e.currentTarget.blur();
                     }}
                     disabled={active}
+                    className="select-lg"
                     aria-describedby="run-dose-hint"
                   >
                     <option value="">No dose (practice run)</option>
@@ -279,7 +294,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                     ))}
                   </select>
                   <span className="hint small" id="run-dose-hint">
-                    Pick a dose so the Care page shows that it arrived at the station. No dose is a practice run.
+                    Pick a dose so the Care page shows that the drone arrived at the station. No dose means a practice run.
                   </span>
                 </div>
 
@@ -301,7 +316,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
 
                 <button
                   type="button"
-                  className="btn btn-primary run-wide"
+                  className="btn btn-primary btn-lg btn-block run-wide"
                   onClick={() => void start()}
                   disabled={!canStart}
                   aria-describedby={allBlockers.length > 0 ? "run-blockers" : undefined}
@@ -352,7 +367,10 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                   }}
                   disabled={busy === "settings"}
                 />
-                <span>Send the landing command on arrival (off: you land by hand)</span>
+                <span>
+                  Send the landing command on arrival
+                  <span className="hint small block"> When off, you land by hand.</span>
+                </span>
               </label>
               {m.drift_assist && <DriftAssistControl da={m.drift_assist} trim={status.trim} runActive={active} />}
             </div>

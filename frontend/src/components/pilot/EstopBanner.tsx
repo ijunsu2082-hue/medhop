@@ -16,22 +16,22 @@ export function EstopBanner({ view, controlOpen, onReset, onRetry, onDismiss }: 
 
   return (
     <div className={`estop-banner${failed ? " estop-banner-unsent" : ""}`} role="alert" data-estop-state={view.kind}>
-      <strong>{view.headline}</strong>
-      <span>{view.detail}</span>
-      <div className="row">
+      <strong className="estop-banner-title">{view.headline}</strong>
+      <span className="estop-banner-detail">{view.detail}</span>
+      <div className="row estop-banner-actions">
         {view.retry && (
-          <button type="button" className="btn btn-danger" onClick={onRetry}>
+          <button type="button" className="btn btn-danger btn-lg" onClick={onRetry}>
             Send emergency stop again
           </button>
         )}
         {view.reset && (
-          <button type="button" className="btn" onClick={onReset} disabled={!controlOpen}>
+          <button type="button" className="btn btn-lg" onClick={onReset} disabled={!controlOpen}>
             Reset emergency stop
           </button>
         )}
-        {view.reset && !controlOpen && <span className="muted">Reset needs the control link.</span>}
+        {view.reset && !controlOpen && <span className="estop-banner-note">Reset needs the control link.</span>}
         {view.dismiss && (
-          <button type="button" className="btn" onClick={onDismiss}>
+          <button type="button" className="btn btn-lg" onClick={onDismiss}>
             Dismiss
           </button>
         )}

@@ -90,7 +90,7 @@ class MedHopCore:
         )
         self.vision = VisionWorker(
             self.link, MarkerDetector(self.settings.marker_id), self.person,
-            on_observation=self.runner.step, banner=self._banner, clock=clock,
+            on_observation=self.runner.step, clock=clock,
         )
         self.care_monitor = CareMonitor(self.store, self.settings.grace_min)
         self.stopping = threading.Event()
@@ -221,16 +221,6 @@ class MedHopCore:
     # ------------------------------------------------------------------ #
     # status
     # ------------------------------------------------------------------ #
-    def _banner(self) -> str:
-        mission = self.runner.state
-        reason = self.runner.reason
-        text = f"{self.link.mode.upper()} | {mission}"
-        if reason:
-            text += f" ({reason})"
-        if self.mixer.estop_active:
-            text += " | E-STOP"
-        return text
-
     def status(self) -> Dict[str, Any]:
         now = self._clock()
         vision = self.vision.snapshot(now)

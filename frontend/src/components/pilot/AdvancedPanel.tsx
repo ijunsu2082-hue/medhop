@@ -42,8 +42,13 @@ export function AdvancedPanel({ status, waiting, send, controlOpen, calHold, cal
             e.currentTarget.blur();
           }}
         >
-          <IconChevron className="disclosure-chevron" size={18} />
+          <IconChevron className="disclosure-chevron" size={16} />
           Setup and tuning
+          {!open && (
+            <span className="setup-summary" aria-hidden="true">
+              Trim, stick limit, hover test, calibration
+            </span>
+          )}
         </button>
       </h2>
       {hoverRunning && <p className="hint small">Open while the hover test runs.</p>}

@@ -27,8 +27,8 @@ export function AxisIndicators({ axes, maxStick }: { axes: Axes; maxStick: numbe
           </div>
         );
       })}
-      <p className="hint">
-        Sent as stick fractions; the backend scales them by max stick{maxStick !== null ? ` (${maxStick.toFixed(2)})` : ""}.
+      <p className="hint axes-note">
+        Stick values are fractions of full deflection, scaled by Max stick{maxStick !== null ? ` (${maxStick.toFixed(2)})` : ""}.
       </p>
     </div>
   );
@@ -256,7 +256,8 @@ export function MaxStickSlider({
         {shown.toFixed(2)}
       </output>
       <span id="max-stick-desc" className="hint">
-        Full key press = this fraction of full stick. Backend value: {serverValue !== null ? serverValue.toFixed(2) : "unknown"}.
+        A full key press sends this fraction of full stick. Backend value:{" "}
+        {serverValue !== null ? serverValue.toFixed(2) : "unknown"}.
       </span>
     </div>
   );

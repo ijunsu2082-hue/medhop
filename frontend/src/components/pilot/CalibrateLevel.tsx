@@ -46,7 +46,7 @@ export function CalibrateLevel({ hold, blocked, note }: Props) {
         <span className="takeoff-fill" style={{ transform: `scaleX(${hold.progress})` }} aria-hidden="true" />
         <span className="takeoff-label">Calibrate level</span>
         <span className="takeoff-sub" id="cal-level-desc">
-          {hold.holding ? "Keep holding..." : "Press and hold 0.6 s"}
+          {hold.holding ? "Keep holding..." : "Press and hold for 0.6 s"}
         </span>
       </button>
       {blocked && <p className="muted small">{blocked}</p>}

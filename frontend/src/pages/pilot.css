@@ -1,267 +1,167 @@
-/* Pilot page (/). Every rule is scoped under .pilot and sets what it needs; tokens come from styles.css. */
+/* Pilot page (/). Every rule is scoped under .pilot. Tokens, primitives and form controls come from styles.css. */
 
 .pilot {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: 20px;
+  padding-top: 0;
   color: var(--text);
-  padding-bottom: var(--sp-5);
 }
-.pilot :focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-.pilot h2 {
-  margin: 0 0 var(--sp-3);
-  font-size: var(--fs-lg);
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
-  text-transform: none;
-}
-.pilot h3 {
-  margin: 0 0 var(--sp-2);
-  font-size: var(--fs-md);
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: 0;
+.pilot [hidden] {
+  display: none !important;
 }
 .pilot p {
-  margin: 0 0 var(--sp-2);
+  margin: 0 0 8px;
 }
 .pilot strong {
   font-weight: 600;
 }
-.pilot .panel {
-  margin: 0;
-  padding: var(--sp-5);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: none;
-  min-width: 0;
-}
-.pilot [hidden] {
-  display: none !important;
+.pilot .msg {
+  margin: 12px 0 0;
 }
 
 /* ---------- Sticky safety bar ---------- */
 
 .pilot .pilot-sticky {
   position: sticky;
-  top: 0;
+  top: 8px;
   z-index: 20;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  /* Paint the bar's background to the window edges without depending on the page padding. */
-  box-shadow: 0 0 0 100vmax var(--surface);
-  clip-path: inset(0 -100vmax);
+  margin: 12px 0 0;
 }
 .pilot .command-bar {
-  display: grid;
-  grid-template-columns: minmax(280px, auto) minmax(11rem, 15rem) minmax(0, 1fr);
-  gap: var(--sp-3);
-  align-items: stretch;
-  padding: var(--sp-2) 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  padding-right: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  backdrop-filter: saturate(1.4) blur(14px);
+  border: 0;
+  border-radius: var(--r-lg);
+  box-shadow: var(--e2);
 }
 
 .pilot .estop {
-  display: flex;
-  flex-direction: column;
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "main key"
+    "sub key";
+  column-gap: 16px;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-width: 280px;
-  min-height: 72px;
-  padding: var(--sp-1) var(--sp-4);
-  border: 1px solid var(--estop);
-  border-radius: var(--radius);
+  min-width: 300px;
+  height: 56px;
+  padding: 0 14px 0 18px;
+  text-align: left;
+  border: 0;
+  border-radius: 10px;
   background: var(--estop);
   color: var(--estop-text);
-  font: inherit;
+  font-family: var(--sans);
   cursor: pointer;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
-  box-shadow: none;
-  transition: background-color 0.12s, border-color 0.12s;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 25, 0.2),
+    0 6px 14px -6px rgba(217, 45, 32, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition:
+    background-color var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease);
 }
-.pilot .estop:hover,
+.pilot .estop:hover {
+  background: var(--estop-hover);
+}
 .pilot .estop:active {
-  border-color: var(--estop-edge);
   background: var(--estop-edge);
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.28);
 }
 .pilot .estop:focus-visible {
-  outline: 3px solid var(--focus);
+  outline: 3px solid var(--estop);
   outline-offset: 3px;
 }
 .pilot .estop-main {
-  font-size: 1.375rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
+  grid-area: main;
+  align-self: end;
+  font: 700 15px/20px var(--sans);
+  letter-spacing: 0.045em;
 }
 .pilot .estop-sub {
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  opacity: 0.92;
+  grid-area: sub;
+  align-self: start;
+  font: 400 12px/16px var(--sans);
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.86);
+}
+.pilot .estop-key {
+  grid-area: key;
+  height: 24px;
+  min-width: 0;
+  padding: 0 8px;
+  font: 600 11px/1 var(--sans);
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  border: 0;
+  border-radius: 6px;
 }
 
-/* Press-and-hold buttons (takeoff/land in the bar and in step 1, calibrate level). */
 .pilot .takeoff-wrap {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
 }
-.pilot .takeoff {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-height: 52px;
-  padding: var(--sp-1) var(--sp-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  text-align: center;
-  cursor: pointer;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-.pilot .takeoff:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-.pilot .takeoff[data-holding="true"] {
-  border-color: var(--accent);
-}
-.pilot .takeoff:disabled {
-  border: 1px dashed var(--border-strong);
-  background: var(--surface-2);
-  color: var(--muted);
-  cursor: not-allowed;
-}
-.pilot .takeoff-fill {
-  position: absolute;
-  inset: 0;
-  background: var(--accent);
-  opacity: 0.16;
-  transform-origin: left center;
-  pointer-events: none;
-}
-.pilot .takeoff-label {
-  position: relative;
-  font-size: var(--fs-md);
-  font-weight: 600;
-  line-height: 1.2;
-}
-.pilot .takeoff-sub {
-  position: relative;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  font-weight: 400;
-}
-.pilot .takeoff-compact {
-  flex: 1;
+.pilot .takeoff.takeoff-compact {
+  flex: none;
+  width: auto;
+  min-width: 232px;
+  height: 56px;
 }
 .pilot .takeoff-note {
-  min-height: 1.2em;
+  max-width: 200px;
   overflow: hidden;
+  font: 400 12px/16px var(--sans);
   color: var(--muted);
-  font-size: var(--fs-xs);
-  white-space: nowrap;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.pilot .takeoff-large {
-  width: 100%;
-  min-height: 76px;
-  margin-bottom: var(--sp-3);
-  border: 1px solid var(--accent);
-  background: var(--surface);
-}
-.pilot .takeoff-large .takeoff-label {
-  font-size: var(--fs-lg);
-  font-weight: 600;
-}
-.pilot .takeoff-large .takeoff-sub {
-  font-size: var(--fs-sm);
-}
-.pilot .takeoff-large:disabled {
-  border: 1px dashed var(--border-strong);
-  background: var(--surface-2);
+.pilot .takeoff-note:empty {
+  display: none;
 }
 
 .pilot .command-status {
+  margin-left: auto;
   display: flex;
+  align-items: center;
+  gap: 4px 18px;
   flex-wrap: wrap;
-  align-content: center;
-  align-items: center;
   justify-content: flex-end;
-  gap: var(--sp-2);
   min-width: 0;
-  font-size: var(--fs-sm);
 }
-.pilot .command-status .badge,
 .pilot .command-status .conn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  max-width: 100%;
-  padding: 4px var(--sp-3);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  line-height: 1.3;
-  text-transform: none;
-  letter-spacing: 0;
-}
-.pilot .command-status .badge-sim {
-  border-color: var(--border-strong);
-  background: var(--surface);
-  color: var(--text);
-  font-weight: 600;
-}
-.pilot .command-status .badge-real {
-  border-color: transparent;
-  background: var(--warn-bg);
-  color: var(--warn);
-  font-weight: 600;
-}
-.pilot .command-status .conn-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border: 0;
-  border-radius: 50%;
-  background: currentColor;
-}
-.pilot .command-status .conn-pass,
-.pilot .command-status .conn-warn {
-  color: var(--text);
-}
-.pilot .command-status .conn-pass .conn-dot {
-  color: var(--pass);
-}
-.pilot .command-status .conn-warn .conn-dot {
-  color: var(--warn);
+  font: 500 13px/18px var(--sans);
+  color: var(--text-2);
 }
 .pilot .command-status .conn-fail {
-  border-color: transparent;
-  background: var(--fail-bg);
   color: var(--fail);
 }
-.pilot .command-status .conn-fail .conn-dot {
+.pilot .command-status .backend-down {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--fail-bg);
   color: var(--fail);
+  white-space: normal;
+}
+.pilot .command-status .backend-down strong {
+  font-weight: 500;
 }
 
 /* Emergency-stop banner, directly under the bar. */
@@ -269,71 +169,69 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-1) var(--sp-4);
-  margin: 0 0 var(--sp-2);
-  padding: var(--sp-3) var(--sp-4);
+  gap: 4px 16px;
+  margin-top: 10px;
+  padding: 12px 12px 12px 16px;
   border: 0;
-  border-left: 3px solid var(--fail);
-  border-radius: var(--radius-sm);
+  border-radius: 14px;
   background: var(--fail-bg);
-  color: var(--text);
+  box-shadow:
+    inset 0 0 0 1px rgba(190, 38, 27, 0.18),
+    var(--e2);
 }
-.pilot .estop-banner strong {
+.pilot .estop-banner-unsent {
+  box-shadow:
+    inset 0 0 0 1.5px var(--fail),
+    var(--e2);
+}
+.pilot .estop-banner-title {
+  font: 600 15px/22px var(--sans);
   color: var(--fail);
-  font-size: var(--fs-lg);
-  font-weight: 600;
-  letter-spacing: 0;
 }
-.pilot .estop-banner span {
-  color: var(--text);
+.pilot .estop-banner-detail {
+  flex: 1 1 280px;
+  min-width: 0;
+  font: 400 14px/20px var(--sans);
+  color: #7e1a12;
 }
-.pilot .estop-banner .row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2);
+.pilot .estop-banner-actions {
   margin-left: auto;
+  justify-content: flex-end;
+  gap: 8px 12px;
+}
+.pilot .estop-banner-note {
+  font: 400 13px/18px var(--sans);
+  color: #7e1a12;
 }
 
 .pilot .pilot-refused {
   margin: 0;
-  padding: var(--sp-3) var(--sp-4);
-  border: 0;
-  border-left: 3px solid var(--fail);
-  border-radius: var(--radius-sm);
-  background: var(--fail-bg);
-  color: var(--text);
-  font-weight: 500;
 }
 
 /* ---------- Intro ---------- */
 
 .pilot .pilot-intro {
-  max-width: 62rem;
+  padding: 8px 0 0;
 }
 .pilot .pilot-intro h1 {
-  margin: var(--sp-2) 0 var(--sp-2);
-  font-size: var(--fs-xl);
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.015em;
+  margin: 0 0 8px;
 }
 .pilot .pilot-lede {
+  max-width: 68ch;
   margin: 0;
-  color: var(--muted);
-  font-size: var(--fs-md);
-  line-height: 1.5;
+  font: 400 15px/22px var(--sans);
+  color: var(--text-2);
 }
 .pilot .pilot-sim-note {
-  display: inline-block;
-  margin: var(--sp-3) 0 0;
-  padding: var(--sp-1) var(--sp-3);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: var(--fs-sm);
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 500 13px/18px var(--sans);
+  color: var(--text-2);
 }
 
 /* ---------- Main grid ---------- */
@@ -342,12 +240,12 @@
 .pilot .pilot-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--sp-4);
+  gap: 20px;
   align-items: start;
 }
-@media (min-width: 1100px) {
+@media (min-width: 980px) {
   .pilot .pilot-grid {
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-columns: minmax(0, 1.5fr) minmax(360px, 1fr);
     grid-template-areas: "camera run";
   }
   .pilot .pilot-camera {
@@ -360,183 +258,190 @@
 
 /* ---------- Camera ---------- */
 
+.pilot .pilot-camera {
+  padding: 16px;
+}
+.pilot .pilot-camera-head {
+  padding: 4px 4px 12px;
+}
+.pilot .pilot-camera-head h2 {
+  margin: 0;
+}
 .pilot .video-frame {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  margin: 0 0 var(--sp-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: #111417;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--video-bg);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(15, 23, 25, 0.2);
+}
+.pilot .video-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  /* A soft scrim so the chips stay readable over a bright frame. */
+  height: 18%;
+  background: linear-gradient(rgba(11, 15, 16, 0.55), rgba(11, 15, 16, 0));
+  z-index: 1;
+  pointer-events: none;
 }
 .pilot .video-img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  /* 640x360 shown enlarged: smooth scaling, never pixelated, never stretched (contain keeps 16:9). */
+  object-fit: cover;
+  /* 640x360 shown enlarged: smooth scaling, never pixelated. The frame and the stream are both 16:9. */
   image-rendering: auto;
 }
 .pilot .video-overlay {
   position: absolute;
   inset: 0;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-1);
-  padding: var(--sp-4);
-  background: #111417;
-  color: #F2F4F5;
+  gap: 4px;
+  padding: 16px;
+  background: var(--video-bg);
+  font: 500 14px/20px var(--sans);
+  color: rgba(255, 255, 255, 0.86);
   text-align: center;
 }
 .pilot .video-overlay strong {
-  font-size: var(--fs-lg);
-  font-weight: 600;
+  font: 600 15px/22px var(--sans);
+  color: #fff;
+}
+.pilot .video-overlay span {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.72);
 }
 .pilot .video-overlay-soft {
-  background: rgba(17, 20, 23, 0.72);
+  background: rgba(11, 15, 16, 0.55);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
 }
-/* The chip strip is opaque and at least 8 % of the frame tall (the backend box is 7.5 %): it hides the text the backend burns into the
-   top-left corner of each frame, which the chips replace. */
 .pilot .video-chips {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 10px;
+  left: 10px;
+  right: 10px;
   z-index: 2;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-1) var(--sp-2);
-  min-height: 8%;
-  padding: 5px var(--sp-2);
-  background: #111417;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  gap: 6px;
+  pointer-events: none;
 }
 .pilot .vchip {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-1);
-  padding: 1px var(--sp-2);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 999px;
-  background: transparent;
-  color: #F2F4F5;
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  line-height: 1.5;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--r-pill);
+  font: 500 12px/16px var(--sans);
+  letter-spacing: 0.005em;
+  color: #fff;
   white-space: nowrap;
-}
-.pilot .vchip-sim {
-  border-color: rgba(255, 255, 255, 0.28);
-  background: transparent;
-  color: #F2F4F5;
-}
-.pilot .vchip-muted {
-  color: rgba(255, 255, 255, 0.64);
-}
-.pilot .vchip-state-searching,
-.pilot .vchip-state-approaching,
-.pilot .vchip-state-arrived,
-.pilot .vchip-state-landing,
-.pilot .vchip-state-hover_test {
-  border-color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.1);
-  color: #FFFFFF;
-  font-weight: 600;
-}
-/* The only colored chips on the camera: text and border, transparent background. */
-.pilot .vchip-pass {
-  border-color: #9FD3B2;
-  background: transparent;
-  color: #9FD3B2;
+  background: rgba(15, 23, 25, 0.58);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3);
+  backdrop-filter: blur(10px) saturate(1.3);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
 }
 .pilot .vchip-real {
-  border-color: #E8C56B;
-  background: transparent;
-  color: #E8C56B;
+  background: rgba(138, 90, 0, 0.72);
 }
-.pilot .vchip-fail,
-.pilot .vchip-state-aborted {
-  border-color: #FFB3A8;
-  background: transparent;
-  color: #FFB3A8;
+.pilot .vchip-state {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  box-shadow: none;
+}
+.pilot .vchip-state-idle,
+.pilot .vchip-state-done {
+  background: rgba(15, 23, 25, 0.58);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+.pilot .vchip-pass::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #5bd08c;
+}
+.pilot .vchip-muted {
+  color: rgba(255, 255, 255, 0.72);
+}
+.pilot .vchip-fail {
+  background: rgba(217, 45, 32, 0.9);
+  box-shadow: none;
 }
 .pilot .pilot-caption {
-  margin: 0 0 var(--sp-4);
+  max-width: none;
+  margin: 10px 4px 0;
+  font: 400 12px/16px var(--sans);
   color: var(--muted);
-  font-size: var(--fs-sm);
 }
 
-/* ---------- Checklist chips ---------- */
+/* ---------- Pre-flight checklist: a grouped status list ---------- */
 
-.pilot .pilot-check h2 {
-  font-size: var(--fs-md);
-  font-weight: 600;
-  margin-bottom: var(--sp-2);
+.pilot .pilot-check .eyebrow {
+  margin: 20px 4px 8px;
+  font-size: var(--fs-xs);
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .pilot .checklist {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 12px;
+  row-gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
+  background: none;
 }
 .pilot .check {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
   min-width: 0;
   margin: 0;
   padding: 0;
-  border: 0;
+  border-top: 1px solid var(--line);
 }
-.pilot .check-open {
-  flex: 1 1 100%;
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--sp-1) var(--sp-3);
-  padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-}
-.pilot .check-open.check-fail {
-  border-color: transparent;
-  background: var(--fail-bg);
-}
-.pilot .check-open.check-warn {
-  border-color: transparent;
-  background: var(--warn-bg);
+.pilot .check:nth-child(-n + 2) {
+  border-top: 0;
 }
 .pilot .check-chip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: var(--sp-2);
-  min-height: 40px;
-  padding: 0 var(--sp-3) 0 var(--sp-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
+  gap: 10px;
+  width: 100%;
+  height: 40px;
+  padding: 0 4px;
+  background: none;
+  border: 0;
+  border-radius: var(--r-sm);
+  font: 500 14px/20px var(--sans);
+  letter-spacing: -0.006em;
   color: var(--text);
-  font: inherit;
-  font-size: var(--fs-sm);
-  font-weight: 500;
+  text-align: left;
   cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease);
 }
 .pilot .check-chip:hover {
-  border-color: var(--border-strong);
-}
-.pilot .check-fail .check-chip {
-  border-color: var(--fail);
-  background: var(--surface);
+  background: var(--surface-2);
 }
 .pilot .check-icon {
   display: inline-flex;
+  flex: none;
 }
 .pilot .check-icon.verdict-pass {
   color: var(--pass);
@@ -550,606 +455,800 @@
 .pilot .check-icon.verdict-info {
   color: var(--muted);
 }
-.pilot .check-chevron {
-  color: var(--muted);
-  transition: transform 0.15s;
+.pilot .check-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.pilot .check-chip[aria-expanded="true"] .check-chevron {
+.pilot .check-state {
+  flex: none;
+  font: 400 13px/18px var(--sans);
+  color: var(--muted);
+}
+.pilot .check-fail .check-state {
+  color: var(--fail);
+  font-weight: 500;
+}
+.pilot .check-warn .check-state {
+  color: var(--warn);
+}
+.pilot .check-chevron {
+  flex: none;
+  color: var(--faint);
+  transition: transform var(--t-fast) var(--ease);
+}
+.pilot .check-open .check-chevron {
   transform: rotate(90deg);
 }
 .pilot .check-text {
-  flex: 1 1 16rem;
-  margin: 0;
-  font-size: var(--fs-sm);
+  margin: 0 4px 10px 30px;
+  font: 400 13px/18px var(--sans);
+  color: var(--text-2);
 }
 .pilot .check-word {
-  font-weight: 600;
-}
-.pilot .check-fail .check-text {
+  font-weight: 500;
   color: var(--text);
 }
-.pilot .check-fail .check-word {
-  color: var(--fail);
+@media (max-width: 560px) {
+  .pilot .checklist {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pilot .check:nth-child(2) {
+    border-top: 1px solid var(--line);
+  }
 }
 
-/* ---------- Run steps ---------- */
+/* ---------- Station run stepper ---------- */
 
+.pilot .run-title-chip {
+  margin-left: 4px;
+  vertical-align: 1px;
+  text-transform: capitalize;
+}
 .pilot .run-step-list {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  margin: 0;
+  gap: 4px;
+  margin: 0 -8px;
   padding: 0;
   list-style: none;
 }
 .pilot .run-step {
+  position: relative;
   display: grid;
-  grid-template-columns: 2rem minmax(0, 1fr);
-  gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-2);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: 14px;
+  padding: 14px 14px 16px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  transition: background-color var(--t-med) var(--ease);
 }
-.pilot .run-step-current {
-  border-left-color: var(--accent);
-  background: var(--accent-soft);
+.pilot .run-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 27.25px;
+  top: 46px;
+  bottom: -10px;
+  width: 1.5px;
+  background: var(--line);
 }
 .pilot .run-step-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 1px solid var(--border-strong);
+  position: relative;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
   color: var(--muted);
-  font-size: var(--fs-sm);
-  font-weight: 600;
+  font: 600 13px/1 var(--sans);
   font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  transition:
+    background-color var(--t-med) var(--ease),
+    color var(--t-med) var(--ease),
+    box-shadow var(--t-med) var(--ease);
 }
-.pilot .run-step-current .run-step-num {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-contrast);
+.pilot .run-step-body {
+  grid-column: 2;
+  min-width: 0;
 }
 .pilot .run-step-title {
-  margin: 2px 0 var(--sp-3);
-  font-size: var(--fs-md);
-  font-weight: 600;
+  margin: 0 0 8px;
+  font: 600 15px/28px var(--sans);
+  letter-spacing: -0.011em;
+  color: var(--text-2);
 }
+.pilot .run-step-current {
+  background: var(--accent-soft);
+}
+.pilot .run-step-current .run-step-num {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(11, 107, 110, 0.16);
+}
+.pilot .run-step-current .run-step-title {
+  color: var(--text);
+}
+/* Done: the steps before the current one. Browsers without :has show the neutral node. */
+.pilot .run-step:has(~ .run-step-current) .run-step-num {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1.5px var(--accent-soft-2);
+}
+.pilot .run-step:has(~ .run-step-current)::before {
+  background: var(--accent-soft-2);
+}
+
 .pilot .run-step-text {
-  margin: 0 0 var(--sp-1);
-  font-size: var(--fs-sm);
+  margin: 10px 0 0;
+  font: 400 13px/18px var(--sans);
+  color: var(--muted);
 }
 .pilot .run-step-live {
-  min-height: 1.4em;
-  margin: 0 0 var(--sp-1);
-  font-size: var(--fs-sm);
-  font-weight: 500;
+  margin: 6px 0 0;
+  font: 500 13px/18px var(--sans);
+  color: var(--text);
 }
 .pilot .run-step-live:empty {
   display: none;
 }
-.pilot .run-step .hint {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--fs-sm);
+.pilot .run-step-reset {
+  margin-top: 10px;
+}
+.pilot .run-step-body > .hint {
+  margin: 6px 0 0;
 }
 
+/* Press-and-hold buttons (takeoff/land in the bar and in step 1, calibrate level). */
+.pilot .takeoff {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "label key"
+    "sub key";
+  column-gap: 14px;
+  align-items: center;
+  width: 100%;
+  height: 56px;
+  padding: 0 14px 0 16px;
+  text-align: left;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--sans);
+  cursor: pointer;
+  box-shadow: var(--e-control);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition:
+    box-shadow var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease),
+    background-color var(--t-fast) var(--ease);
+}
+.pilot .takeoff:hover:not(:disabled) {
+  box-shadow: var(--e-control-hover);
+}
+.pilot .takeoff[data-holding="true"] {
+  box-shadow:
+    0 0 0 1.5px var(--accent),
+    0 0 0 5px var(--accent-ring);
+  transform: scale(0.992);
+}
+.pilot .takeoff-fill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform-origin: 0 50%;
+  will-change: transform;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--accent), var(--accent)) left bottom / 100% 3px no-repeat,
+    linear-gradient(90deg, rgba(11, 107, 110, 0.07), rgba(11, 107, 110, 0.16));
+  opacity: 0;
+  /* never transition transform: progress is frame driven */
+  transition: opacity 140ms var(--ease);
+}
+.pilot .takeoff[data-holding="true"] .takeoff-fill {
+  opacity: 1;
+}
+.pilot .takeoff-label {
+  grid-area: label;
+  align-self: end;
+  font: 600 15px/20px var(--sans);
+  letter-spacing: -0.011em;
+  white-space: nowrap;
+}
+.pilot .takeoff-paren {
+  font-weight: 400;
+  color: var(--muted);
+}
+.pilot .takeoff-sub {
+  grid-area: sub;
+  align-self: start;
+  font: 400 12px/16px var(--sans);
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.pilot .takeoff[data-holding="true"] .takeoff-sub {
+  color: var(--accent);
+  font-weight: 500;
+}
+.pilot .takeoff-key {
+  grid-area: key;
+  height: 24px;
+  min-width: 24px;
+}
+.pilot .takeoff:disabled {
+  cursor: not-allowed;
+  background: var(--surface-2);
+  color: var(--faint);
+  box-shadow: none;
+  transform: none;
+}
+.pilot .takeoff:disabled .takeoff-sub,
+.pilot .takeoff:disabled .takeoff-paren {
+  color: var(--faint);
+}
+.pilot .takeoff:disabled .takeoff-key {
+  color: var(--faint);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+/* Primary variant: step 1 when it is the current step. */
+.pilot .takeoff-large {
+  height: 64px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow:
+    var(--e-solid),
+    0 8px 18px -8px rgba(11, 107, 110, 0.5);
+}
+.pilot .takeoff-large:hover:not(:disabled) {
+  background: var(--accent-hover);
+  box-shadow:
+    var(--e-solid),
+    0 8px 18px -8px rgba(11, 107, 110, 0.5);
+}
+.pilot .takeoff-large .takeoff-sub {
+  color: rgba(255, 255, 255, 0.82);
+}
+.pilot .takeoff-large .takeoff-paren {
+  color: rgba(255, 255, 255, 0.75);
+}
+.pilot .takeoff-large .takeoff-key {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+.pilot .takeoff-large .takeoff-fill {
+  background:
+    linear-gradient(#fff, #fff) left bottom / 100% 3px no-repeat,
+    rgba(255, 255, 255, 0.2);
+}
+.pilot .takeoff-large[data-holding="true"] {
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--accent);
+}
+.pilot .takeoff-large[data-holding="true"] .takeoff-sub {
+  color: #fff;
+}
+/* Step 1 not current: the white secondary look. */
+.pilot .run-step:not(.run-step-current) .takeoff-large {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--e-control);
+}
+.pilot .run-step:not(.run-step-current) .takeoff-large:hover:not(:disabled) {
+  box-shadow: var(--e-control-hover);
+}
+.pilot .run-step:not(.run-step-current) .takeoff-large .takeoff-sub,
+.pilot .run-step:not(.run-step-current) .takeoff-large .takeoff-paren {
+  color: var(--muted);
+}
+.pilot .run-step:not(.run-step-current) .takeoff-large .takeoff-key {
+  color: var(--text-2);
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 25, 0.12),
+    0 1px 0 1px rgba(15, 23, 25, 0.08);
+}
+.pilot .run-step:not(.run-step-current) .takeoff-large .takeoff-fill {
+  background:
+    linear-gradient(var(--accent), var(--accent)) left bottom / 100% 3px no-repeat,
+    linear-gradient(90deg, rgba(11, 107, 110, 0.07), rgba(11, 107, 110, 0.16));
+}
+.pilot .run-step:not(.run-step-current) .takeoff-large[data-holding="true"] {
+  box-shadow:
+    0 0 0 1.5px var(--accent),
+    0 0 0 5px var(--accent-ring);
+}
+.pilot .run-step:not(.run-step-current) .takeoff-large[data-holding="true"] .takeoff-sub {
+  color: var(--accent);
+}
+/* Disabled wins over both looks. */
+.pilot .takeoff-large:disabled,
+.pilot .run-step:not(.run-step-current) .takeoff-large:disabled {
+  background: var(--surface-2);
+  color: var(--faint);
+  box-shadow: none;
+}
+.pilot .takeoff-large:disabled .takeoff-sub,
+.pilot .takeoff-large:disabled .takeoff-paren,
+.pilot .run-step:not(.run-step-current) .takeoff-large:disabled .takeoff-sub,
+.pilot .run-step:not(.run-step-current) .takeoff-large:disabled .takeoff-paren {
+  color: var(--faint);
+}
+.pilot .takeoff-large:disabled .takeoff-key,
+.pilot .run-step:not(.run-step-current) .takeoff-large:disabled .takeoff-key {
+  color: var(--faint);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+/* Step 2: confirm check card. */
 .pilot .confirm-card {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
+  gap: 12px;
   width: 100%;
   min-height: 56px;
-  padding: var(--sp-2) var(--sp-4);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--r-md);
   background: var(--surface);
+  box-shadow: var(--e-control);
+  font: 500 15px/22px var(--sans);
   color: var(--text);
-  font-weight: 500;
   cursor: pointer;
-}
-.pilot .confirm-card input {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  margin: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
+  transition:
+    box-shadow var(--t-fast) var(--ease),
+    background-color var(--t-fast) var(--ease);
 }
 .pilot .confirm-card:hover {
-  border-color: var(--accent);
+  box-shadow: var(--e-control-hover);
 }
-.pilot .confirm-card-on {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+.pilot .confirm-card input {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+.pilot .confirm-card-on,
+.pilot .confirm-card-on:hover {
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1.5px var(--accent),
+    0 0 0 4px var(--accent-ring);
 }
 .pilot .confirm-card:has(input:focus-visible) {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 5px var(--accent-ring);
 }
 .pilot .confirm-card:has(input:disabled) {
-  border: 1px dashed var(--border-strong);
   background: var(--surface-2);
+  box-shadow: none;
   color: var(--muted);
   cursor: not-allowed;
 }
 
+/* Step 3 */
 .pilot .run-steps .field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  margin: 0 0 var(--sp-3);
+  margin: 0 0 16px;
 }
 .pilot .run-steps .field label {
-  font-weight: 500;
+  font: 500 13px/18px var(--sans);
 }
 .pilot .run-steps select {
   width: 100%;
-  min-height: 44px;
-  padding: 0 var(--sp-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-}
-.pilot .run-steps .field .hint {
-  color: var(--muted);
-  font-size: var(--fs-sm);
 }
 
 .pilot .blockers {
-  margin: 0 0 var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
+  margin: 0 0 12px;
+  padding: 12px 14px;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   background: var(--surface-2);
 }
+.pilot .run-step-current .blockers {
+  background: rgba(255, 255, 255, 0.7);
+}
 .pilot .blockers-title {
-  margin: 0 0 var(--sp-1);
-  font-weight: 600;
+  margin: 0 0 6px;
+  font: 600 13px/18px var(--sans);
+  color: var(--text);
 }
 .pilot .blockers ul {
+  display: grid;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .pilot .blockers li {
   display: flex;
-  align-items: baseline;
-  gap: var(--sp-2);
-  margin: 2px 0;
-  font-size: var(--fs-sm);
+  gap: 8px;
+  font: 400 13px/18px var(--sans);
+  color: var(--text-2);
 }
 .pilot .blockers li svg {
-  position: relative;
-  top: 2px;
   flex: none;
-  color: var(--muted);
+  margin-top: 2px;
+  color: var(--faint);
 }
 .pilot .blocker-step {
   font-weight: 600;
+  color: var(--text);
 }
 
 .pilot .run-wide {
-  width: 100%;
-  min-height: 52px;
-  font-size: var(--fs-md);
-  font-weight: 600;
-}
-/* Abort is a red outline, so the e-stop stays the only solid red control on the page. */
-.pilot .run-wide.btn-danger {
-  border: 1px solid var(--fail);
-  background: var(--surface);
-  color: var(--fail);
-}
-.pilot .run-wide.btn-danger:hover:not(:disabled) {
-  border-color: var(--fail);
-  background: var(--fail-bg);
+  --btn-h: 48px;
+  font: 600 15px/20px var(--sans);
 }
 
 .pilot .run-live {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
+  display: block;
 }
 .pilot .run-track {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-1);
-  margin: 0;
+  display: grid;
+  grid-auto-flow: column;
+  /* Equal segments, but never narrower than a label ("Approaching" in 600 would overrun its neighbour). */
+  grid-auto-columns: minmax(max-content, 1fr);
+  gap: 6px;
+  margin: 0 0 14px;
   padding: 0;
   list-style: none;
-  font-size: var(--fs-sm);
 }
 .pilot .run-track li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-}
-.pilot .run-track li + li::before {
-  content: "\203A";
-  color: var(--muted);
-  padding: 0 2px;
-}
-.pilot .run-track-past {
+  --seg: var(--surface-3);
+  min-width: 0;
+  font: 500 12px/16px var(--sans);
   color: var(--muted);
 }
-.pilot .run-track-now .run-track-label {
-  padding: 2px var(--sp-2);
+.pilot .run-track li::before {
+  content: "";
+  display: block;
+  height: 3px;
+  margin-bottom: 8px;
   border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--seg);
+  transition: background-color var(--t-med) var(--ease);
+}
+.pilot .run-track .run-track-past {
+  --seg: var(--accent-soft-2);
+  color: var(--text-2);
+}
+.pilot .run-track .run-track-now {
+  --seg: var(--accent);
+  color: var(--text);
   font-weight: 600;
 }
-.pilot .run-track-next {
-  color: var(--muted);
+.pilot .run-step-current .run-track li {
+  --seg: rgba(11, 107, 110, 0.14);
+}
+.pilot .run-step-current .run-track .run-track-past {
+  --seg: rgba(11, 107, 110, 0.38);
+}
+.pilot .run-step-current .run-track .run-track-now {
+  --seg: var(--accent);
 }
 
 .pilot .run-state {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--sp-1) var(--sp-4);
-  margin: 0 0 var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-}
-.pilot .run-live .run-state {
-  margin: 0;
+  display: grid;
+  gap: 2px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--e1);
 }
 .pilot .run-state strong {
-  flex: 1 1 100%;
-  font-size: var(--fs-md);
-  font-weight: 600;
+  font: 600 15px/22px var(--sans);
+}
+.pilot .run-state span {
+  font: 400 13px/18px var(--sans);
+  color: var(--muted);
 }
 .pilot .run-state .mono {
-  font-family: var(--mono);
-  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
 }
 .pilot .run-state-aborted {
-  border-left-color: var(--fail);
+  background: var(--warn-bg);
+  box-shadow: inset 0 0 0 1px rgba(138, 90, 0, 0.14);
 }
 
 .pilot .run-outcome {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sp-3);
-  margin: 0 0 var(--sp-3);
-  padding: var(--sp-3) var(--sp-4);
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 4px 12px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
   border: 0;
-  border-left: 3px solid var(--pass);
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-md);
   background: var(--pass-bg);
-  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(30, 117, 72, 0.12);
 }
 .pilot .run-outcome > svg {
-  flex: none;
   color: var(--pass);
 }
 .pilot .run-outcome strong {
   display: block;
-  margin-bottom: var(--sp-1);
-  color: var(--pass);
-  font-size: var(--fs-lg);
-  font-weight: 600;
+  margin: 0 0 2px;
+  font: 600 15px/22px var(--sans);
+  color: #14532f;
 }
 .pilot .run-outcome p {
-  margin: 0 0 var(--sp-1);
+  margin: 0 0 2px;
+  font: 400 14px/20px var(--sans);
+  color: var(--text);
+}
+.pilot .run-outcome p.small {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-2);
 }
 .pilot .run-care-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  margin-top: var(--sp-2);
-  padding: 0 var(--sp-4);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  font-weight: 600;
-  text-decoration: none;
-}
-.pilot .run-care-link:hover {
-  background: var(--surface-2);
+  margin-top: 10px;
 }
 
 .pilot .abort-notice {
   display: flex;
   align-items: flex-start;
-  gap: var(--sp-3);
-  margin: 0 0 var(--sp-3);
-  padding: var(--sp-3) var(--sp-4);
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
   border: 0;
-  border-left: 3px solid var(--fail);
-  border-radius: var(--radius-sm);
-  background: var(--fail-bg);
-  color: var(--text);
+  border-radius: var(--r-md);
+  background: var(--warn-bg);
+  color: #5e3e00;
+  box-shadow: inset 0 0 0 1px rgba(138, 90, 0, 0.14);
 }
 .pilot .abort-notice svg {
   flex: none;
-  color: var(--fail);
+  margin-top: 1px;
+  color: var(--warn);
 }
 .pilot .abort-notice strong {
   display: block;
-  margin-bottom: var(--sp-1);
-  color: var(--fail);
-  font-size: var(--fs-lg);
-  font-weight: 600;
+  margin: 0 0 2px;
+  font: 600 14px/20px var(--sans);
 }
 .pilot .abort-notice p {
   margin: 0;
-  color: var(--text);
-}
-
-.pilot .run-steps .msg {
-  margin: var(--sp-3) 0 0;
+  font: 400 14px/20px var(--sans);
 }
 
 /* Disclosure buttons (aria-expanded; they give focus back after a click). */
 .pilot .disclosure {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
-  min-height: 44px;
-  margin-top: var(--sp-3);
-  padding: 0 var(--sp-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-weight: 500;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px 0 4px;
+  margin: 12px 0 0 -4px;
+  background: none;
+  border: 0;
+  border-radius: var(--r-sm);
+  font: 500 13px/18px var(--sans);
+  color: var(--muted);
   cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
 }
 .pilot .disclosure:hover {
-  border-color: var(--border-strong);
   color: var(--text);
+  background: rgba(15, 23, 25, 0.05);
 }
 .pilot .disclosure-chevron {
   flex: none;
-  transition: transform 0.15s;
+  width: 14px;
+  height: 14px;
+  transition: transform var(--t-fast) var(--ease);
 }
 .pilot .disclosure[aria-expanded="true"] .disclosure-chevron {
   transform: rotate(90deg);
 }
-.pilot .disclosure-heading {
-  width: 100%;
-  min-height: 44px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  font-size: var(--fs-lg);
-  font-weight: 600;
-}
-.pilot .disclosure-heading:hover {
-  border: 0;
-}
 .pilot .run-options {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-  margin-top: var(--sp-2);
-  padding: var(--sp-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 14px;
+  margin-top: 8px;
+  padding: 14px;
+  border: 0;
+  border-radius: 10px;
   background: var(--surface);
+  box-shadow: var(--e1);
 }
-
-.pilot .check-field {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sp-2);
-  cursor: pointer;
-}
-.pilot .check-field input {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  margin: 2px 0 0;
-  accent-color: var(--accent);
-}
-
-/* Drift assist switch */
-.pilot .drift-assist {
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-.pilot .drift-assist .hint {
-  margin: var(--sp-1) 0;
-}
-.pilot .switch-field {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  font-weight: 500;
-  cursor: pointer;
-}
-.pilot .switch-field input {
-  position: absolute;
-  width: 2.6rem;
-  height: 1.5rem;
+.pilot .run-options .check-field {
   margin: 0;
-  opacity: 0;
-  cursor: pointer;
 }
-.pilot .switch-track {
-  position: relative;
-  flex: none;
-  width: 2.6rem;
-  height: 1.5rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  background: var(--surface-2);
+.pilot .run-options .check-field .hint {
+  margin-top: 2px;
 }
-.pilot .switch-track::after {
-  content: "";
-  position: absolute;
-  top: 0.15rem;
-  left: 0.15rem;
-  box-sizing: border-box;
-  width: 1.05rem;
-  height: 1.05rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 50%;
-  background: var(--surface);
-  transition: transform 0.15s;
+
+.pilot .drift-assist {
+  display: grid;
+  gap: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
 }
-.pilot .switch-field input:checked + .switch-track {
-  border-color: var(--accent);
-  background: var(--accent);
+.pilot .drift-assist p {
+  margin: 0;
 }
-.pilot .switch-field input:checked + .switch-track::after {
-  transform: translateX(1.1rem);
-  border-color: var(--accent-contrast);
-  background: var(--accent-contrast);
-}
-.pilot .switch-field input:focus-visible + .switch-track {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-.pilot .switch-field input:disabled + .switch-track {
-  opacity: 0.5;
+.pilot .drift-assist .row {
+  font-size: 13px;
+  line-height: 18px;
 }
 
 /* ---------- Manual flying ---------- */
 
 .pilot .manual-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--sp-4);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
 }
-@media (min-width: 900px) {
+@media (max-width: 860px) {
   .pilot .manual-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
   }
 }
+.pilot .manual-grid .eyebrow {
+  margin: 0 0 12px;
+}
 .pilot .manual-keys .hint {
-  margin: var(--sp-3) 0 0;
-  color: var(--muted);
-  font-size: var(--fs-sm);
+  margin: 16px 0 0;
 }
 .pilot .key-legend {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--sp-5);
+  column-gap: 32px;
+  row-gap: 20px;
 }
 .pilot .key-cluster {
   display: grid;
-  grid-template-columns: repeat(3, auto);
+  /* Caps are 44px; a column grows only when its label is wider ("Turn right"). */
+  grid-template-columns: repeat(3, minmax(44px, max-content));
   grid-template-areas:
     ". up ."
     "left down right";
-  gap: var(--sp-1) var(--sp-2);
-  justify-items: center;
+  gap: 6px 6px;
 }
 .pilot .key-singles {
+  flex-basis: 100%;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-3);
+  gap: 16px;
 }
 .pilot .key {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 6px;
 }
-.pilot .key kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.75rem;
-  height: 2.75rem;
-  padding: 0 var(--sp-2);
-  border: 1px solid var(--border-strong);
-  border-bottom-width: 2px;
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+.pilot .key kbd,
+.pilot .hold-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: linear-gradient(#fff, #f7f9f9);
   color: var(--text);
-  font-family: var(--sans);
-  font-size: var(--fs-md);
-  font-weight: 600;
+  font: 600 14px/1 var(--sans);
+  letter-spacing: 0;
+  display: grid;
+  place-items: center;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 25, 0.1),
+    0 2px 0 0 rgba(15, 23, 25, 0.1),
+    0 3px 6px -1px rgba(15, 23, 25, 0.1);
+  transition:
+    transform 80ms var(--ease),
+    box-shadow 80ms var(--ease),
+    background-color 80ms;
 }
 .pilot .key .kbd-wide {
-  min-width: 7rem;
+  width: 112px;
+}
+.pilot .key-estop kbd {
+  color: var(--estop);
+  box-shadow:
+    0 0 0 1px rgba(217, 45, 32, 0.35),
+    0 2px 0 0 rgba(217, 45, 32, 0.25);
 }
 .pilot .key-does {
+  font: 400 12px/16px var(--sans);
   color: var(--muted);
-  font-size: var(--fs-xs);
   white-space: nowrap;
 }
 .pilot .manual-live .msg {
-  margin: 0 0 var(--sp-2);
+  margin: 0 0 12px;
 }
-.pilot .manual-live .small {
-  margin: var(--sp-2) 0 0;
-  font-size: var(--fs-sm);
+.pilot .manual-note {
+  margin: 8px 0 0;
+  font: 400 12px/16px var(--sans);
+  color: var(--muted);
+}
+.pilot .manual-note-value {
+  font-weight: 500;
+  color: var(--text);
 }
 
 .pilot .axes {
   display: grid;
-  gap: var(--sp-1);
+  gap: 2px;
   margin: 0;
 }
 .pilot .axis {
   display: grid;
-  grid-template-columns: 5rem minmax(0, 1fr) 3.5rem;
+  grid-template-columns: 72px 1fr 48px;
   align-items: center;
-  gap: var(--sp-2);
+  gap: 12px;
+  height: 28px;
 }
 .pilot .axis-label {
-  font-size: var(--fs-sm);
+  font: 500 13px/18px var(--sans);
+  color: var(--text-2);
 }
 .pilot .axis-track {
   position: relative;
-  height: 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--surface-2);
-}
-.pilot .axis-zero {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  left: 50%;
-  width: 2px;
-  margin-left: -1px;
-  background: var(--border-strong);
+  height: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: visible;
 }
 .pilot .axis-fill {
   position: absolute;
   top: 0;
   bottom: 0;
+  border-radius: 999px;
   background: var(--accent);
 }
-.pilot .axis-value {
-  font-family: var(--mono);
-  font-size: var(--fs-sm);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
+.pilot .axis-zero {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: -2px;
+  width: 2px;
+  height: 10px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(15, 23, 25, 0.2);
 }
-.pilot .axes .hint {
-  margin: var(--sp-1) 0 0;
+.pilot .axis-value {
+  text-align: right;
+  font: 500 13px/18px var(--sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.pilot .axes .axes-note {
+  margin: 8px 0 0;
+  font: 400 12px/16px var(--sans);
   color: var(--muted);
-  font-size: var(--fs-sm);
 }
 
 .pilot .stickpad {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--sp-2);
-  margin: var(--sp-3) 0 0;
+  gap: 12px;
+  margin: 12px 0 0;
 }
 @media (max-width: 899px) {
   .pilot .stickpad {
@@ -1159,32 +1258,29 @@
 .pilot .stickpad-group {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--sp-1);
-  padding: var(--sp-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  gap: 8px;
+  padding: 12px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
 }
 .pilot .stickpad-title {
   grid-column: 1 / -1;
-  color: var(--muted);
   font-size: var(--fs-xs);
+  line-height: 16px;
   font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .pilot .hold-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-height: 3rem;
-  padding: var(--sp-1);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--fs-sm);
-  font-weight: 500;
+  width: 100%;
+  height: auto;
+  min-height: 52px;
+  padding: 6px 4px;
+  gap: 4px;
+  place-content: center;
+  font: 500 13px/16px var(--sans);
   cursor: pointer;
   touch-action: none;
   user-select: none;
@@ -1192,24 +1288,27 @@
   -webkit-touch-callout: none;
 }
 .pilot .hold-btn:active:not(:disabled) {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-contrast);
+  transform: translateY(2px);
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--accent);
 }
 .pilot .hold-btn:disabled {
-  border-style: dashed;
-  background: var(--surface-2);
-  color: var(--muted);
+  background: var(--surface-3);
+  color: var(--faint);
+  box-shadow: none;
   cursor: not-allowed;
 }
 .pilot .hold-btn kbd {
-  padding: 0 4px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--surface);
-  color: var(--muted);
-  font-family: var(--sans);
-  font-size: var(--fs-xs);
+  min-width: 0;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+}
+.pilot .hold-btn:disabled kbd {
+  color: var(--faint);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 
 /* ---------- Setup and tuning ---------- */
@@ -1217,161 +1316,196 @@
 .pilot .pilot-setup-heading {
   margin: 0;
 }
-.pilot .pilot-setup > .hint {
-  margin: var(--sp-1) 0 0;
+.pilot .disclosure-heading {
+  display: flex;
+  width: 100%;
+  height: 28px;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  background: none;
+  font: 600 16px/24px var(--sans);
+  letter-spacing: -0.011em;
+  color: var(--text);
+  text-align: left;
+}
+.pilot .disclosure-heading:hover {
+  background: none;
+  color: var(--text);
+}
+.pilot .disclosure-heading .disclosure-chevron {
+  width: 16px;
+  height: 16px;
   color: var(--muted);
-  font-size: var(--fs-sm);
+}
+.pilot .setup-summary {
+  margin-left: auto;
+  font: 400 13px/18px var(--sans);
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.pilot .pilot-setup > .hint {
+  margin: 4px 0 0;
 }
 .pilot .setup-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
-  gap: var(--sp-3);
-  margin-top: var(--sp-4);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
 }
 .pilot .setup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   min-width: 0;
-  padding: var(--sp-4);
+  padding: 16px;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: var(--r-md);
   background: var(--surface-2);
 }
-.pilot .setup-card .hint {
-  color: var(--muted);
-  font-size: var(--fs-sm);
+.pilot .setup-card h3 {
+  margin: 0;
+  font: 600 14px/20px var(--sans);
 }
-.pilot .setup-card .row {
+.pilot .setup-card p {
+  margin: 0;
+}
+.pilot .trim,
+.pilot .hover-test,
+.pilot .calibration,
+.pilot .calibrate-level {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2);
-  margin: 0 0 var(--sp-2);
+  flex-direction: column;
+  gap: 10px;
 }
-.pilot .setup-card .row .muted {
-  color: var(--muted);
-  font-size: var(--fs-sm);
+.pilot .setup-card .msg {
+  margin: 0;
 }
+/* The shared disabled fill is --surface-2, the card's own fill: step one level down so the button keeps its shape. */
+.pilot .setup-card .btn:not(.btn-quiet):disabled,
+.pilot .setup-card .takeoff:disabled,
+.pilot .run-step-current .confirm-card:has(input:disabled) {
+  background: var(--surface-3);
+}
+
 .pilot .trim-values {
   display: flex;
-  gap: var(--sp-4);
-  margin-bottom: var(--sp-2);
-  font-family: var(--mono);
-  font-size: var(--fs-md);
+  gap: 28px;
+}
+.pilot .trim-stat {
+  display: grid;
+  gap: 2px;
+}
+.pilot .trim-k {
+  font: 400 12px/16px var(--sans);
+  color: var(--muted);
+}
+.pilot .trim-v {
+  font: 600 18px/24px var(--sans);
   font-variant-numeric: tabular-nums;
+  color: var(--text);
 }
 .pilot .trim-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--sp-2);
-  margin-bottom: var(--sp-2);
+  gap: 8px;
 }
-.pilot .trim-grid .btn-quiet {
+.pilot .trim-grid .btn {
+  min-width: 0;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+.pilot .trim-grid .trim-reset {
   grid-column: 1 / -1;
+  justify-self: start;
+  margin-left: -6px;
 }
+
 .pilot .maxstick {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto 1fr 44px;
+  gap: 12px;
   align-items: center;
-  gap: var(--sp-1) var(--sp-3);
 }
 .pilot .maxstick label {
-  font-weight: 500;
+  font: 500 13px/18px var(--sans);
 }
-.pilot .maxstick input[type="range"] {
-  width: 100%;
-  accent-color: var(--accent);
+.pilot .maxstick output {
+  text-align: right;
+  font: 600 14px/20px var(--sans);
+  font-variant-numeric: tabular-nums;
 }
 .pilot .maxstick .hint {
   grid-column: 1 / -1;
+}
+
+.pilot .setup-action {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pilot .setup-wide {
+  height: auto;
+  min-height: 40px;
+  padding: 8px 12px;
+  white-space: normal;
+  text-align: center;
+}
+.pilot .setup-readout {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }
 .pilot .progress-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--sp-2);
-  margin: var(--sp-2) 0;
+  gap: 10px;
+  font: 400 13px/18px var(--sans);
 }
-.pilot .progress-row progress {
-  width: 100%;
-  height: 6px;
-  accent-color: var(--accent);
+.pilot .progress-row label {
+  font-weight: 500;
 }
 .pilot .hover-result {
-  margin-top: var(--sp-2);
+  display: grid;
+  gap: 10px;
 }
 .pilot .calibrate-btn {
-  width: 100%;
-  max-width: 20rem;
-  min-height: 3.2rem;
-  margin-bottom: var(--sp-2);
+  height: 52px;
+}
+.pilot .calibrate-level .muted {
+  font: 400 13px/18px var(--sans);
 }
 
 /* ---------- Narrow screens ---------- */
 
-@media (max-width: 899px) {
+@media (max-width: 900px) {
   .pilot .command-bar {
-    grid-template-columns: 280px 8rem minmax(0, 1fr);
-    gap: var(--sp-2);
+    flex-wrap: wrap;
+    padding-right: 8px;
+    row-gap: 8px;
   }
   .pilot .estop {
-    padding: var(--sp-1) var(--sp-2);
-  }
-  .pilot .estop-main {
-    font-size: 1.25rem;
-  }
-  .pilot .estop-sub {
-    font-size: var(--fs-xs);
-  }
-  .pilot .takeoff-compact {
-    min-height: 72px;
-    padding: var(--sp-1) var(--sp-2);
-  }
-  .pilot .takeoff-compact .takeoff-label {
-    font-size: var(--fs-sm);
-  }
-  .pilot .takeoff-wrap .takeoff-note {
-    display: none;
-  }
-  .pilot .command-status {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    justify-content: center;
-    gap: var(--sp-1);
-  }
-  .pilot .command-status .badge,
-  .pilot .command-status .conn {
-    padding: 1px var(--sp-2);
-    line-height: 1.25;
-  }
-  .pilot .estop-banner {
-    padding: var(--sp-2) var(--sp-3);
-    gap: var(--sp-1) var(--sp-3);
-  }
-  .pilot .estop-banner strong {
-    font-size: var(--fs-md);
-  }
-  .pilot .estop-banner span {
-    font-size: var(--fs-sm);
-  }
-  .pilot .estop-banner .row {
-    margin-left: 0;
-  }
-  .pilot .panel {
-    padding: var(--sp-4);
-  }
-}
-
-@media (max-width: 640px) {
-  .pilot .command-bar {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .pilot .estop {
-    grid-column: 1 / -1;
+    flex: 1 1 100%;
     min-width: 0;
   }
+  .pilot .takeoff-wrap {
+    flex: 1 1 auto;
+  }
+  .pilot .takeoff.takeoff-compact {
+    flex: 1 1 auto;
+  }
   .pilot .command-status {
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex: 1 1 100%;
+    margin: 4px 0 0;
+    padding: 8px 4px 0;
     justify-content: flex-start;
+    border-top: 1px solid var(--line);
+  }
+}
+@media (max-width: 760px) {
+  .pilot .pilot-camera {
+    padding: 12px;
   }
 }

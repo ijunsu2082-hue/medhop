@@ -238,10 +238,15 @@ export function PilotPage() {
       <header className="pilot-intro">
         <h1>Pilot: fly the drone to the station</h1>
         <p className="pilot-lede">
-          You fly a small toy drone from this laptop. A station run turns the drone until its camera sees the printed
-          station sign, then flies toward it and stops. The Care page then shows that it arrived at the station.
+          Fly a small toy drone from this laptop. A station run turns the drone until its camera sees the printed station
+          sign, flies toward it and stops. The Care page then shows that it arrived at the station.
         </p>
-        {status?.mode === "sim" && <p className="pilot-sim-note">Simulator mode: no real drone moves.</p>}
+        {status?.mode === "sim" && (
+          <p className="pilot-sim-note">
+            <span className="chip">Simulator</span>
+            <span>No real drone moves.</span>
+          </p>
+        )}
       </header>
 
       <div className="pilot-grid">
@@ -264,7 +269,9 @@ export function PilotPage() {
           )}
         </section>
         <section className="panel pilot-camera" aria-labelledby="h-video">
-          <h2 id="h-video">Camera</h2>
+          <div className="pilot-camera-head">
+            <h2 id="h-video">Camera</h2>
+          </div>
           <VideoFeed
             videoLive={status ? status.link.video_live : null}
             backendReachable={reachable !== false}
@@ -289,11 +296,13 @@ export function PilotPage() {
             }
           />
           <p className="hint small pilot-caption">
-            Camera stream is 640×360 from the drone, shown enlarged. Station sign detection is ArUco (classical computer
-            vision); person boxes are an advisory check only.
+            640x360 stream from the drone, shown enlarged. The station sign is detected with ArUco (classical computer
+            vision). Person boxes are an advisory check only.
           </p>
           <section className="pilot-check" aria-labelledby="h-check">
-            <h2 id="h-check">Pre-flight checklist</h2>
+            <h2 id="h-check" className="eyebrow">
+              Pre-flight checklist
+            </h2>
             {status ? <Checklist status={status} /> : waiting("Waiting for status from the backend.")}
           </section>
         </section>
@@ -303,13 +312,15 @@ export function PilotPage() {
         <h2 id="h-manual">Manual flying</h2>
         <div className="manual-grid">
           <div className="manual-keys">
+            <p className="eyebrow">Keyboard</p>
             <KeyLegend />
             <p className="hint small">
-              These keys work anywhere on this page, also with a slider, checkbox, list or button selected, except while
-              you are typing in a text field.
+              Keys work anywhere on this page, including while a slider, checkbox, list or button is selected. They are
+              ignored while you type in a text field.
             </p>
           </div>
           <div className="manual-live">
+            <p className="eyebrow">Live input</p>
             {keysPaused && (
               <p className="msg msg-warn" role="status">
                 Keys paused while you type in a text field: flight keys, T and Space (emergency stop) do nothing here.
@@ -323,8 +334,8 @@ export function PilotPage() {
             )}
             <AxisIndicators axes={axes} maxStick={status?.pilot.max_stick ?? null} />
             {status && (
-              <p className="small">
-                Backend sees manual input: <strong>{status.pilot.manual_active ? "yes" : "no"}</strong>
+              <p className="small manual-note">
+                Manual input reaching the backend: <span className="manual-note-value">{status.pilot.manual_active ? "yes" : "no"}</span>
               </p>
             )}
           </div>

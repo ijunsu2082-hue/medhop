@@ -60,8 +60,10 @@ function DoseForm({
   return (
     <form className="dose-form" onSubmit={(e) => void submit(e)} noValidate>
       <div className="field field-time">
-        <label htmlFor={`${idPrefix}-time`}>Time (HH:MM)</label>
-        <input {...field("time")} type="text" inputMode="numeric" placeholder="08:00" autoComplete="off" maxLength={5} />
+        <label htmlFor={`${idPrefix}-time`}>
+          Time <span className="muted">HH:MM</span>
+        </label>
+        <input {...field("time")} className="mono" type="text" inputMode="numeric" placeholder="08:00" autoComplete="off" maxLength={5} />
         {errors.time && (
           <span className="field-error" id={`${idPrefix}-time-err`}>
             {errors.time}
@@ -78,7 +80,9 @@ function DoseForm({
         )}
       </div>
       <div className="field field-notes">
-        <label htmlFor={`${idPrefix}-notes`}>Notes (optional)</label>
+        <label htmlFor={`${idPrefix}-notes`}>
+          Notes <span className="muted">optional</span>
+        </label>
         <input {...field("notes")} type="text" autoComplete="off" maxLength={200} />
       </div>
       <div className="row form-actions">
@@ -138,7 +142,7 @@ export function ScheduleEditor() {
 
   return (
     <div className="schedule">
-      <p className="small muted">Demo data only. Use made-up labels: no real names or medicines.</p>
+      <p className="small muted schedule-note">Use made-up labels only. No real names or medicines.</p>
       {loadError && (
         <p className="msg msg-warn" role="status">
           {loadError}
@@ -155,7 +159,7 @@ export function ScheduleEditor() {
       {doses !== null && doses.length > 0 && (
         <ul className="schedule-list">
           {doses.map((d) => (
-            <li key={d.id} className="schedule-item">
+            <li key={d.id} className={`schedule-item${editing === d.id ? " schedule-item-editing card" : ""}`}>
               {editing === d.id ? (
                 <DoseForm
                   idPrefix={`edit-${d.id}`}
@@ -180,12 +184,12 @@ export function ScheduleEditor() {
                       <>
                         <button
                           type="button"
-                          className="btn btn-danger-outline"
+                          className="btn btn-danger-outline btn-sm"
                           onClick={() => void run("Deleting", () => api.deleteDose(d.id)).then(() => setConfirmDelete(null))}
                         >
                           Confirm delete
                         </button>
-                        <button type="button" className="btn btn-quiet" onClick={() => setConfirmDelete(null)}>
+                        <button type="button" className="btn btn-quiet btn-sm" onClick={() => setConfirmDelete(null)}>
                           Keep
                         </button>
                       </>
@@ -193,7 +197,7 @@ export function ScheduleEditor() {
                       <>
                         <button
                           type="button"
-                          className="btn btn-quiet"
+                          className="btn btn-quiet btn-sm"
                           onClick={() => {
                             setEditing(d.id);
                             setConfirmDelete(null);
@@ -204,7 +208,7 @@ export function ScheduleEditor() {
                         </button>
                         <button
                           type="button"
-                          className="btn btn-quiet"
+                          className="btn btn-quiet btn-sm schedule-delete"
                           onClick={() => setConfirmDelete(d.id)}
                           aria-label={`Delete ${d.label} at ${d.time}`}
                         >
@@ -220,8 +224,10 @@ export function ScheduleEditor() {
         </ul>
       )}
 
-      <h3>Add a dose</h3>
-      <DoseForm idPrefix="add" initial={EMPTY} submitLabel="Add dose" onSubmit={(v) => run("Adding", () => api.addDose(v))} />
+      <div className="schedule-add">
+        <h3 className="eyebrow">Add a dose</h3>
+        <DoseForm idPrefix="add" initial={EMPTY} submitLabel="Add dose" onSubmit={(v) => run("Adding", () => api.addDose(v))} />
+      </div>
     </div>
   );
 }

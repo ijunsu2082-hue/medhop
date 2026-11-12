@@ -8,7 +8,7 @@ const WORD: Record<Verdict, string> = { pass: "Pass", warn: "Warn", fail: "Fail"
 const ICON: Record<Verdict, typeof IconCheck> = { pass: IconCheck, warn: IconWarn, fail: IconCross, info: IconClock };
 
 /**
- * Pre-flight checklist as a row of chips (verdict icon + label). Each chip opens to show its text; a failing row
+ * Pre-flight checklist as a grouped status list (verdict icon + label + verdict word). Each row opens to show its text; a failing row
  * is open by default. A manual open/close is remembered per row and verdict, so a new verdict starts at its default.
  */
 export function Checklist({ status }: { status: Status }) {
@@ -36,10 +36,13 @@ export function Checklist({ status }: { status: Status }) {
               }}
             >
               <span className={`check-icon verdict-${r.verdict}`}>
-                <Icon size={18} />
+                <Icon size={16} />
               </span>
               <span className="check-label">{r.label}</span>
               <span className="sr-only">: {WORD[r.verdict]}</span>
+              <span className="check-state" aria-hidden="true">
+                {WORD[r.verdict]}
+              </span>
               <IconChevron className="check-chevron" size={14} />
             </button>
             <p className="check-text" id={textId} hidden={!open}>

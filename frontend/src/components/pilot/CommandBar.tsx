@@ -53,16 +53,23 @@ export function CommandBar({ mode, control, backendReachable, onEstop, takeoff, 
       >
         <span className="estop-main">EMERGENCY STOP</span>
         <span className="estop-sub" id="estop-desc">
-          Sends motor cut: the drone drops. Key: Space
+          Sends motor cut. The drone drops.<span className="sr-only"> Key: Space</span>
         </span>
+        <kbd className="estop-key" aria-hidden="true">
+          Space
+        </kbd>
       </button>
 
       <div className="takeoff-wrap">
         <HoldButton
           hold={takeoff}
           disabled={takeoffBlocked !== null}
-          label="Takeoff / Land (toggle)"
-          sub="Press and hold 0.6 s. Key: hold T"
+          label={
+            <>
+              Takeoff / Land <span className="takeoff-paren">(toggle)</span>
+            </>
+          }
+          sub="Press and hold for 0.6 s"
           subId="takeoff-desc"
           keyShortcut="T"
           className="takeoff-compact"

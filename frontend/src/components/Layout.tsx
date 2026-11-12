@@ -41,28 +41,30 @@ export function Layout() {
         Skip to content
       </a>
       <header className="topnav">
-        <span className="brand">
-          <IconMark className="brand-mark" size={28} />
-          <span className="brand-name">MedHop</span>
-        </span>
-        <nav aria-label="Pages">
-          <ul>
-            <li>
-              <NavLink to="/" end>
-                Pilot
-              </NavLink>
-            </li>
-            <li>
-              <NavLink to="/care">Care</NavLink>
-            </li>
-            <li>
-              <NavLink to="/caregiver">Caregiver</NavLink>
-            </li>
-          </ul>
-        </nav>
-        <div className="topnav-status">
-          {status?.mode === "sim" && !onPilot && <span className="badge badge-sim">Mode: simulator</span>}
-          <BackendLine />
+        <div className="topnav-inner">
+          <span className="brand">
+            <IconMark className="brand-mark" size={26} />
+            <span className="brand-name">MedHop</span>
+          </span>
+          <nav aria-label="Pages">
+            <ul>
+              <li>
+                <NavLink to="/" end>
+                  Pilot
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to="/care">Care</NavLink>
+              </li>
+              <li>
+                <NavLink to="/caregiver">Caregiver</NavLink>
+              </li>
+            </ul>
+          </nav>
+          <div className="topnav-status">
+            {status?.mode === "sim" && !onPilot && <span className="badge badge-sim">Mode: simulator</span>}
+            <BackendLine />
+          </div>
         </div>
       </header>
       {reachable === false && (

@@ -12,7 +12,7 @@ interface Props {
   hold: Hold;
   disabled: boolean;
   label: ReactNode;
-  /** text under the label while not holding; while holding it reads "Keep holding..." */
+  /** text under the label while not holding; while holding it reads "Keep holding..." (the key is added for assistive tech) */
   sub: string;
   /** id of the sub-text span, used for aria-describedby; must be unique on the page */
   subId: string;
@@ -61,8 +61,20 @@ export function HoldButton({ hold, disabled, label, sub, subId, keyShortcut, cla
       <span className="takeoff-fill" style={{ transform: `scaleX(${hold.progress})` }} aria-hidden="true" />
       <span className="takeoff-label">{label}</span>
       <span className="takeoff-sub" id={subId}>
-        {hold.holding ? "Keep holding..." : sub}
+        {hold.holding ? (
+          "Keep holding..."
+        ) : (
+          <>
+            {sub}
+            {keyShortcut && <span className="sr-only"> Key: hold {keyShortcut}</span>}
+          </>
+        )}
       </span>
+      {keyShortcut && (
+        <kbd className="takeoff-key" aria-hidden="true">
+          {keyShortcut}
+        </kbd>
+      )}
     </button>
   );
 }

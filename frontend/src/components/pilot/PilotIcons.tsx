@@ -11,7 +11,7 @@ const base = (size: number) => ({
   viewBox: "0 0 20 20",
   fill: "none",
   stroke: "currentColor",
-  strokeWidth: 2,
+  strokeWidth: 1.75,
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
   "aria-hidden": true,

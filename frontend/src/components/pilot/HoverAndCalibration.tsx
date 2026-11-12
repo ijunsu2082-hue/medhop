@@ -44,11 +44,11 @@ export function HoverTestPanel({ status }: { status: Status }) {
       <p className="hint">
         Hover facing the station sign. For 10 s the backend holds the sticks neutral (trim still applies) and measures drift.
       </p>
-      <div className="row">
-        <button type="button" className="btn" onClick={() => void start()} disabled={busy || running || blocked !== null}>
+      <div className="setup-action">
+        <button type="button" className="btn btn-block setup-wide" onClick={() => void start()} disabled={busy || running || blocked !== null}>
           {running ? "Hover test running" : "Start hover test"}
         </button>
-        {blocked && !running && <span className="muted">{blocked}</span>}
+        {blocked && !running && <span className="hint small">{blocked}</span>}
       </div>
       {running && (
         <div className="progress-row">
@@ -112,13 +112,13 @@ export function ArrivalCalibration({ status }: { status: Status }) {
   return (
     <div className="calibration">
       <p className="hint">Hold the drone by hand at the stopping distance, facing the sign, then press.</p>
-      <div className="row">
-        <button type="button" className="btn" onClick={() => void calibrate()} disabled={busy || marker === null}>
+      <div className="setup-action">
+        <button type="button" className="btn btn-block setup-wide" onClick={() => void calibrate()} disabled={busy || marker === null}>
           Set arrival distance from current view
         </button>
-        {marker === null && <span className="muted">The station sign must be in view.</span>}
+        {marker === null && <span className="hint small">The station sign must be in view.</span>}
       </div>
-      <p className="mono small">
+      <p className="mono small setup-readout">
         Arrive width now: {status.mission.arrive_width.toFixed(2)} of frame
         {marker ? `; sign width now: ${marker.width.toFixed(2)}` : ""}
       </p>

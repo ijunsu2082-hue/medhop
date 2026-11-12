@@ -108,6 +108,8 @@ export function CarePage() {
   };
 
   let main: ReactNode;
+  // Nothing to act on: same card, smaller headline, no button.
+  const quiet = !(reachable !== false && status && focus?.kind === "pending");
   if (reachable === false || !status || !focus) {
     main = (
       <>
@@ -123,29 +125,32 @@ export function CarePage() {
       <>
         {/* After an acknowledgement the card visibly moves on, so a second tap is clearly for a different dose. */}
         {thanks && (
-          <p className="care-sub">
-            <strong>Next:</strong>
-          </p>
+          <p className="care-next eyebrow">Next:</p>
         )}
         {early ? (
           <>
-            <p className="care-main">Coming up at {d.time}: {d.label}</p>
+            <p className="care-main">
+              <span className="care-lead">Coming up at {d.time}:</span> {d.label}
+            </p>
             <p className="care-sub">It is not time for it yet.</p>
           </>
         ) : (
           <>
-            <p className="care-main">It is time for: {d.label}</p>
+            <p className="care-main">
+              <span className="care-lead">It is time for:</span> {d.label}
+            </p>
             <p className="care-sub">This was due at {d.time}.</p>
           </>
         )}
         {d.notes && <p className="care-sub">{d.notes}</p>}
         {arrival && (
           <p className="care-arrived">
-            <IconCheck size={40} /> <span>{arrival}.</span>
+            <IconCheck size={22} /> <span>{arrival}.</span>
           </p>
         )}
         <button type="button" className="care-ack" onClick={() => void acknowledge()} disabled={sending || coolingDown}>
-          {sending ? "Sending..." : "I picked it up"}
+          {!sending && <IconCheck size={24} />}
+          <span>{sending ? "Sending..." : "I picked it up"}</span>
         </button>
         {ackError && (
           <p className="care-error" role="alert">
@@ -180,24 +185,24 @@ export function CarePage() {
 
       {thanks && (
         <p className="care-thanks" role="status">
-          <IconCheck size={40} /> <span>Thank you. We noted that you picked up {thanks.label}.</span>
+          <IconCheck size={22} /> <span>Thank you. We noted that you picked up {thanks.label}.</span>
         </p>
       )}
 
-      <section className="care-card" aria-live="polite" aria-atomic="true">
+      <section className={quiet ? "care-card care-card-quiet" : "care-card"} aria-live="polite" aria-atomic="true">
         {main}
       </section>
 
       <section className="care-speech" aria-label="Spoken reminders">
         {!speechSupported ? (
-          <p className="care-sub">Spoken reminders are not available in this browser.</p>
+          <p className="care-note">Spoken reminders are not available in this browser.</p>
         ) : !speechOn ? (
-          <button type="button" className="care-btn" onClick={turnOnSpeech}>
-            <IconSpeaker size={32} /> <span>Turn on spoken reminders</span>
+          <button type="button" className="btn btn-lg" onClick={turnOnSpeech}>
+            <IconSpeaker size={18} /> <span>Turn on spoken reminders</span>
           </button>
         ) : (
-          <button type="button" className="care-btn" aria-pressed={muted} onClick={() => setMuted((m) => !m)}>
-            <IconSpeaker size={32} muted={muted} /> <span>{muted ? "Spoken reminders are muted. Press to unmute." : "Mute spoken reminders"}</span>
+          <button type="button" className="btn btn-lg" aria-pressed={muted} onClick={() => setMuted((m) => !m)}>
+            <IconSpeaker size={18} muted={muted} /> <span>{muted ? "Spoken reminders are muted. Press to unmute." : "Mute spoken reminders"}</span>
           </button>
         )}
       </section>

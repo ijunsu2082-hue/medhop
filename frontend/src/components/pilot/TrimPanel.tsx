@@ -47,8 +47,12 @@ export function TrimPanel({ trim }: { trim: Trim }) {
   return (
     <div className="trim">
       <div className="trim-values mono" aria-live="polite">
-        <span>Roll {formatSigned(shown.roll)}</span>
-        <span>Pitch {formatSigned(shown.pitch)}</span>
+        <span className="trim-stat">
+          <span className="trim-k">Roll</span> <span className="trim-v">{formatSigned(shown.roll)}</span>
+        </span>
+        <span className="trim-stat">
+          <span className="trim-k">Pitch</span> <span className="trim-v">{formatSigned(shown.pitch)}</span>
+        </span>
       </div>
       <div className="trim-grid">
         <button type="button" className="btn" onClick={() => nudge(-STEP, 0)} disabled={shown.roll <= -LIMIT}>
@@ -65,7 +69,7 @@ export function TrimPanel({ trim }: { trim: Trim }) {
         </button>
         <button
           type="button"
-          className="btn btn-quiet"
+          className="btn btn-quiet btn-sm trim-reset"
           onClick={() => put({ roll: 0, pitch: 0 })}
           disabled={shown.roll === 0 && shown.pitch === 0}
         >

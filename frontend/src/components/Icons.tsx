@@ -11,7 +11,7 @@ const base = (size: number) => ({
   viewBox: "0 0 20 20",
   fill: "none",
   stroke: "currentColor",
-  strokeWidth: 2,
+  strokeWidth: 1.75,
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
   "aria-hidden": true,
@@ -39,8 +39,8 @@ export function IconWarn({ className, size = 18 }: IconProps) {
 export function IconCross({ className, size = 18 }: IconProps) {
   return (
     <svg {...base(size)} className={className}>
-      <rect x="2.5" y="2.5" width="15" height="15" rx="2" />
-      <path d="M7 7l6 6M13 7l-6 6" />
+      <circle cx="10" cy="10" r="8" />
+      <path d="M7.5 7.5l5 5M12.5 7.5l-5 5" />
     </svg>
   );
 }
@@ -89,13 +89,19 @@ export function IconSpeaker({ className, size = 18, muted = false }: IconProps &
   );
 }
 
-/** The MedHop mark: a rounded square with a plus. Decorative; the word "MedHop" always sits next to it. */
-export function IconMark({ className, size = 28 }: IconProps) {
+/** The MedHop mark: a tilted two-tone capsule carried by two rotors. Decorative; the word "MedHop" sits next to it. */
+export function IconMark({ className, size = 26 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable={false} className={className}>
-      <rect x="2" y="2" width="28" height="28" rx="8" fill="currentColor" />
-      <rect x="9" y="13.5" width="14" height="5" rx="2.5" fill="#FFFFFF" />
-      <rect x="13.5" y="9" width="5" height="14" rx="2.5" fill="#FFFFFF" />
+      <g stroke="currentColor" strokeWidth="2.5">
+        <circle cx="7" cy="7" r="3.75" />
+        <circle cx="25" cy="25" r="3.75" />
+        <path d="M10.2 10.2l2.4 2.4M21.8 21.8l-2.4-2.4" />
+      </g>
+      <g transform="rotate(-45 16 16)" fill="currentColor">
+        <path d="M16.75 11H22a5 5 0 0 1 0 10h-5.25z" />
+        <path d="M15.25 11H10a5 5 0 0 0 0 10h5.25z" opacity="0.42" />
+      </g>
     </svg>
   );
 }

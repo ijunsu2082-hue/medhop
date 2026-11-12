@@ -3,7 +3,7 @@ import { api } from "../api/client";
 import type { CareEvent, DoseStatus, DoseToday, Status } from "../api/types";
 import { useStatus } from "../hooks/useStatus";
 import { newlyNeedingAttention } from "../logic/care";
-import { doseTableStatusLine, eventDetailText, eventWhen, lastRunResult, simulatorSuffix } from "../logic/caregiver";
+import { doseTableStatusLine, eventDateIfNotToday, eventDetailText, lastRunResult, simulatorSuffix } from "../logic/caregiver";
 import { batteryLine } from "../logic/checklist";
 import { abortText, eventText, missionStateText } from "../text/wording";
 import { IconBell, IconCheck, IconClock, IconPin, IconWarn } from "../components/Icons";
@@ -120,21 +120,21 @@ function EventsList({
           {events.map((e, i) => {
             const detail = eventDetailText(e);
             const dose = labelOf(e.dose_id);
+            const date = eventDateIfNotToday(e, today);
             return (
               <li key={`${e.ts}-${e.type}-${i}`} className={`event event-${e.type}`}>
-                <span className="event-time">{eventWhen(e, today)}</span>
+                <span className="event-time mono">
+                  {date && <span className="event-date">{date} </span>}
+                  {e.time_local}
+                </span>
                 <span className="event-dot" aria-hidden="true" />
                 <span className="event-body">
                   <span className="event-name">
                     {eventText(e.type)}
                     {simulatorSuffix(e)}
                   </span>
-                  {(dose || detail) && (
-                    <span className="event-meta">
-                      {dose && <span className="event-dose">{dose}</span>}
-                      {detail && <span className="event-detail">{detail}</span>}
-                    </span>
-                  )}
+                  {dose && <span className="event-dose">{dose}</span>}
+                  {detail && <span className="event-detail">{detail}</span>}
                 </span>
               </li>
             );
@@ -163,18 +163,23 @@ function DroneSummary({ status, lastRun }: { status: Status; lastRun: string }) 
   return (
     <dl className="kv drone-kv">
       <dt>Mode</dt>
-      <dd>{status.mode === "sim" ? "Simulator" : "Real drone"}</dd>
+      <dd>{status.mode === "sim" ? <span className="chip">Simulator</span> : <span className="badge badge-real">Real drone</span>}</dd>
       <dt>Video</dt>
-      <dd>{status.link.video_live ? "Live" : "No video"}</dd>
+      <dd>
+        <span className={`conn${status.link.video_live ? " conn-pass" : ""}`}>
+          <span className="conn-dot" aria-hidden="true" />
+          {status.link.video_live ? "Live" : "No video"}
+        </span>
+      </dd>
       <dt>Battery</dt>
-      <dd className="small muted">{batteryLine(t).text}</dd>
+      <dd className="drone-battery">{batteryLine(t).text}</dd>
       <dt>Station run now</dt>
       <dd>
         {missionStateText(status.mission.state)}
         {status.mission.state === "aborted" ? `: ${abortText(status.mission.reason)}` : ""}
       </dd>
       <dt>Last run result</dt>
-      <dd>{lastRun}</dd>
+      <dd className="mono">{lastRun}</dd>
     </dl>
   );
 }
@@ -222,19 +227,25 @@ export function CaregiverPage() {
         </div>
         {status && (
           <ul className="stat-tiles" aria-label="Today's doses at a glance">
-            <li className={`stat-tile stat-attention${attention.length > 0 ? " stat-active" : ""}`}>
-              <IconWarn size={20} />
-              <span className="stat-label">Needs attention</span>
+            <li className={`stat-tile stat-attention${attention.length > 0 ? " stat-active" : " stat-zero"}`}>
+              <span className="stat-label">
+                <IconWarn size={16} />
+                Needs attention
+              </span>
               <span className="stat-value">{attention.length}</span>
             </li>
-            <li className="stat-tile stat-acknowledged">
-              <IconCheck size={20} />
-              <span className="stat-label">Acknowledged</span>
+            <li className={`stat-tile stat-acknowledged${acknowledgedCount === 0 ? " stat-zero" : ""}`}>
+              <span className="stat-label">
+                <IconCheck size={16} />
+                Acknowledged
+              </span>
               <span className="stat-value">{acknowledgedCount}</span>
             </li>
-            <li className="stat-tile stat-upcoming">
-              <IconClock size={20} />
-              <span className="stat-label">Upcoming</span>
+            <li className={`stat-tile stat-upcoming${upcomingCount === 0 ? " stat-zero" : ""}`}>
+              <span className="stat-label">
+                <IconClock size={16} />
+                Upcoming
+              </span>
               <span className="stat-value">{upcomingCount}</span>
             </li>
           </ul>
@@ -243,7 +254,7 @@ export function CaregiverPage() {
 
       {attention.length > 0 && (
         <div className="banner banner-attention" role="alert">
-          <IconWarn size={20} />
+          <IconWarn size={18} />
           <span>
             <strong>Needs attention: </strong>
             {attention.map((d) => `${d.label} (${d.time})`).join(", ")} not acknowledged in time.
@@ -253,13 +264,17 @@ export function CaregiverPage() {
 
       <div className="caregiver-grid">
         <section className="panel caregiver-today" aria-labelledby="h-today">
-          <h2 id="h-today">Today</h2>
+          <div className="panel-head">
+            <h2 id="h-today">Today</h2>
+            <NotificationControl />
+          </div>
           {status ? <DoseTable doses={doses} /> : <p className="muted">Waiting for status from the backend.</p>}
-          <p className="small muted caregiver-foot">
-            "Acknowledged" is the person's own report that they picked the pouch up. It does not confirm the medicine was taken.
-          </p>
-          <p className="small muted">Status is per day and resets at midnight.</p>
-          <NotificationControl />
+          <div className="caregiver-foot">
+            <p className="small muted">
+              "Acknowledged" is the person's own report that they picked the pouch up. It does not confirm the medicine was taken.
+            </p>
+            <p className="small muted">Status is per day and resets at midnight.</p>
+          </div>
         </section>
 
         <section className="panel caregiver-events" aria-labelledby="h-events">
@@ -268,7 +283,9 @@ export function CaregiverPage() {
         </section>
 
         <section className="panel caregiver-schedule" aria-labelledby="h-schedule">
-          <h2 id="h-schedule">Schedule (demo data)</h2>
+          <h2 id="h-schedule" className="schedule-title">
+            Schedule <span className="chip">Demo data</span>
+          </h2>
           <ScheduleEditor />
         </section>
 
