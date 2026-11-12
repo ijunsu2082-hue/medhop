@@ -88,3 +88,14 @@ export function IconSpeaker({ className, size = 18, muted = false }: IconProps &
     </svg>
   );
 }
+
+/** The MedHop mark: a rounded square with a plus. Decorative; the word "MedHop" always sits next to it. */
+export function IconMark({ className, size = 28 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable={false} className={className}>
+      <rect x="2" y="2" width="28" height="28" rx="8" fill="currentColor" />
+      <rect x="9" y="13.5" width="14" height="5" rx="2.5" fill="#FFFFFF" />
+      <rect x="13.5" y="9" width="5" height="14" rx="2.5" fill="#FFFFFF" />
+    </svg>
+  );
+}

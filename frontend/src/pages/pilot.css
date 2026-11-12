@@ -1,0 +1,1377 @@
+/* Pilot page (/). Every rule is scoped under .pilot and sets what it needs; tokens come from styles.css. */
+
+.pilot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  color: var(--text);
+  padding-bottom: var(--sp-5);
+}
+.pilot :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.pilot h2 {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+.pilot h3 {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+.pilot p {
+  margin: 0 0 var(--sp-2);
+}
+.pilot strong {
+  font-weight: 600;
+}
+.pilot .panel {
+  margin: 0;
+  padding: var(--sp-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: none;
+  min-width: 0;
+}
+.pilot [hidden] {
+  display: none !important;
+}
+
+/* ---------- Sticky safety bar ---------- */
+
+.pilot .pilot-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  /* Paint the bar's background to the window edges without depending on the page padding. */
+  box-shadow: 0 0 0 100vmax var(--surface);
+  clip-path: inset(0 -100vmax);
+}
+.pilot .command-bar {
+  display: grid;
+  grid-template-columns: minmax(280px, auto) minmax(11rem, 15rem) minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: stretch;
+  padding: var(--sp-2) 0;
+}
+
+.pilot .estop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 280px;
+  min-height: 72px;
+  padding: var(--sp-1) var(--sp-4);
+  border: 1px solid var(--estop);
+  border-radius: var(--radius);
+  background: var(--estop);
+  color: var(--estop-text);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: none;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+.pilot .estop:hover,
+.pilot .estop:active {
+  border-color: var(--estop-edge);
+  background: var(--estop-edge);
+}
+.pilot .estop:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.pilot .estop-main {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.pilot .estop-sub {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  opacity: 0.92;
+}
+
+/* Press-and-hold buttons (takeoff/land in the bar and in step 1, calibrate level). */
+.pilot .takeoff-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pilot .takeoff {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.pilot .takeoff:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.pilot .takeoff[data-holding="true"] {
+  border-color: var(--accent);
+}
+.pilot .takeoff:disabled {
+  border: 1px dashed var(--border-strong);
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.pilot .takeoff-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  opacity: 0.16;
+  transform-origin: left center;
+  pointer-events: none;
+}
+.pilot .takeoff-label {
+  position: relative;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.pilot .takeoff-sub {
+  position: relative;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+.pilot .takeoff-compact {
+  flex: 1;
+}
+.pilot .takeoff-note {
+  min-height: 1.2em;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pilot .takeoff-large {
+  width: 100%;
+  min-height: 76px;
+  margin-bottom: var(--sp-3);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+}
+.pilot .takeoff-large .takeoff-label {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.pilot .takeoff-large .takeoff-sub {
+  font-size: var(--fs-sm);
+}
+.pilot .takeoff-large:disabled {
+  border: 1px dashed var(--border-strong);
+  background: var(--surface-2);
+}
+
+.pilot .command-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  min-width: 0;
+  font-size: var(--fs-sm);
+}
+.pilot .command-status .badge,
+.pilot .command-status .conn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: 100%;
+  padding: 4px var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1.3;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.pilot .command-status .badge-sim {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+.pilot .command-status .badge-real {
+  border-color: transparent;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-weight: 600;
+}
+.pilot .command-status .conn-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border: 0;
+  border-radius: 50%;
+  background: currentColor;
+}
+.pilot .command-status .conn-pass,
+.pilot .command-status .conn-warn {
+  color: var(--text);
+}
+.pilot .command-status .conn-pass .conn-dot {
+  color: var(--pass);
+}
+.pilot .command-status .conn-warn .conn-dot {
+  color: var(--warn);
+}
+.pilot .command-status .conn-fail {
+  border-color: transparent;
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+.pilot .command-status .conn-fail .conn-dot {
+  color: var(--fail);
+}
+
+/* Emergency-stop banner, directly under the bar. */
+.pilot .estop-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-4);
+  margin: 0 0 var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  border-left: 3px solid var(--fail);
+  border-radius: var(--radius-sm);
+  background: var(--fail-bg);
+  color: var(--text);
+}
+.pilot .estop-banner strong {
+  color: var(--fail);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.pilot .estop-banner span {
+  color: var(--text);
+}
+.pilot .estop-banner .row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+
+.pilot .pilot-refused {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  border-left: 3px solid var(--fail);
+  border-radius: var(--radius-sm);
+  background: var(--fail-bg);
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ---------- Intro ---------- */
+
+.pilot .pilot-intro {
+  max-width: 62rem;
+}
+.pilot .pilot-intro h1 {
+  margin: var(--sp-2) 0 var(--sp-2);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+.pilot .pilot-lede {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+}
+.pilot .pilot-sim-note {
+  display: inline-block;
+  margin: var(--sp-3) 0 0;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+/* ---------- Main grid ---------- */
+
+/* DOM order is run steps, then camera: that is the single-column order. Wide screens put the camera left. */
+.pilot .pilot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+}
+@media (min-width: 1100px) {
+  .pilot .pilot-grid {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-areas: "camera run";
+  }
+  .pilot .pilot-camera {
+    grid-area: camera;
+  }
+  .pilot .pilot-run {
+    grid-area: run;
+  }
+}
+
+/* ---------- Camera ---------- */
+
+.pilot .video-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  margin: 0 0 var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #111417;
+}
+.pilot .video-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* 640x360 shown enlarged: smooth scaling, never pixelated, never stretched (contain keeps 16:9). */
+  image-rendering: auto;
+}
+.pilot .video-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  padding: var(--sp-4);
+  background: #111417;
+  color: #F2F4F5;
+  text-align: center;
+}
+.pilot .video-overlay strong {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.pilot .video-overlay-soft {
+  background: rgba(17, 20, 23, 0.72);
+}
+/* The chip strip is opaque and at least 8 % of the frame tall (the backend box is 7.5 %): it hides the text the backend burns into the
+   top-left corner of each frame, which the chips replace. */
+.pilot .video-chips {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+  min-height: 8%;
+  padding: 5px var(--sp-2);
+  background: #111417;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.pilot .vchip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 1px var(--sp-2);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: transparent;
+  color: #F2F4F5;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.pilot .vchip-sim {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: transparent;
+  color: #F2F4F5;
+}
+.pilot .vchip-muted {
+  color: rgba(255, 255, 255, 0.64);
+}
+.pilot .vchip-state-searching,
+.pilot .vchip-state-approaching,
+.pilot .vchip-state-arrived,
+.pilot .vchip-state-landing,
+.pilot .vchip-state-hover_test {
+  border-color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+/* The only colored chips on the camera: text and border, transparent background. */
+.pilot .vchip-pass {
+  border-color: #9FD3B2;
+  background: transparent;
+  color: #9FD3B2;
+}
+.pilot .vchip-real {
+  border-color: #E8C56B;
+  background: transparent;
+  color: #E8C56B;
+}
+.pilot .vchip-fail,
+.pilot .vchip-state-aborted {
+  border-color: #FFB3A8;
+  background: transparent;
+  color: #FFB3A8;
+}
+.pilot .pilot-caption {
+  margin: 0 0 var(--sp-4);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+/* ---------- Checklist chips ---------- */
+
+.pilot .pilot-check h2 {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  margin-bottom: var(--sp-2);
+}
+.pilot .checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pilot .check {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.pilot .check-open {
+  flex: 1 1 100%;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+  padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.pilot .check-open.check-fail {
+  border-color: transparent;
+  background: var(--fail-bg);
+}
+.pilot .check-open.check-warn {
+  border-color: transparent;
+  background: var(--warn-bg);
+}
+.pilot .check-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 40px;
+  padding: 0 var(--sp-3) 0 var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+.pilot .check-chip:hover {
+  border-color: var(--border-strong);
+}
+.pilot .check-fail .check-chip {
+  border-color: var(--fail);
+  background: var(--surface);
+}
+.pilot .check-icon {
+  display: inline-flex;
+}
+.pilot .check-icon.verdict-pass {
+  color: var(--pass);
+}
+.pilot .check-icon.verdict-warn {
+  color: var(--warn);
+}
+.pilot .check-icon.verdict-fail {
+  color: var(--fail);
+}
+.pilot .check-icon.verdict-info {
+  color: var(--muted);
+}
+.pilot .check-chevron {
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.pilot .check-chip[aria-expanded="true"] .check-chevron {
+  transform: rotate(90deg);
+}
+.pilot .check-text {
+  flex: 1 1 16rem;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.pilot .check-word {
+  font-weight: 600;
+}
+.pilot .check-fail .check-text {
+  color: var(--text);
+}
+.pilot .check-fail .check-word {
+  color: var(--fail);
+}
+
+/* ---------- Run steps ---------- */
+
+.pilot .run-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pilot .run-step {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.pilot .run-step-current {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+.pilot .run-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pilot .run-step-current .run-step-num {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.pilot .run-step-title {
+  margin: 2px 0 var(--sp-3);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.pilot .run-step-text {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-sm);
+}
+.pilot .run-step-live {
+  min-height: 1.4em;
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.pilot .run-step-live:empty {
+  display: none;
+}
+.pilot .run-step .hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.pilot .confirm-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+}
+.pilot .confirm-card input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.pilot .confirm-card:hover {
+  border-color: var(--accent);
+}
+.pilot .confirm-card-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.pilot .confirm-card:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.pilot .confirm-card:has(input:disabled) {
+  border: 1px dashed var(--border-strong);
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.pilot .run-steps .field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0 0 var(--sp-3);
+}
+.pilot .run-steps .field label {
+  font-weight: 500;
+}
+.pilot .run-steps select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.pilot .run-steps .field .hint {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.pilot .blockers {
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.pilot .blockers-title {
+  margin: 0 0 var(--sp-1);
+  font-weight: 600;
+}
+.pilot .blockers ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pilot .blockers li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 2px 0;
+  font-size: var(--fs-sm);
+}
+.pilot .blockers li svg {
+  position: relative;
+  top: 2px;
+  flex: none;
+  color: var(--muted);
+}
+.pilot .blocker-step {
+  font-weight: 600;
+}
+
+.pilot .run-wide {
+  width: 100%;
+  min-height: 52px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+/* Abort is a red outline, so the e-stop stays the only solid red control on the page. */
+.pilot .run-wide.btn-danger {
+  border: 1px solid var(--fail);
+  background: var(--surface);
+  color: var(--fail);
+}
+.pilot .run-wide.btn-danger:hover:not(:disabled) {
+  border-color: var(--fail);
+  background: var(--fail-bg);
+}
+
+.pilot .run-live {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.pilot .run-track {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+.pilot .run-track li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.pilot .run-track li + li::before {
+  content: "\203A";
+  color: var(--muted);
+  padding: 0 2px;
+}
+.pilot .run-track-past {
+  color: var(--muted);
+}
+.pilot .run-track-now .run-track-label {
+  padding: 2px var(--sp-2);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.pilot .run-track-next {
+  color: var(--muted);
+}
+
+.pilot .run-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-4);
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.pilot .run-live .run-state {
+  margin: 0;
+}
+.pilot .run-state strong {
+  flex: 1 1 100%;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.pilot .run-state .mono {
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+.pilot .run-state-aborted {
+  border-left-color: var(--fail);
+}
+
+.pilot .run-outcome {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  border-left: 3px solid var(--pass);
+  border-radius: var(--radius-sm);
+  background: var(--pass-bg);
+  color: var(--text);
+}
+.pilot .run-outcome > svg {
+  flex: none;
+  color: var(--pass);
+}
+.pilot .run-outcome strong {
+  display: block;
+  margin-bottom: var(--sp-1);
+  color: var(--pass);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.pilot .run-outcome p {
+  margin: 0 0 var(--sp-1);
+}
+.pilot .run-care-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: var(--sp-2);
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.pilot .run-care-link:hover {
+  background: var(--surface-2);
+}
+
+.pilot .abort-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  border-left: 3px solid var(--fail);
+  border-radius: var(--radius-sm);
+  background: var(--fail-bg);
+  color: var(--text);
+}
+.pilot .abort-notice svg {
+  flex: none;
+  color: var(--fail);
+}
+.pilot .abort-notice strong {
+  display: block;
+  margin-bottom: var(--sp-1);
+  color: var(--fail);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.pilot .abort-notice p {
+  margin: 0;
+  color: var(--text);
+}
+
+.pilot .run-steps .msg {
+  margin: var(--sp-3) 0 0;
+}
+
+/* Disclosure buttons (aria-expanded; they give focus back after a click). */
+.pilot .disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  margin-top: var(--sp-3);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.pilot .disclosure:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.pilot .disclosure-chevron {
+  flex: none;
+  transition: transform 0.15s;
+}
+.pilot .disclosure[aria-expanded="true"] .disclosure-chevron {
+  transform: rotate(90deg);
+}
+.pilot .disclosure-heading {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.pilot .disclosure-heading:hover {
+  border: 0;
+}
+.pilot .run-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.pilot .check-field {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  cursor: pointer;
+}
+.pilot .check-field input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+/* Drift assist switch */
+.pilot .drift-assist {
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.pilot .drift-assist .hint {
+  margin: var(--sp-1) 0;
+}
+.pilot .switch-field {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-weight: 500;
+  cursor: pointer;
+}
+.pilot .switch-field input {
+  position: absolute;
+  width: 2.6rem;
+  height: 1.5rem;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.pilot .switch-track {
+  position: relative;
+  flex: none;
+  width: 2.6rem;
+  height: 1.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.pilot .switch-track::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  box-sizing: border-box;
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  transition: transform 0.15s;
+}
+.pilot .switch-field input:checked + .switch-track {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.pilot .switch-field input:checked + .switch-track::after {
+  transform: translateX(1.1rem);
+  border-color: var(--accent-contrast);
+  background: var(--accent-contrast);
+}
+.pilot .switch-field input:focus-visible + .switch-track {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.pilot .switch-field input:disabled + .switch-track {
+  opacity: 0.5;
+}
+
+/* ---------- Manual flying ---------- */
+
+.pilot .manual-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+}
+@media (min-width: 900px) {
+  .pilot .manual-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.pilot .manual-keys .hint {
+  margin: var(--sp-3) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.pilot .key-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sp-5);
+}
+.pilot .key-cluster {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  grid-template-areas:
+    ". up ."
+    "left down right";
+  gap: var(--sp-1) var(--sp-2);
+  justify-items: center;
+}
+.pilot .key-singles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+.pilot .key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.pilot .key kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.pilot .key .kbd-wide {
+  min-width: 7rem;
+}
+.pilot .key-does {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.pilot .manual-live .msg {
+  margin: 0 0 var(--sp-2);
+}
+.pilot .manual-live .small {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-sm);
+}
+
+.pilot .axes {
+  display: grid;
+  gap: var(--sp-1);
+  margin: 0;
+}
+.pilot .axis {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) 3.5rem;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.pilot .axis-label {
+  font-size: var(--fs-sm);
+}
+.pilot .axis-track {
+  position: relative;
+  height: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface-2);
+}
+.pilot .axis-zero {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--border-strong);
+}
+.pilot .axis-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--accent);
+}
+.pilot .axis-value {
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.pilot .axes .hint {
+  margin: var(--sp-1) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.pilot .stickpad {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0 0;
+}
+@media (max-width: 899px) {
+  .pilot .stickpad {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.pilot .stickpad-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.pilot .stickpad-title {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.pilot .hold-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 3rem;
+  padding: var(--sp-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.pilot .hold-btn:active:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.pilot .hold-btn:disabled {
+  border-style: dashed;
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.pilot .hold-btn kbd {
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: var(--fs-xs);
+}
+
+/* ---------- Setup and tuning ---------- */
+
+.pilot .pilot-setup-heading {
+  margin: 0;
+}
+.pilot .pilot-setup > .hint {
+  margin: var(--sp-1) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.pilot .setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+}
+.pilot .setup-card {
+  min-width: 0;
+  padding: var(--sp-4);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.pilot .setup-card .hint {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.pilot .setup-card .row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+}
+.pilot .setup-card .row .muted {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.pilot .trim-values {
+  display: flex;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-2);
+  font-family: var(--mono);
+  font-size: var(--fs-md);
+  font-variant-numeric: tabular-nums;
+}
+.pilot .trim-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.pilot .trim-grid .btn-quiet {
+  grid-column: 1 / -1;
+}
+.pilot .maxstick {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+}
+.pilot .maxstick label {
+  font-weight: 500;
+}
+.pilot .maxstick input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.pilot .maxstick .hint {
+  grid-column: 1 / -1;
+}
+.pilot .progress-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0;
+}
+.pilot .progress-row progress {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--accent);
+}
+.pilot .hover-result {
+  margin-top: var(--sp-2);
+}
+.pilot .calibrate-btn {
+  width: 100%;
+  max-width: 20rem;
+  min-height: 3.2rem;
+  margin-bottom: var(--sp-2);
+}
+
+/* ---------- Narrow screens ---------- */
+
+@media (max-width: 899px) {
+  .pilot .command-bar {
+    grid-template-columns: 280px 8rem minmax(0, 1fr);
+    gap: var(--sp-2);
+  }
+  .pilot .estop {
+    padding: var(--sp-1) var(--sp-2);
+  }
+  .pilot .estop-main {
+    font-size: 1.25rem;
+  }
+  .pilot .estop-sub {
+    font-size: var(--fs-xs);
+  }
+  .pilot .takeoff-compact {
+    min-height: 72px;
+    padding: var(--sp-1) var(--sp-2);
+  }
+  .pilot .takeoff-compact .takeoff-label {
+    font-size: var(--fs-sm);
+  }
+  .pilot .takeoff-wrap .takeoff-note {
+    display: none;
+  }
+  .pilot .command-status {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: center;
+    gap: var(--sp-1);
+  }
+  .pilot .command-status .badge,
+  .pilot .command-status .conn {
+    padding: 1px var(--sp-2);
+    line-height: 1.25;
+  }
+  .pilot .estop-banner {
+    padding: var(--sp-2) var(--sp-3);
+    gap: var(--sp-1) var(--sp-3);
+  }
+  .pilot .estop-banner strong {
+    font-size: var(--fs-md);
+  }
+  .pilot .estop-banner span {
+    font-size: var(--fs-sm);
+  }
+  .pilot .estop-banner .row {
+    margin-left: 0;
+  }
+  .pilot .panel {
+    padding: var(--sp-4);
+  }
+}
+
+@media (max-width: 640px) {
+  .pilot .command-bar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .pilot .estop {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .pilot .command-status {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}

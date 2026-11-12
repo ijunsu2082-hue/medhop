@@ -34,6 +34,51 @@ export function AxisIndicators({ axes, maxStick }: { axes: Axes; maxStick: numbe
   );
 }
 
+/** Key legend: WASD and arrow clusters laid out like the keyboard, then T and Space. Display only. */
+export function KeyLegend() {
+  const key = (k: string, name: string, does: string, area: string) => (
+    <span className="key" style={{ gridArea: area }}>
+      <kbd aria-hidden="true">{k}</kbd>
+      <span className="key-does">
+        <span className="sr-only">{name}: </span>
+        {does}
+      </span>
+    </span>
+  );
+  return (
+    <div className="key-legend" role="group" aria-label="Flight keys">
+      <div className="key-cluster" role="group" aria-label="Pitch and roll">
+        {key("W", "W", "Forward", "up")}
+        {key("A", "A", "Left", "left")}
+        {key("S", "S", "Back", "down")}
+        {key("D", "D", "Right", "right")}
+      </div>
+      <div className="key-cluster" role="group" aria-label="Throttle and yaw">
+        {key("↑", "Arrow up", "Up", "up")}
+        {key("←", "Arrow left", "Turn left", "left")}
+        {key("↓", "Arrow down", "Down", "down")}
+        {key("→", "Arrow right", "Turn right", "right")}
+      </div>
+      <div className="key-singles">
+        <span className="key">
+          <kbd aria-hidden="true">T</kbd>
+          <span className="key-does">
+            <span className="sr-only">T: </span>Hold: takeoff / land
+          </span>
+        </span>
+        <span className="key key-estop">
+          <kbd aria-hidden="true" className="kbd-wide">
+            Space
+          </kbd>
+          <span className="key-does">
+            <span className="sr-only">Space: </span>Emergency stop
+          </span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 const PAD: { group: string; buttons: { id: string; label: string; key: string; input: AxisInput }[] }[] = [
   {
     group: "Throttle",

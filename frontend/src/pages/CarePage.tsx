@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { useStatus } from "../hooks/useStatus";
 import { ACK_COOLDOWN_MS, arrivalLine, careFocus, isEarlyArrival, reminderMaySpeak, spokenReminder } from "../logic/care";
 import { IconCheck, IconSpeaker } from "../components/Icons";
+import "./care.css";
 
 const REPEAT_MS = 2 * 60 * 1000;
 const CHECK_MS = 5000;
@@ -140,7 +141,7 @@ export function CarePage() {
         {d.notes && <p className="care-sub">{d.notes}</p>}
         {arrival && (
           <p className="care-arrived">
-            <IconCheck size={36} /> {arrival}.
+            <IconCheck size={40} /> <span>{arrival}.</span>
           </p>
         )}
         <button type="button" className="care-ack" onClick={() => void acknowledge()} disabled={sending || coolingDown}>
@@ -171,11 +172,15 @@ export function CarePage() {
   return (
     <div className="care">
       <h1 className="sr-only">Your reminders</h1>
-      {status && reachable !== false && <p className="care-clock">Now {status.care.now_local}</p>}
+      {status && reachable !== false && (
+        <p className="care-clock">
+          <span className="care-clock-label">Now</span> <span className="care-clock-time">{status.care.now_local}</span>
+        </p>
+      )}
 
       {thanks && (
         <p className="care-thanks" role="status">
-          <IconCheck size={36} /> Thank you. We noted that you picked up {thanks.label}.
+          <IconCheck size={40} /> <span>Thank you. We noted that you picked up {thanks.label}.</span>
         </p>
       )}
 
@@ -188,11 +193,11 @@ export function CarePage() {
           <p className="care-sub">Spoken reminders are not available in this browser.</p>
         ) : !speechOn ? (
           <button type="button" className="care-btn" onClick={turnOnSpeech}>
-            <IconSpeaker size={32} /> Turn on spoken reminders
+            <IconSpeaker size={32} /> <span>Turn on spoken reminders</span>
           </button>
         ) : (
           <button type="button" className="care-btn" aria-pressed={muted} onClick={() => setMuted((m) => !m)}>
-            <IconSpeaker size={32} muted={muted} /> {muted ? "Spoken reminders are muted. Press to unmute." : "Mute spoken reminders"}
+            <IconSpeaker size={32} muted={muted} /> <span>{muted ? "Spoken reminders are muted. Press to unmute." : "Mute spoken reminders"}</span>
           </button>
         )}
       </section>

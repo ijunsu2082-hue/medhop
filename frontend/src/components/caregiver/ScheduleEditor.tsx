@@ -170,7 +170,7 @@ export function ScheduleEditor() {
                 />
               ) : (
                 <>
-                  <span className="mono schedule-time">{d.time}</span>
+                  <span className="schedule-time">{d.time}</span>
                   <span className="schedule-label">
                     {d.label}
                     {d.notes && <span className="small muted block">{d.notes}</span>}
@@ -180,7 +180,7 @@ export function ScheduleEditor() {
                       <>
                         <button
                           type="button"
-                          className="btn btn-danger"
+                          className="btn btn-danger-outline"
                           onClick={() => void run("Deleting", () => api.deleteDose(d.id)).then(() => setConfirmDelete(null))}
                         >
                           Confirm delete
@@ -193,7 +193,7 @@ export function ScheduleEditor() {
                       <>
                         <button
                           type="button"
-                          className="btn"
+                          className="btn btn-quiet"
                           onClick={() => {
                             setEditing(d.id);
                             setConfirmDelete(null);

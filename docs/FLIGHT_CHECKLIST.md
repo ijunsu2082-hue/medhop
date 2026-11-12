@@ -277,10 +277,10 @@ second toggle just after the drone has landed would make it take off again.
 
 - [ ] 49. In the "Station run" panel, check that "Send the landing command on arrival (off: you land
       by hand)" is unticked.
-- [ ] 50. Leave "Dose for this run (optional)" on "No dose (practice run)".
+- [ ] 50. In step 3 of the "Station run" panel, leave "Which dose is this run for?" on "No dose (practice run)".
 - [ ] 51. Look at the drone, take off, and hover facing the sign at your start distance. Corridor empty.
 - [ ] 52. Tick "The drone is hovering and the corridor is empty".
-- [ ] 53. Check that the list under "Start is not available yet:" is gone, then press "Start station run".
+- [ ] 53. Check that the "Before you can start:" list above the button is gone, then press "Start station run".
       Keep your hands at the keys.
 - [ ] 54. To stop at any time: press any flight key (the run hands control back to you), or "Abort run",
       or "EMERGENCY STOP" if something is about to be hit. **Take over by hand if the drone gets within

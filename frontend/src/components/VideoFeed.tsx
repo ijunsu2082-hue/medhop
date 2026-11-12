@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { apiUrl } from "../api/config";
 
 interface Props {
   /** null while no status has arrived yet */
   videoLive: boolean | null;
   backendReachable: boolean;
+  /** status chips shown in a strip across the top of the frame (it also covers the text the backend draws there) */
+  chips?: ReactNode;
 }
 
 const RETRY_STEPS_MS = [1000, 2000, 3000, 5000];
@@ -13,7 +15,7 @@ const RETRY_STEPS_MS = [1000, 2000, 3000, 5000];
  * Annotated MJPEG from the backend in a 16:9 frame. The <img> is re-requested (cache-busted) after a stream
  * error with a short backoff, and whenever `link.video_live` goes from false to true.
  */
-export function VideoFeed({ videoLive, backendReachable }: Props) {
+export function VideoFeed({ videoLive, backendReachable, chips }: Props) {
   const [nonce, setNonce] = useState(0);
   const [streamError, setStreamError] = useState(false);
   const attempts = useRef(0);
@@ -92,6 +94,7 @@ export function VideoFeed({ videoLive, backendReachable }: Props) {
           <span>Reconnecting to the stream.</span>
         </div>
       )}
+      {chips && <div className="video-chips">{chips}</div>}
     </div>
   );
 }

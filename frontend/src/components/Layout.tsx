@@ -1,6 +1,7 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useStatus } from "../hooks/useStatus";
 import { FOOTER_TEXT } from "../text/wording";
+import { IconMark } from "./Icons";
 
 function BackendLine() {
   const { reachable, socket } = useStatus();
@@ -31,14 +32,19 @@ function BackendLine() {
 }
 
 export function Layout() {
-  const { reachable } = useStatus();
+  const { reachable, status } = useStatus();
+  // The Pilot page shows the mode in its own safety bar, so the top bar repeats it only on the other pages.
+  const onPilot = useLocation().pathname === "/";
   return (
     <div className="app">
       <a className="skip-link" href="#main">
         Skip to content
       </a>
       <header className="topnav">
-        <span className="brand">MedHop</span>
+        <span className="brand">
+          <IconMark className="brand-mark" size={28} />
+          <span className="brand-name">MedHop</span>
+        </span>
         <nav aria-label="Pages">
           <ul>
             <li>
@@ -54,7 +60,10 @@ export function Layout() {
             </li>
           </ul>
         </nav>
-        <BackendLine />
+        <div className="topnav-status">
+          {status?.mode === "sim" && !onPilot && <span className="badge badge-sim">Mode: simulator</span>}
+          <BackendLine />
+        </div>
       </header>
       {reachable === false && (
         <div className="banner banner-fail" role="status">

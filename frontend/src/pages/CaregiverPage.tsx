@@ -8,6 +8,7 @@ import { batteryLine } from "../logic/checklist";
 import { abortText, eventText, missionStateText } from "../text/wording";
 import { IconBell, IconCheck, IconClock, IconPin, IconWarn } from "../components/Icons";
 import { ScheduleEditor } from "../components/caregiver/ScheduleEditor";
+import "./caregiver.css";
 
 const EVENTS_REFRESH_MS = 5000;
 
@@ -45,12 +46,12 @@ function DoseTable({ doses }: { doses: DoseToday[] }) {
         <tbody>
           {sorted.map((d) => (
             <tr key={d.id} className={`dose-row dose-${d.status}`}>
-              <td className="mono">{d.time}</td>
-              <td>
+              <td className="dose-time">{d.time}</td>
+              <td className="dose-label">
                 {d.label}
                 {d.notes && <span className="small muted block">{d.notes}</span>}
               </td>
-              <td>
+              <td className="dose-status-cell">
                 <span className={`dose-status dose-status-${d.status}`}>
                   <StatusIcon status={d.status} />
                   <span>{doseTableStatusLine(d)}</span>
@@ -120,14 +121,21 @@ function EventsList({
             const detail = eventDetailText(e);
             const dose = labelOf(e.dose_id);
             return (
-              <li key={`${e.ts}-${e.type}-${i}`}>
-                <span className="mono event-time">{eventWhen(e, today)}</span>
-                <span className="event-name">
-                  {eventText(e.type)}
-                  {simulatorSuffix(e)}
+              <li key={`${e.ts}-${e.type}-${i}`} className={`event event-${e.type}`}>
+                <span className="event-time">{eventWhen(e, today)}</span>
+                <span className="event-dot" aria-hidden="true" />
+                <span className="event-body">
+                  <span className="event-name">
+                    {eventText(e.type)}
+                    {simulatorSuffix(e)}
+                  </span>
+                  {(dose || detail) && (
+                    <span className="event-meta">
+                      {dose && <span className="event-dose">{dose}</span>}
+                      {detail && <span className="event-detail">{detail}</span>}
+                    </span>
+                  )}
                 </span>
-                {dose && <span className="event-dose">{dose}</span>}
-                {detail && <span className="event-detail">{detail}</span>}
               </li>
             );
           })}
@@ -153,13 +161,13 @@ function NotificationControl() {
 function DroneSummary({ status, lastRun }: { status: Status; lastRun: string }) {
   const t = status.telemetry;
   return (
-    <dl className="kv">
+    <dl className="kv drone-kv">
       <dt>Mode</dt>
       <dd>{status.mode === "sim" ? "Simulator" : "Real drone"}</dd>
       <dt>Video</dt>
       <dd>{status.link.video_live ? "Live" : "No video"}</dd>
       <dt>Battery</dt>
-      <dd>{batteryLine(t).text}</dd>
+      <dd className="small muted">{batteryLine(t).text}</dd>
       <dt>Station run now</dt>
       <dd>
         {missionStateText(status.mission.state)}
@@ -197,20 +205,45 @@ export function CaregiverPage() {
   }, [status]);
 
   const attention = doses.filter((d) => d.status === "needs_attention");
+  const acknowledgedCount = doses.filter((d) => d.status === "acknowledged").length;
+  const upcomingCount = doses.filter((d) => d.status === "upcoming").length;
 
   return (
     <div className="caregiver">
-      <h1>Caregiver</h1>
-      {status && (
-        <p className="muted small">
-          {status.care.date_local}, now {status.care.now_local}
-          {reachable === false ? " (last known; backend not reachable)" : ""}
-        </p>
-      )}
+      <header className="caregiver-head">
+        <div className="caregiver-title">
+          <h1>Caregiver</h1>
+          {status && (
+            <p className="muted small caregiver-when">
+              {status.care.date_local}, now {status.care.now_local}
+              {reachable === false ? " (last known; backend not reachable)" : ""}
+            </p>
+          )}
+        </div>
+        {status && (
+          <ul className="stat-tiles" aria-label="Today's doses at a glance">
+            <li className={`stat-tile stat-attention${attention.length > 0 ? " stat-active" : ""}`}>
+              <IconWarn size={20} />
+              <span className="stat-label">Needs attention</span>
+              <span className="stat-value">{attention.length}</span>
+            </li>
+            <li className="stat-tile stat-acknowledged">
+              <IconCheck size={20} />
+              <span className="stat-label">Acknowledged</span>
+              <span className="stat-value">{acknowledgedCount}</span>
+            </li>
+            <li className="stat-tile stat-upcoming">
+              <IconClock size={20} />
+              <span className="stat-label">Upcoming</span>
+              <span className="stat-value">{upcomingCount}</span>
+            </li>
+          </ul>
+        )}
+      </header>
 
       {attention.length > 0 && (
         <div className="banner banner-attention" role="alert">
-          <IconWarn size={22} />
+          <IconWarn size={20} />
           <span>
             <strong>Needs attention: </strong>
             {attention.map((d) => `${d.label} (${d.time})`).join(", ")} not acknowledged in time.
@@ -219,27 +252,27 @@ export function CaregiverPage() {
       )}
 
       <div className="caregiver-grid">
-        <section className="panel" aria-labelledby="h-today">
+        <section className="panel caregiver-today" aria-labelledby="h-today">
           <h2 id="h-today">Today</h2>
           {status ? <DoseTable doses={doses} /> : <p className="muted">Waiting for status from the backend.</p>}
-          <p className="small muted">
+          <p className="small muted caregiver-foot">
             "Acknowledged" is the person's own report that they picked the pouch up. It does not confirm the medicine was taken.
           </p>
           <p className="small muted">Status is per day and resets at midnight.</p>
           <NotificationControl />
         </section>
 
-        <section className="panel" aria-labelledby="h-events">
+        <section className="panel caregiver-events" aria-labelledby="h-events">
           <h2 id="h-events">Recent events</h2>
           <EventsList events={events} failed={failed} doses={doses} today={status?.care.date_local ?? ""} />
         </section>
 
-        <section className="panel" aria-labelledby="h-schedule">
+        <section className="panel caregiver-schedule" aria-labelledby="h-schedule">
           <h2 id="h-schedule">Schedule (demo data)</h2>
           <ScheduleEditor />
         </section>
 
-        <section className="panel" aria-labelledby="h-drone">
+        <section className="panel caregiver-drone" aria-labelledby="h-drone">
           <h2 id="h-drone">Drone</h2>
           {status ? <DroneSummary status={status} lastRun={lastRunResult(events, status.care.date_local)} /> : <p className="muted">Waiting for status.</p>}
         </section>

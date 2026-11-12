@@ -1,8 +1,8 @@
-import type { PointerEvent as RPointerEvent, KeyboardEvent as RKeyboardEvent } from "react";
 import { useRef } from "react";
 import type { Mode } from "../../api/types";
 import type { ControlState } from "../../hooks/useControlSocket";
 import type { DroneLinkView } from "../../logic/pilot";
+import { HoldButton, type Hold } from "./HoldButton";
 
 interface Props {
   mode: Mode | null;
@@ -10,7 +10,7 @@ interface Props {
   /** false when neither the status socket nor the poll reaches the backend */
   backendReachable: boolean;
   onEstop: () => void;
-  takeoff: { start: () => void; cancel: () => void; progress: number; holding: boolean };
+  takeoff: Hold;
   /** why takeoff/land cannot be used now (logic/pilot.ts takeoffBlockedReason), or null */
   takeoffBlocked: string | null;
   takeoffNote: { ok: boolean | null; text: string } | null;
@@ -18,11 +18,12 @@ interface Props {
   droneLink: DroneLinkView;
 }
 
+// "refused" is explained once, in the banner under this bar (PilotPage).
 const CONTROL_TEXT: Record<ControlState, string> = {
   open: "Control link: connected",
   connecting: "Control link: connecting",
   closed: "Control link: disconnected, reconnecting",
-  refused: "Another pilot window is connected. Retrying every 5 s.",
+  refused: "Control link: refused",
 };
 
 export function CommandBar({ mode, control, backendReachable, onEstop, takeoff, takeoffBlocked, takeoffNote, droneLink }: Props) {
@@ -36,22 +37,9 @@ export function CommandBar({ mode, control, backendReachable, onEstop, takeoff, 
     onEstop();
   };
 
-  const holdDown = (e: RPointerEvent<HTMLButtonElement>) => {
-    if (e.button !== 0) return;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    takeoff.start();
-  };
-  const holdKeyDown = (e: RKeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === "Enter" && !e.repeat) {
-      e.preventDefault();
-      takeoff.start();
-    }
-  };
-  const holdKeyUp = (e: RKeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === "Enter") takeoff.cancel();
-  };
-
   const controlOpen = control === "open";
+  // Short copy of the step 1 live line; the announced one is in step 1.
+  const note = takeoffBlocked ?? takeoffNote?.text ?? "";
 
   return (
     <section className="command-bar" aria-label="Flight commands">
@@ -70,29 +58,17 @@ export function CommandBar({ mode, control, backendReachable, onEstop, takeoff, 
       </button>
 
       <div className="takeoff-wrap">
-        <button
-          type="button"
-          className="takeoff"
+        <HoldButton
+          hold={takeoff}
           disabled={takeoffBlocked !== null}
-          onPointerDown={holdDown}
-          onPointerUp={takeoff.cancel}
-          onPointerCancel={takeoff.cancel}
-          onLostPointerCapture={takeoff.cancel}
-          onKeyDown={holdKeyDown}
-          onKeyUp={holdKeyUp}
-          onBlur={takeoff.cancel}
-          onContextMenu={(e) => e.preventDefault()}
-          aria-keyshortcuts="T"
-          aria-describedby="takeoff-desc"
-        >
-          <span className="takeoff-fill" style={{ transform: `scaleX(${takeoff.progress})` }} aria-hidden="true" />
-          <span className="takeoff-label">Takeoff / Land (toggle)</span>
-          <span className="takeoff-sub" id="takeoff-desc">
-            {takeoff.holding ? "Keep holding..." : "Press and hold 0.6 s. Key: hold T"}
-          </span>
-        </button>
-        <span className="takeoff-note" role="status">
-          {takeoffBlocked ?? takeoffNote?.text ?? ""}
+          label="Takeoff / Land (toggle)"
+          sub="Press and hold 0.6 s. Key: hold T"
+          subId="takeoff-desc"
+          keyShortcut="T"
+          className="takeoff-compact"
+        />
+        <span className="takeoff-note" aria-hidden="true" title={note || undefined}>
+          {note}
         </span>
       </div>
 
