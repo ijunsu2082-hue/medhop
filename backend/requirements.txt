@@ -1,0 +1,13 @@
+# MedHop backend. Python 3.11+.
+fastapi
+uvicorn[standard]
+numpy
+opencv-python          # must include the aruco module (opencv-python 4.7 or newer does)
+
+# Optional: the advisory person check (MEDHOP_PERSON_CHECK). Without it the check reports
+# "enabled: false" and everything else works. Needs local weights (MEDHOP_YOLO_WEIGHTS); nothing is
+# downloaded at run time.
+# ultralytics
+
+# Tests use the standard library's unittest. FastAPI's TestClient additionally needs:
+# httpx
