@@ -180,6 +180,12 @@ function DroneSummary({ status, lastRun }: { status: Status; lastRun: string }) 
       </dd>
       <dt>Last run result</dt>
       <dd className="mono">{lastRun}</dd>
+      {typeof status.mission.auto_fly === "boolean" && (
+        <>
+          <dt>Automatic flights</dt>
+          <dd>{status.mission.auto_fly ? "on" : "off"}</dd>
+        </>
+      )}
     </dl>
   );
 }

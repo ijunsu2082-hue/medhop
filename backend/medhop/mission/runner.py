@@ -1,8 +1,23 @@
 """Station-run state machine, failsafes and hover test (SPEC section 6).
 
-The runner never takes off. It steers yaw and pitch, through the ControlMixer, and it sends the
-shared takeoff/land toggle at most once per run: after a confirmed arrival. On ANY abort it sends
-neutral and never the toggle (if the drone has already landed by itself, the toggle would launch it).
+A manual run never takes off: the pilot does. The runner steers yaw and pitch, through the
+ControlMixer, and sends the shared takeoff/land toggle at most once: after a confirmed arrival. On an
+abort it sends neutral and never the toggle (if the drone has already landed by itself, the toggle
+would launch it).
+
+An automatic run (`start(..., automatic=True)`, the "Fly to station" button or a dose coming due with
+automatic flights on) also takes off: the runner sends the toggle once from the ground, waits
+`takeoff_wait_s` with neutral sticks, then searches as usual and always lands on arrival. If it stops
+early for one of SAFE_LANDING_REASONS it lands where it is, because nobody may be there to land it,
+but only on current evidence that it is in the air (`_airborne_now_locked`: the marker has grown since
+first seen, which only a flying drone can do, it is in view now, and it is not rising in the picture).
+Without that evidence it sends no second toggle and the status says the drone needs a pilot.
+
+Where it lands: a detection counts toward arrival only when the marker is at least the arrive width
+(about 0.8 m from the sign with the defaults), near the middle of the picture and seen from the front,
+on arrive_consecutive frames in a row, after it has grown since first seen. Seeing the sign from far
+away only starts the approach; a sign too far away to be at least MarkerDetector.MIN_WIDTH of the frame
+is not detected at all, and any other marker id is ignored.
 
 Drift assist (experimental, off by default, SPEC section 6 Revision 2): while approaching, the run
 may add a small bounded roll that cancels sideways drift (`steering.DriftAssist`). It never touches
@@ -25,6 +40,7 @@ while holding its own.
 from __future__ import annotations
 
 import logging
+import math
 import secrets
 import statistics
 import threading
@@ -47,6 +63,8 @@ from medhop.vision.person import PersonStatus
 logger = logging.getLogger("medhop.mission")
 
 IDLE = "idle"
+COUNTDOWN = "countdown"     # automatic runs only: on the ground, a few seconds before the takeoff toggle
+TAKING_OFF = "taking_off"   # automatic runs only: the runner sent the takeoff toggle and waits, neutral
 SEARCHING = "searching"
 APPROACHING = "approaching"
 ARRIVED = "arrived"
@@ -54,10 +72,11 @@ LANDING = "landing"
 DONE = "done"
 ABORTED = "aborted"
 HOVER_TEST = "hover_test"
-STATES = (IDLE, SEARCHING, APPROACHING, ARRIVED, LANDING, DONE, ABORTED, HOVER_TEST)
+STATES = (IDLE, COUNTDOWN, TAKING_OFF, SEARCHING, APPROACHING, ARRIVED, LANDING, DONE, ABORTED, HOVER_TEST)
 
-RUN_STATES = (SEARCHING, APPROACHING, ARRIVED, LANDING)     # a station run is in progress
-ABORTABLE_STATES = (SEARCHING, APPROACHING, ARRIVED)        # before the toggle has been sent
+# a station run is in progress
+RUN_STATES = (COUNTDOWN, TAKING_OFF, SEARCHING, APPROACHING, ARRIVED, LANDING)
+ABORTABLE_STATES = (COUNTDOWN, TAKING_OFF, SEARCHING, APPROACHING, ARRIVED)   # before the landing toggle
 
 ABORT_REASONS = (
     "marker_not_found", "marker_lost", "video_stale", "timeout",
@@ -65,11 +84,28 @@ ABORT_REASONS = (
     "off_axis",   # not in SPEC section 6: added failsafe, see RunnerConfig.off_axis_aspect
     "pilot_link_lost",   # the pilot's control socket dropped: nobody could press stop any more
     "unexpected_descent",   # settle descent guard: the drone is sinking by itself (SPEC 10.2)
+    "takeoff_refused",      # automatic run: the mixer did not send the takeoff toggle
+    "not_lined_up",         # at the arrive distance but could not get centred and in front of the sign
+    "already_at_station",   # automatic run: the marker was already at arrive size after takeoff
 )
 BLOCKERS = (
     "no_video", "estop_active", "already_running", "person_in_view", "battery_low", "marker_too_close",
     "no_pilot_link",     # no pilot control socket is connected (start and hover test)
+    "drone_flying",      # automatic start only: simulated telemetry says the drone is already up
+    "recent_toggle",     # automatic start only: a takeoff/land toggle went out a moment ago
 )
+DRONE_FLYING = "drone_flying"
+RECENT_TOGGLE = "recent_toggle"
+# An automatic run that stops early lands where it is (the land toggle) for these reasons, because
+# nobody may be there to land it and hovering until the battery runs out ends in a fall. Only on
+# CURRENT evidence that it is in the air (`_airborne_now_locked`): the flight confirmed, the marker in
+# view right now and not rising in the picture (a sinking camera). marker_lost and video_stale are not
+# here: without a picture there is no such evidence, and a drone that landed by itself would be
+# relaunched. Never for estop (motor cut), pilot_took_over (the pilot has it), unexpected_descent (it
+# is already landing: a toggle would relaunch it) or takeoff_refused (it never left the ground).
+SAFE_LANDING_REASONS = frozenset({
+    "timeout", "person_in_view", "battery_low", "off_axis", "not_lined_up", "pilot_link_lost",
+})
 NO_PILOT_LINK = "no_pilot_link"
 NOT_CONFIRMED = "confirm_airborne_required"
 MARKER_NOT_VISIBLE = "marker_not_visible"
@@ -121,6 +157,24 @@ class RunnerConfig:
     person_fresh_s: float = 2.0        # a person-check result older than this is ignored
     hover_test_s: float = 10.0         # the pass limit is Settings.hover_max_excursion_m
     hover_visible_pct: float = 80.0
+    # Automatic runs: on the ground this long before the takeoff toggle (the page counts down and
+    # beeps; Stop cancels with no flight), then neutral sticks for takeoff_wait_s before searching.
+    countdown_s: float = 5.0
+    takeoff_wait_s: float = 4.0
+    recent_toggle_s: float = 10.0      # an automatic start is blocked this long after any toggle
+    # At the arrive distance the run flies no further forward (yaw only). Still not arrived after this
+    # long there: abort not_lined_up instead of hovering at the wall.
+    arrive_stall_s: float = 2.5
+    # Safe landing evidence: the marker seen this recently, and its cy not more than settle_descent_frac
+    # above the median cy of the detections between 2.0 and 0.5 s ago.
+    safe_land_marker_fresh_s: float = 0.5
+    # A detection only counts toward arrival when the marker is also near the middle of the picture
+    # (|cx - 0.5| at most this) and seen from the front (width/height at least arrive_min_aspect, about
+    # 37 degrees off the wall's normal). Big enough and centred but seen from the side on
+    # arrive_consecutive detections: the drone is beside the station, so the run stops with off_axis
+    # instead of landing there. 0 for arrive_min_aspect disables both the facing rule and that abort.
+    arrive_centre_tol: float = 0.12
+    arrive_min_aspect: float = 0.80
 
 
 def marker_aspect(marker: MarkerObs) -> float:
@@ -131,6 +185,10 @@ def marker_aspect(marker: MarkerObs) -> float:
 def apparent_width(marker: MarkerObs) -> float:
     """The width a square-on marker would show at the drone's current distance from the wall."""
     return marker.size / max(0.5, min(1.0, marker_aspect(marker)))
+
+
+def _round_or_none(value: Optional[float], digits: int = 2) -> Optional[float]:
+    return None if value is None else round(value, digits)
 
 
 def _no_person() -> PersonStatus:
@@ -171,6 +229,18 @@ class MissionRunner:
         self._arrive_width = stored_width if stored_width is not None else settings.arrive_width
         self._land_on_arrival = store.load_land_on_arrival()   # persisted; off by default
         self._drift_assist = store.load_drift_assist()   # the switch (persisted); off by default
+        self._auto_fly = store.load_auto_fly()           # fly automatically at dose times; off by default
+        self._automatic = False                          # the current (or last) run took off by itself
+        self._flight_confirmed = False                   # the marker grew since first seen in this run
+        self._timeout_from = 0.0                         # the run timeout counts from here
+        self._at_size_since: Optional[float] = None      # since when the marker has been at arrive size
+        self._cy_log: Deque[Tuple[float, float]] = deque()   # (frame time, cy) of recent detections
+        # A person marked the drone as on its start spot; scheduled automatic runs need it. In memory
+        # only (a restart clears it) and cleared by any run start or pilot input.
+        self._ready_for_dose = False
+        # An automatic run stopped early without landing: the drone may be in the air with nobody
+        # flying it. Cleared when the next run starts or the pilot acts.
+        self._needs_pilot = False
         self._assist_run = False                         # this run started with the switch on
         self._assist_disabled_at: Optional[float] = None
         self._assist_ts: Optional[float] = None          # frame time of the assist's previous step
@@ -263,8 +333,24 @@ class MissionRunner:
     def _no_pilot_link(self) -> bool:
         return self._pilot_connected is not None and not self._pilot_connected()
 
-    def _blockers_locked(self, now: float) -> List[str]:
+    def _drone_flying(self, now: float) -> bool:
+        """Simulator only: fresh simulated telemetry says the drone is in the air. The real drone's
+        fly-state byte is unverified, so it is never used for a decision."""
+        if self._link.mode != "sim":
+            return False
+        telemetry = self._link.telemetry()
+        if telemetry is None or now - telemetry.timestamp >= self._settings.telemetry_fresh_s:
+            return False
+        return telemetry.fly_state_raw != 0
+
+    def _blockers_locked(self, now: float, automatic: bool = False) -> List[str]:
         out: List[str] = []
+        if automatic and self._drone_flying(now):
+            out.append(DRONE_FLYING)    # the takeoff toggle would land it instead
+        if automatic:
+            since = self._mixer.seconds_since_toggle(now)
+            if since is not None and since < self.cfg.recent_toggle_s:
+                out.append(RECENT_TOGGLE)   # it may be climbing or landing: the toggle would undo that
         if self._no_pilot_link():
             out.append(NO_PILOT_LINK)      # a run may only start while a pilot window is connected
         frame = self._link.latest_frame()
@@ -284,12 +370,17 @@ class MissionRunner:
         return out
 
     def start(self, confirm_airborne: bool, dose_id: Optional[str] = None,
-              now: Optional[float] = None) -> Tuple[bool, List[str]]:
-        """Begin a station run. Returns (started, blockers). The runner never takes off."""
+              now: Optional[float] = None, automatic: bool = False) -> Tuple[bool, List[str]]:
+        """Begin a station run. Returns (started, blockers).
+
+        Manual (automatic=False): the pilot has taken off and confirms it; the runner never takes off.
+        Automatic: the drone is on the ground; the runner sends the takeoff toggle itself, and
+        confirm_airborne is not used."""
         now = self._clock() if now is None else now
+        automatic = automatic is True
         with self._lock:
-            blockers = self._blockers_locked(now)
-            if confirm_airborne is not True:
+            blockers = self._blockers_locked(now, automatic=automatic)
+            if not automatic and confirm_airborne is not True:
                 blockers.insert(0, NOT_CONFIRMED)
             if blockers:
                 return False, blockers
@@ -303,7 +394,10 @@ class MissionRunner:
             self._command = (0.0, 0.0)
             self._roll = 0.0
             self._assist.reset()
-            self._assist_run = self._drift_assist
+            # Automatic runs always use the drift assist: with nobody to correct a sideways drift it
+            # is what keeps the landing in front of the sign (it still switches itself off when its
+            # own check says it is making things worse).
+            self._assist_run = self._drift_assist or automatic
             self._assist_disabled_at = None
             self._assist_ts = None
             self._suggested_trim_roll = None
@@ -320,19 +414,66 @@ class MissionRunner:
             self._history.clear()
             self._trace = []
             self._steering.reset()
-            self._state = SEARCHING
-            if self._current_marker(now) is not None and self._marker_confirmed_locked():
+            self._automatic = automatic
+            self._flight_confirmed = False
+            self._timeout_from = now
+            self._at_size_since = None
+            self._cy_log.clear()
+            self._ready_for_dose = False      # the drone is leaving its start spot
+            self._needs_pilot = False
+            self._state = COUNTDOWN if automatic else SEARCHING
+            self._phase_at = now
+            if not automatic and self._current_marker(now) is not None and self._marker_confirmed_locked():
                 self._seed_approach_locked()
             self._queue_event("run_started", {
                 "arrive_width": round(self._arrive_width, 4),
-                "land_on_arrival": self._land_on_arrival,
+                "land_on_arrival": self._lands_on_arrival_locked(),
                 "drift_assist": self._assist_run,
+                "automatic": automatic,
                 "mode": self._link.mode,
             })
-            logger.info("station run %s started (dose %s, state %s, drift assist %s)", self._run_id, dose_id,
-                        self._state, "on" if self._assist_run else "off")
+            logger.info("station run %s started (dose %s, state %s, %s, drift assist %s)", self._run_id, dose_id,
+                        self._state, "automatic" if automatic else "manual", "on" if self._assist_run else "off")
         self.flush()
         return True, []
+
+    def _take_off_locked(self, now: float) -> None:
+        """End of the countdown: neutral first (this also clears the mixer's "pilot input since the
+        last mission command" flag), then the one takeoff toggle."""
+        self._send(*self._steering.neutral(now), now)
+        if self._mixer.mission_toggle(now, landing=False):
+            self._state = TAKING_OFF
+            self._phase_at = now
+            logger.info("run %s: takeoff toggle sent", self._run_id)
+        else:
+            self._abort_locked("takeoff_refused", now)
+
+    def mark_ready_for_dose(self) -> Tuple[bool, List[str]]:
+        """A person says the drone is on its start spot, facing the sign. Scheduled automatic runs
+        only start while this is set."""
+        with self._lock:
+            if self._state in RUN_STATES or self._state == HOVER_TEST:
+                return False, ["already_running"]
+            self._ready_for_dose = True
+            self._needs_pilot = False
+        logger.info("drone marked ready for the next dose")
+        return True, []
+
+    def note_pilot_input(self) -> None:
+        """The pilot moved the sticks, toggled or pressed stop: the drone is not known to be on its
+        start spot any more, and somebody is flying it."""
+        with self._lock:
+            self._ready_for_dose = False
+            self._needs_pilot = False
+
+    @property
+    def ready_for_dose(self) -> bool:
+        with self._lock:
+            return self._ready_for_dose
+
+    def _lands_on_arrival_locked(self) -> bool:
+        """Automatic runs always land on arrival; manual runs follow the switch."""
+        return self._automatic or self._land_on_arrival
 
     def abort(self, reason: str = "pilot_took_over", now: Optional[float] = None) -> bool:
         """Stop whatever is running. Safe to call at any time. Returns True when something was stopped."""
@@ -412,9 +553,25 @@ class MissionRunner:
         self.flush()
         return value
 
+    def set_auto_fly(self, value: bool) -> bool:
+        """The automatic-flights switch (persisted, off by default): when on, a dose coming due starts
+        an automatic run. Switching it off does not stop a run in progress (Stop does)."""
+        with self._lock:
+            value = bool(value)
+            self._auto_fly = value
+            self._pending_io.append(lambda: self._store.save_auto_fly(value))
+        self.flush()
+        return value
+
+    @property
+    def auto_fly(self) -> bool:
+        with self._lock:
+            return self._auto_fly
+
     def settings(self) -> Dict[str, bool]:
         with self._lock:
-            return {"land_on_arrival": self._land_on_arrival, "drift_assist": self._drift_assist}
+            return {"land_on_arrival": self._land_on_arrival, "drift_assist": self._drift_assist,
+                    "auto_fly": self._auto_fly}
 
     @property
     def arrive_width(self) -> float:
@@ -451,6 +608,10 @@ class MissionRunner:
             return
         if obs is not None:
             self._last_frame_ts = obs.ts
+            if obs.marker is not None:
+                self._cy_log.append((obs.ts, obs.marker.cy))     # safe-landing evidence
+                while self._cy_log and obs.ts - self._cy_log[0][0] > 3.0:
+                    self._cy_log.popleft()
 
         if self._state == LANDING:
             self._send(0.0, 0.0, now)
@@ -461,7 +622,7 @@ class MissionRunner:
         # failsafes, checked on every step in every state before the toggle
         if self._mixer.estop_active:
             return self._abort_locked("estop", now)
-        if now - self._started_at > self.cfg.run_timeout_s:
+        if now - self._timeout_from > self.cfg.run_timeout_s:
             return self._abort_locked("timeout", now)
         if now - self._last_frame_ts > self.cfg.video_stale_s:
             return self._abort_locked("video_stale", now)
@@ -469,6 +630,29 @@ class MissionRunner:
             return self._abort_locked("person_in_view", now)
         if self._battery_low(now):
             return self._abort_locked("battery_low", now)
+
+        if self._state == COUNTDOWN:
+            # On the ground: nothing is sent until the countdown is over.
+            if now - self._phase_at >= self.cfg.countdown_s:
+                self._take_off_locked(now)
+            return
+
+        if self._state == TAKING_OFF:
+            # Neutral sticks while the drone climbs to its hover height by itself.
+            self._send(*self._steering.neutral(now), now)
+            if obs is not None:
+                self._record(now, obs.marker)
+            if now - self._phase_at >= self.cfg.takeoff_wait_s:
+                marker = self._current_marker(now)
+                if marker is not None and apparent_width(marker) >= self._arrive_width:
+                    # It took off from in front of the sign: the arrival could not be told from the
+                    # start, and flying on would only take it toward the wall.
+                    return self._abort_locked("already_at_station", now)
+                self._state = SEARCHING
+                self._search_started = now
+                self._timeout_from = now
+                logger.info("run %s: takeoff wait over, searching", self._run_id)
+            return
 
         if obs is None:
             if now - self._last_frame_ts > self.cfg.frame_gap_hold_s:
@@ -525,8 +709,22 @@ class MissionRunner:
         while self._history and obs.ts - self._history[0].ts > 2.0:
             self._history.popleft()
 
-        self._arrive_count = self._arrive_count + 1 if apparent >= self._arrive_width else 0
+        at_size = apparent >= self._arrive_width
+        centred = abs(marker.cx - 0.5) <= cfg.arrive_centre_tol
+        facing = cfg.arrive_min_aspect <= 0 or aspect >= cfg.arrive_min_aspect
+        self._arrive_count = self._arrive_count + 1 if (at_size and centred and facing) else 0
         grown = marker.size >= self._first_width * cfg.growth_ratio
+        if grown and not self._flight_confirmed:
+            self._flight_confirmed = True     # only a drone in the air can fly toward the sign
+            logger.info("run %s: flight confirmed (marker grew %.2fx)", self._run_id,
+                        marker.size / max(1e-9, self._first_width))
+        # Stall timer: at the arrive distance (after growing) but not arriving, for example centred
+        # but seen from the side. A little hysteresis so noise at the threshold does not restart it.
+        if at_size and grown:
+            if self._at_size_since is None:
+                self._at_size_since = now
+        elif apparent < self._arrive_width * 0.9:
+            self._at_size_since = None
         if self._arrive_count >= cfg.arrive_consecutive and grown:
             self._state = ARRIVED
             self._phase_at = now
@@ -543,14 +741,22 @@ class MissionRunner:
         if cfg.off_axis_aspect > 0 and self._off_axis_count >= cfg.off_axis_consecutive:
             self._abort_locked("off_axis", now)
             return
-        yaw, pitch = self._steering.update(list(self._history), now, self._arrive_width)
+        if self._at_size_since is not None and now - self._at_size_since > cfg.arrive_stall_s:
+            # Close enough, but not centred in front of the station: do not land there as arrived.
+            self._abort_locked("not_lined_up", now, {
+                "aspect": round(aspect, 3), "cx": round(marker.cx, 4), "apparent_width": round(apparent, 4),
+            })
+            return
+        # At (a little past) the arrive distance: yaw only, so it lines up without creeping on to the wall.
+        hold = grown and apparent >= self._arrive_width * 1.05
+        yaw, pitch = self._steering.update(list(self._history), now, self._arrive_width, no_forward=hold)
         self._send(yaw, pitch, now, self._assist_roll_locked(marker, obs.ts, aspect, pitch, now))
 
     def _assist_roll_locked(self, marker: MarkerObs, ts: float, aspect: float, pitch: float,
                             now: float) -> float:
         """Drift-assist roll for this approach step: 0 unless the switch was on at the start of the
         run, is still on, and the assist has not switched itself off."""
-        if not (self._assist_run and self._drift_assist):
+        if not (self._assist_run and (self._drift_assist or self._automatic)):
             return 0.0
         was_disabled = self._assist.disabled_reason is not None
         previous_ts, self._assist_ts = self._assist_ts, ts
@@ -568,7 +774,7 @@ class MissionRunner:
         cfg = self.cfg
         self._send(*self._steering.neutral(now), now)
         # The guard protects the landing toggle only: with land on arrival off it neither holds nor aborts.
-        guard = cfg.settle_descent_frac > 0 and self._land_on_arrival
+        guard = cfg.settle_descent_frac > 0 and self._lands_on_arrival_locked()
         if marker is not None:
             self._marker_seen_at = obs.ts
             if guard and now - self._phase_at >= cfg.settle_reference_after_s:
@@ -609,7 +815,7 @@ class MissionRunner:
                            "not landing, the pilot lands", self._run_id, now - self._phase_at)
             skipped = "settle_guard_undecided"
             self._last_landing = "skipped_settle_guard_undecided"
-        elif not self._land_on_arrival:
+        elif not self._lands_on_arrival_locked():
             self._last_landing = "off"
         else:
             # The toggle goes first, so the arrival event says whether it actually went out.
@@ -667,7 +873,10 @@ class MissionRunner:
         return detail
 
     def _abort_locked(self, reason: str, now: float, extra: Optional[Dict[str, Any]] = None) -> None:
-        """`extra` goes into the run_aborted event detail and the run trace (e.g. settle_descent)."""
+        """`extra` goes into the run_aborted event detail and the run trace (e.g. settle_descent).
+
+        Automatic runs may land where they are (see SAFE_LANDING_REASONS and _airborne_now_locked)."""
+        flew = self._state != COUNTDOWN     # an automatic run sends its takeoff toggle at countdown's end
         self._state = ABORTED
         self._reason = reason
         self._ended_at = now
@@ -675,16 +884,45 @@ class MissionRunner:
         self._roll = 0.0
         self._steering.reset()
         self._assist.pause()
-        self._mixer.clear_mission_command()   # neutral (plus trim); never the toggle
+        safe_landing = False
+        took_off = self._automatic and flew
+        if took_off and reason in SAFE_LANDING_REASONS and self._airborne_now_locked(now):
+            # Nobody may be there to land it: land where it is. The mixer still refuses this toggle
+            # after any pilot input since the runner's last mission command (see mission_toggle).
+            safe_landing = self._mixer.mission_toggle(now, landing=True)
+            if safe_landing:
+                self._last_landing = "safe_landing"
+                logger.warning("run %s: stopped early (%s); landing where it is", self._run_id, reason)
+        self._mixer.clear_mission_command()   # neutral (plus trim)
+        # The drone may be in the air with nobody flying it: say so loudly until someone acts.
+        self._needs_pilot = took_off and not safe_landing and reason not in ("estop", "pilot_took_over")
         self._queue_event("run_aborted", {
             "reason": reason,
             "elapsed_s": round(now - self._started_at, 2),
             "mode": self._link.mode,
+            **({"automatic": True, "safe_landing": safe_landing} if self._automatic else {}),
             **self._assist_detail_locked(),
             **(extra or {}),
         })
         self._queue_trace("aborted", reason, now, extra)
         logger.warning("run %s aborted: %s", self._run_id, reason)
+
+    def _airborne_now_locked(self, now: float) -> bool:
+        """Current evidence that the drone is in the air, needed before a safe-landing toggle (a toggle
+        to a drone that already landed by itself would launch it): the flight was confirmed (the
+        marker grew: only a flying drone moves toward the sign), the marker is in view right now, and
+        it is not rising in the picture (a sinking camera sees it move up) compared with the
+        detections between 2.0 and 0.5 s ago."""
+        if not self._flight_confirmed or not self._cy_log:
+            return False
+        latest_ts, latest_cy = self._cy_log[-1]
+        if now - latest_ts > self.cfg.safe_land_marker_fresh_s:
+            return False
+        reference = [cy for ts, cy in self._cy_log if 0.5 <= latest_ts - ts <= 2.0]
+        if len(reference) < 3:
+            return False
+        rise = statistics.median(reference) - latest_cy
+        return rise <= self.cfg.settle_descent_frac
 
     def _finish_done_locked(self, now: float) -> None:
         self._state = DONE
@@ -737,7 +975,8 @@ class MissionRunner:
             "result": result,
             "reason": reason,
             "arrive_width": self._arrive_width,
-            "land_on_arrival": self._land_on_arrival,
+            "land_on_arrival": self._lands_on_arrival_locked(),
+            "automatic": self._automatic,
             "toggle_sent": self._toggle_sent,
             "first_marker_width": self._first_width,
             "drift_assist": {
@@ -852,6 +1091,8 @@ class MissionRunner:
         now = self._clock() if now is None else now
         with self._lock:
             blockers = self._blockers_locked(now)
+            auto_blockers = self._blockers_locked(now, automatic=True)
+            marker = self._current_marker(now)
             if self._state in RUN_STATES or self._state == HOVER_TEST:
                 elapsed = now - self._started_at
             elif self._ended_at is not None and self._state in (DONE, ABORTED):
@@ -870,7 +1111,7 @@ class MissionRunner:
                 "last_landing": self._last_landing,
                 "drift_assist": {
                     "enabled": self._drift_assist,
-                    "active": (self._state == APPROACHING and self._assist_run and self._drift_assist
+                    "active": (self._state == APPROACHING and self._assist_run and (self._drift_assist or self._automatic)
                                and self._assist.active),
                     "roll": round(self._roll, 4),
                     "disabled_reason": self._assist.disabled_reason if self._assist_run else None,
@@ -878,7 +1119,27 @@ class MissionRunner:
                 },
                 "can_start": not blockers,
                 "blockers": blockers,
+                "automatic": self._automatic,
+                "auto_fly": self._auto_fly,
+                "auto_blockers": auto_blockers,
+                "can_start_auto": not auto_blockers,
+                "countdown_remaining_s": (round(max(0.0, self.cfg.countdown_s - (now - self._phase_at)), 1)
+                                          if self._state == COUNTDOWN else None),
+                "distance_m": None if marker is None else _round_or_none(self._distance_m(apparent_width(marker))),
+                "arrive_distance_m": _round_or_none(self._distance_m(self._arrive_width)),
+                "flight_confirmed": self._flight_confirmed,
+                "needs_pilot": self._needs_pilot,
+                "ready_for_dose": self._ready_for_dose,
             }
+
+    def _distance_m(self, apparent: float) -> Optional[float]:
+        """Estimated metres from the sign for a marker of this apparent width (fraction of the frame
+        width). Uses the configured camera field of view: right for the simulator, an estimate for
+        the real drone, whose lens is unmeasured."""
+        if apparent <= 0:
+            return None
+        half = math.radians(self._settings.camera_hfov_deg) / 2.0
+        return self._settings.marker_size_m / (2.0 * math.tan(half) * apparent)
 
     def hover_snapshot(self, now: Optional[float] = None) -> Optional[Dict[str, Any]]:
         now = self._clock() if now is None else now

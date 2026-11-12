@@ -15,14 +15,14 @@ import threading
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
-from medhop.care.status import CareMonitor, care_snapshot
+from medhop.care.status import CareMonitor, care_snapshot, dose_time_today
 from medhop.care.store import CareStore, time_local
 from medhop.config import FRONTEND_ORIGINS, Settings
 from medhop.drone.base import DroneLink
@@ -34,6 +34,7 @@ from medhop.vision.worker import VisionWorker
 
 logger = logging.getLogger("medhop.server")
 
+AUTO_FLY_FRESH_S = 90.0        # automatic flights only start this soon after the dose time
 STATUS_PUSH_S = 0.2            # /ws/status pushes 5 times a second
 PILOT_BUSY_CLOSE_CODE = 4001
 PERSON_FRESH_S = 2.0
@@ -146,9 +147,48 @@ class MedHopCore:
     def _housekeeping_loop(self) -> None:
         while not self.stopping.wait(1.0):
             try:
-                self.care_monitor.tick(self.now_local())
+                now = self.now_local()
+                written = self.care_monitor.tick(now)
+                self._auto_fly_for_due(written, now)
             except Exception:
                 logger.exception("care monitor failed")
+
+    def _auto_fly_for_due(self, written: List[Dict[str, Any]], now: datetime) -> None:
+        """Automatic flights: a dose that has just come due starts an automatic station run.
+
+        CareMonitor writes `reminder_due` once per dose per day, so this fires at most once per dose
+        per day, also across restarts. It only fires within AUTO_FLY_FRESH_S of the dose time (a dose
+        added or edited for a time already past, or a backend started late, must not launch the drone
+        while someone is at the keyboard), only when a person has marked the drone ready on its start
+        spot, and not for a dose that already has an arrival logged. Otherwise it logs why it did not.
+        """
+        if not self.runner.auto_fly:
+            return
+        for event in written:
+            if event.get("type") != "reminder_due" or not event.get("dose_id"):
+                continue
+            dose_id = event["dose_id"]
+            dose = self.store.get_dose(dose_id)
+            if dose is None:
+                continue
+            reasons: List[str] = []
+            late_s = (now - dose_time_today(dose, now)).total_seconds()
+            if late_s > AUTO_FLY_FRESH_S:
+                reasons.append("stale_due")
+            status = next((d for d in care_snapshot(self.store, now, self.settings.grace_min)["doses"]
+                           if d["id"] == dose_id), None)
+            if status is not None and status.get("arrived_at"):
+                reasons.append("already_arrived")
+            if not self.runner.ready_for_dose:
+                reasons.append("not_ready")
+            if not reasons:
+                started, blockers = self.runner.start(False, dose_id, automatic=True)
+                if started:
+                    logger.info("dose %s is due: automatic station run started", dose_id)
+                    continue
+                reasons = blockers
+            logger.warning("dose %s is due but the automatic run did not start: %s", dose_id, reasons)
+            self.store.add_event("auto_run_skipped", dose_id=dose_id, detail={"blockers": reasons})
 
     def now_local(self) -> datetime:
         return datetime.fromtimestamp(self._wall_clock())
@@ -158,6 +198,7 @@ class MedHopCore:
     # ------------------------------------------------------------------ #
     def _on_pilot_input(self, kind: str) -> None:
         self.runner.abort("estop" if kind == "estop" else "pilot_took_over")
+        self.runner.note_pilot_input()   # not known to be on its start spot any more
 
     def claim_pilot(self) -> bool:
         with self._pilot_lock:
@@ -303,11 +344,13 @@ class TrimBody(BaseModel):
 class MissionStartBody(BaseModel):
     confirm_airborne: bool = False
     dose_id: Optional[str] = None
+    automatic: bool = False    # the drone is on the ground: the run takes off by itself
 
 
 class MissionSettingsBody(BaseModel):
     land_on_arrival: Optional[bool] = None
     drift_assist: Optional[bool] = None
+    auto_fly: Optional[bool] = None
 
 
 class DoseBody(BaseModel):
@@ -397,6 +440,8 @@ def create_app(settings: Optional[Settings] = None, core: Optional[MedHopCore] =
         except (WebSocketDisconnect, RuntimeError):
             pass
         finally:
+            # Synchronous on purpose: an await here can be cancelled with the socket task, and this
+            # must always run. (An automatic run may answer with its landing toggle: one queued send.)
             core.release_pilot()   # zeroes the pilot axes at once
             logger.info("pilot disconnected; pilot axes zeroed")
 
@@ -447,7 +492,7 @@ def create_app(settings: Optional[Settings] = None, core: Optional[MedHopCore] =
     def mission_start(body: MissionStartBody):
         if body.dose_id is not None and core.store.get_dose(body.dose_id) is None:
             return _error(404, f"unknown dose {body.dose_id!r}")
-        started, blockers = core.runner.start(body.confirm_airborne, body.dose_id)
+        started, blockers = core.runner.start(body.confirm_airborne, body.dose_id, automatic=body.automatic)
         if not started:
             return JSONResponse(status_code=409, content={"blockers": blockers})
         snapshot = core.runner.snapshot()
@@ -468,13 +513,22 @@ def create_app(settings: Optional[Settings] = None, core: Optional[MedHopCore] =
 
     @app.put("/api/mission/settings")
     def mission_settings(body: MissionSettingsBody):
-        if body.land_on_arrival is None and body.drift_assist is None:
-            return _error(422, "give land_on_arrival, drift_assist or both")
+        if body.land_on_arrival is None and body.drift_assist is None and body.auto_fly is None:
+            return _error(422, "give land_on_arrival, drift_assist or auto_fly")
+        if body.auto_fly is not None:
+            core.runner.set_auto_fly(body.auto_fly)
         if body.land_on_arrival is not None:
             core.runner.set_land_on_arrival(body.land_on_arrival)
         if body.drift_assist is not None:
             core.runner.set_drift_assist(body.drift_assist)
         return core.runner.settings()
+
+    @app.post("/api/mission/ready")
+    def mission_ready():
+        ok, blockers = core.runner.mark_ready_for_dose()
+        if not ok:
+            return JSONResponse(status_code=409, content={"blockers": blockers})
+        return {"ok": True, "ready_for_dose": True}
 
     @app.post("/api/hover-test/start")
     def hover_start():

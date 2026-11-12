@@ -8,7 +8,7 @@ import { CommandBar } from "../components/pilot/CommandBar";
 import { EstopBanner } from "../components/pilot/EstopBanner";
 import { AxisIndicators, KeyLegend, StickPad } from "../components/pilot/ManualControls";
 import { Checklist } from "../components/pilot/Checklist";
-import { RunSteps } from "../components/pilot/RunSteps";
+import { StationRun } from "../components/pilot/StationRun";
 import { AdvancedPanel } from "../components/pilot/AdvancedPanel";
 import { IconChevron, IconSign } from "../components/pilot/PilotIcons";
 import { releaseOnLinkChange } from "../control/release";
@@ -24,7 +24,7 @@ import {
   type PendingCommand,
 } from "../logic/pilot";
 
-const RUN_OR_HOVER = new Set(["searching", "approaching", "arrived", "landing", "hover_test"]);
+const RUN_OR_HOVER = new Set(["countdown", "taking_off", "searching", "approaching", "arrived", "landing", "hover_test"]);
 const NOT_CONNECTED = "Backend not reachable: controls are not connected.";
 
 export function PilotPage() {
@@ -252,7 +252,7 @@ export function PilotPage() {
       <div className="pilot-grid">
         <section className="panel pilot-run" aria-labelledby="h-run">
           {status ? (
-            <RunSteps
+            <StationRun
               status={status}
               controlOpen={controlOpen}
               hold={hold}

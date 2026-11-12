@@ -1,9 +1,23 @@
 import { describe, expect, it } from "vitest";
-import type { Status } from "../api/types";
+import type { MissionStatus, Status } from "../api/types";
 import {
   ACK_TEXT,
+  AUTO_BACKEND_REFUSES,
+  AUTO_CONTROL_LINK_BLOCKER,
+  AUTO_STAGES,
   ESTOP_CONFIRM_MS,
+  NEEDS_PILOT_TEXT,
+  autoBlockerTexts,
+  autoDistanceLine,
+  autoReadyView,
+  autoResultView,
+  autoStageIndex,
+  autoSupported,
+  countdownText,
   doneMessage,
+  formatMetres,
+  landingExplainerText,
+  parseRunMode,
   droneLinkView,
   estopBanner,
   routeReply,
@@ -248,5 +262,201 @@ describe("end-of-run message from mission.last_landing (SPEC 10.2)", () => {
     expect(doneMessage(null)).toBe(unknown);
     expect(doneMessage(undefined)).toBe(unknown);
     expect(doneMessage("something_new")).toBe(unknown);
+  });
+});
+
+// ---------------------------------------------------------------- automatic station run
+
+function mission(over: Partial<MissionStatus> = {}): MissionStatus {
+  return {
+    state: "idle",
+    reason: null,
+    run_id: null,
+    dose_id: null,
+    elapsed_s: 0,
+    command: { yaw: 0, pitch: 0 },
+    arrive_width: 0.16,
+    land_on_arrival: true,
+    can_start: true,
+    blockers: [],
+    automatic: false,
+    auto_fly: false,
+    auto_blockers: [],
+    can_start_auto: true,
+    distance_m: null,
+    arrive_distance_m: 0.8,
+    flight_confirmed: false,
+    ...over,
+  };
+}
+
+describe("automatic run: stages", () => {
+  it("has the five stages in order", () => {
+    expect([...AUTO_STAGES]).toEqual(["Take off", "Find the sign", "Fly to the sign", "Land", "At the station"]);
+  });
+  it("maps mission states to a stage", () => {
+    expect(autoStageIndex("countdown")).toBe(0);
+    expect(autoStageIndex("taking_off")).toBe(0);
+    expect(autoStageIndex("searching")).toBe(1);
+    expect(autoStageIndex("approaching")).toBe(2);
+    expect(autoStageIndex("arrived")).toBe(3);
+    expect(autoStageIndex("landing")).toBe(3);
+    expect(autoStageIndex("done")).toBe(4);
+    for (const s of ["idle", "aborted", "hover_test", "brand_new"]) expect(autoStageIndex(s)).toBe(-1);
+  });
+  it("counts down in whole seconds, rounded up, only during the countdown", () => {
+    expect(countdownText("countdown", 4.2)).toBe("Taking off in 5");
+    expect(countdownText("countdown", 1)).toBe("Taking off in 1");
+    expect(countdownText("countdown", 0.01)).toBe("Taking off in 1");
+    expect(countdownText("countdown", -0.3)).toBe("Taking off in 0");
+    expect(countdownText("countdown", null)).toBe("Taking off in a few seconds");
+    expect(countdownText("countdown", undefined)).toBe("Taking off in a few seconds");
+    expect(countdownText("taking_off", 3)).toBeNull();
+  });
+});
+
+describe("automatic run: distance line", () => {
+  it("rounds to 0.1 m", () => {
+    expect(formatMetres(1.94)).toBe("1.9");
+    expect(formatMetres(0.75)).toBe("0.8");
+    expect(formatMetres(null)).toBeNull();
+    expect(formatMetres(Number.NaN)).toBeNull();
+    expect(formatMetres(-1)).toBeNull();
+  });
+  it("shows the distance and the landing distance", () => {
+    expect(autoDistanceLine(1.92, 0.8)).toBe("Sign about 1.9 m away. It lands at about 0.8 m.");
+  });
+  it("leaves out the first half while the sign is not in view", () => {
+    expect(autoDistanceLine(null, 0.8)).toBe("It lands at about 0.8 m.");
+  });
+  it("shows nothing from an older backend", () => {
+    expect(autoDistanceLine(undefined, undefined)).toBeNull();
+  });
+});
+
+describe("automatic run: blockers", () => {
+  it("an older backend without the automatic fields is not supported", () => {
+    const old = mission();
+    delete old.auto_blockers;
+    delete old.can_start_auto;
+    expect(autoSupported(old)).toBe(false);
+    expect(autoSupported(mission())).toBe(true);
+  });
+  it("maps blocker codes to sentences, including drone_flying and recent_toggle", () => {
+    expect(autoBlockerTexts(mission({ auto_blockers: ["drone_flying"], can_start_auto: false }), true)).toEqual([
+      "The drone is already in the air. Land it first, or use Step by step.",
+    ]);
+    expect(autoBlockerTexts(mission({ auto_blockers: ["recent_toggle"], can_start_auto: false }), true)).toEqual([
+      "Takeoff or landing was pressed a moment ago. Wait a few seconds.",
+    ]);
+    expect(autoBlockerTexts(mission({ auto_blockers: ["no_video"], can_start_auto: false }), true)).toEqual([
+      "There is no live video from the drone.",
+    ]);
+  });
+  it("never needs the airborne confirmation", () => {
+    expect(autoBlockerTexts(mission({ blockers: ["confirm_airborne_required"] }), true)).toEqual([]);
+  });
+  it("adds the control link and a generic line when the backend refuses without a reason", () => {
+    expect(autoBlockerTexts(mission({ can_start_auto: false }), false)).toEqual([
+      AUTO_BACKEND_REFUSES,
+      AUTO_CONTROL_LINK_BLOCKER,
+    ]);
+  });
+  it("shows no blockers while a run is in progress", () => {
+    expect(autoBlockerTexts(mission({ state: "searching", auto_blockers: ["already_running"], can_start_auto: false }), true)).toEqual([]);
+  });
+});
+
+describe("automatic run: result card", () => {
+  it("only for an automatic run that ended", () => {
+    expect(autoResultView(mission({ state: "done", automatic: false, last_landing: "sent" }))).toBeNull();
+    expect(autoResultView(mission({ state: "done", automatic: undefined, last_landing: "sent" }))).toBeNull();
+    expect(autoResultView(mission({ state: "searching", automatic: true }))).toBeNull();
+  });
+  it("done with the landing sent", () => {
+    expect(autoResultView(mission({ state: "done", automatic: true, last_landing: "sent", arrive_distance_m: 0.83 }))).toEqual({
+      tone: "pass",
+      text: "At the station, about 0.8 m in front of the sign. The land command was sent: check that it has landed.",
+    });
+    expect(autoResultView(mission({ state: "done", automatic: true, last_landing: "sent", arrive_distance_m: undefined }))).toEqual({
+      tone: "pass",
+      text: "At the station, in front of the sign. The land command was sent: check that it has landed.",
+    });
+  });
+  it("done without the landing sent falls back to the land-by-hand message", () => {
+    expect(autoResultView(mission({ state: "done", automatic: true, last_landing: "refused_by_mixer" }))).toEqual({
+      tone: "warn",
+      text: doneMessage("refused_by_mixer"),
+    });
+  });
+  it("stopped early with a safe landing", () => {
+    expect(autoResultView(mission({ state: "aborted", automatic: true, reason: "marker_lost", last_landing: "safe_landing" }))).toEqual({
+      tone: "warn",
+      text: "Stopped early: the station sign was lost from view during the approach and could not be found again. The land command was sent where it was: check that it has landed.",
+    });
+  });
+  it("a safe landing drops the reason's land-by-hand advice", () => {
+    const text = autoResultView(mission({ state: "aborted", automatic: true, reason: "pilot_link_lost", last_landing: "safe_landing" }))?.text ?? "";
+    expect(text.startsWith("Stopped early: ")).toBe(true);
+    expect(text).not.toMatch(/land by hand/i);
+    expect(text).toMatch(/The land command was sent where it was/);
+  });
+  it("stopped early without a landing", () => {
+    expect(autoResultView(mission({ state: "aborted", automatic: true, reason: "takeoff_refused", last_landing: null }))?.text).toBe(
+      "Stopped early: the takeoff command was not accepted. If it is still in the air, land it with T or the emergency stop.",
+    );
+    expect(autoResultView(mission({ state: "aborted", automatic: true, reason: "not_lined_up" }))?.text).toBe(
+      "Stopped early: it got close to the sign but could not line up in front of it. If it is still in the air, land it with T or the emergency stop.",
+    );
+    expect(autoResultView(mission({ state: "aborted", automatic: true, reason: "already_at_station" }))?.text).toBe(
+      "Stopped early: it was already at the sign after takeoff. Put it back on its start spot. If it is still in the air, land it with T or the emergency stop.",
+    );
+    expect(autoResultView(mission({ state: "aborted", automatic: true, reason: "brand_new" }))?.text).toContain("(code: brand_new)");
+  });
+});
+
+describe("automatic run: ready for the next dose", () => {
+  it("only while automatic flights are on and the backend reports readiness", () => {
+    expect(autoReadyView(mission({ auto_fly: false, ready_for_dose: false }))).toBeNull();
+    expect(autoReadyView(mission({ auto_fly: true }))).toBeNull();
+    expect(autoReadyView(mission({ auto_fly: true, ready_for_dose: false }))).toEqual({
+      ready: false,
+      text: "Before the next dose: put the drone on its start spot facing the sign, then press",
+    });
+    expect(autoReadyView(mission({ auto_fly: true, ready_for_dose: true }))).toEqual({
+      ready: true,
+      text: "Ready. It will take off by itself when the next dose is due.",
+    });
+  });
+});
+
+describe("automatic run: wording", () => {
+  it("uses the backend's landing distance in the explainer", () => {
+    expect(landingExplainerText(0.94)).toContain("about 0.9 m in front of the sign");
+    expect(landingExplainerText(undefined)).toContain("about 0.8 m in front of the sign");
+  });
+  it("remembers the run mode, Automatic by default", () => {
+    expect(parseRunMode("steps")).toBe("steps");
+    expect(parseRunMode("auto")).toBe("auto");
+    expect(parseRunMode(null)).toBe("auto");
+    expect(parseRunMode("garbage")).toBe("auto");
+  });
+  it("never says delivered, never claims motors are cut, no em or en dashes", () => {
+    const all = [
+      ...AUTO_STAGES,
+      NEEDS_PILOT_TEXT,
+      AUTO_BACKEND_REFUSES,
+      AUTO_CONTROL_LINK_BLOCKER,
+      landingExplainerText(0.8),
+      autoDistanceLine(1.9, 0.8) ?? "",
+      autoReadyView(mission({ auto_fly: true, ready_for_dose: true }))?.text ?? "",
+      autoReadyView(mission({ auto_fly: true, ready_for_dose: false }))?.text ?? "",
+      autoResultView(mission({ state: "done", automatic: true, last_landing: "sent" }))?.text ?? "",
+      autoResultView(mission({ state: "aborted", automatic: true, reason: "timeout", last_landing: "safe_landing" }))?.text ?? "",
+      autoResultView(mission({ state: "aborted", automatic: true, reason: "timeout" }))?.text ?? "",
+    ].join(" ");
+    expect(all.toLowerCase()).not.toContain("deliver");
+    expect(all.toLowerCase()).not.toMatch(/motors? (are|is) cut/);
+    expect(all).not.toMatch(/[\u2013\u2014]/);
   });
 });

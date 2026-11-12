@@ -14,6 +14,8 @@ export const BLOCKER_TEXT: Record<BlockerCode, string> = {
   confirm_airborne_required: "Confirm that the drone is hovering before starting. The run never takes off by itself.",
   marker_not_visible: "The station sign must be in view of the camera.",
   no_pilot_link: "Open the Pilot page and keep it open: a run needs a pilot connected.",
+  drone_flying: "The drone is already in the air. Land it first, or use Step by step.",
+  recent_toggle: "Takeoff or landing was pressed a moment ago. Wait a few seconds.",
 };
 
 export const ABORT_TEXT: Record<AbortReason, string> = {
@@ -29,10 +31,15 @@ export const ABORT_TEXT: Record<AbortReason, string> = {
   pilot_link_lost: "The Pilot page lost its control link, so the run was stopped. Reopen the Pilot page and land by hand.",
   unexpected_descent:
     "The drone looked like it was already coming down, so the run stopped without sending the landing command. Land by hand.",
+  takeoff_refused: "The takeoff command was not accepted.",
+  not_lined_up: "It got close to the sign but could not line up in front of it.",
+  already_at_station: "It was already at the sign after takeoff. Put it back on its start spot.",
 };
 
 export const MISSION_STATE_TEXT: Record<MissionState, string> = {
   idle: "Idle",
+  countdown: "Counting down to takeoff",
+  taking_off: "Taking off",
   searching: "Searching: turning slowly to find the station sign",
   approaching: "Approaching the station sign",
   arrived: "Arrived at station, holding still",
@@ -50,6 +57,7 @@ export const EVENT_TEXT: Record<EventType, string> = {
   pickup_acknowledged: "Pickup acknowledged (self-reported)",
   needs_attention: "Needs attention: not acknowledged in time",
   hover_test: "Hover test",
+  auto_run_skipped: "Automatic flight skipped",
 };
 
 export const DOSE_STATUS_TEXT: Record<DoseStatus, string> = {

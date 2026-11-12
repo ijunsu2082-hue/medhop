@@ -34,6 +34,9 @@ class Settings:
     telemetry_fresh_s: float = 3.0     # telemetry older than this is treated as absent for decisions
     hover_max_excursion_m: float = 0.5  # hover test passes when the peak sideways excursion is <= this
     grace_min: int = 15
+    # Horizontal field of view of the drone camera. Only used to turn marker size into an estimated
+    # distance for display. 70 matches the simulator; the real drone's lens is unmeasured.
+    camera_hfov_deg: float = 70.0
     host: str = "127.0.0.1"
     port: int = BACKEND_PORT
 
@@ -59,6 +62,8 @@ class Settings:
             raise ValueError("MEDHOP_GRACE_MIN must be >= 0")
         if not 0.05 <= self.hover_max_excursion_m <= 5.0:
             raise ValueError("MEDHOP_HOVER_MAX_EXCURSION_M must be between 0.05 and 5.0")
+        if not 30.0 <= self.camera_hfov_deg <= 150.0:
+            raise ValueError("MEDHOP_CAMERA_HFOV_DEG must be between 30 and 150")
 
     @property
     def battery_check_enabled(self) -> bool:
@@ -89,6 +94,7 @@ class Settings:
             ("MEDHOP_BATTERY_LOW_RAW", "battery_low_raw", int),
             ("MEDHOP_HOVER_MAX_EXCURSION_M", "hover_max_excursion_m", float),
             ("MEDHOP_GRACE_MIN", "grace_min", int),
+            ("MEDHOP_CAMERA_HFOV_DEG", "camera_hfov_deg", float),
             ("MEDHOP_HOST", "host", str),
         ):
             raw = get(name)

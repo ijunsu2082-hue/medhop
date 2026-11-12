@@ -63,6 +63,8 @@ export interface VisionStatus {
 
 export type MissionState =
   | "idle"
+  | "countdown"
+  | "taking_off"
   | "searching"
   | "approaching"
   | "arrived"
@@ -80,7 +82,9 @@ export type BlockerCode =
   | "marker_too_close"
   | "confirm_airborne_required"
   | "marker_not_visible"
-  | "no_pilot_link";
+  | "no_pilot_link"
+  | "drone_flying"
+  | "recent_toggle";
 
 export type AbortReason =
   | "marker_not_found"
@@ -93,7 +97,10 @@ export type AbortReason =
   | "battery_low"
   | "estop"
   | "pilot_link_lost"
-  | "unexpected_descent";
+  | "unexpected_descent"
+  | "takeoff_refused"
+  | "not_lined_up"
+  | "already_at_station";
 
 /** Experimental drift assist (SPEC section 6, Revision 2). Roll values are stick fractions. */
 export interface DriftAssist {
@@ -119,7 +126,27 @@ export interface MissionStatus {
   can_start: boolean;
   blockers: (BlockerCode | string)[];
   /** How the last run ended its arrival (SPEC 10.2). null before the run arrives; missing from an older backend. */
-  last_landing?: "sent" | "skipped_settle_guard_undecided" | "refused_by_mixer" | "off" | null;
+  last_landing?: "sent" | "skipped_settle_guard_undecided" | "refused_by_mixer" | "off" | "safe_landing" | null;
+  // Automatic mode. Optional: an older backend does not send these, and then the Automatic view says so.
+  /** the current or last run was automatic */
+  automatic?: boolean;
+  /** persisted switch: start an automatic run when a dose comes due */
+  auto_fly?: boolean;
+  /** blockers for an automatic start (no confirm needed); may include drone_flying */
+  auto_blockers?: (BlockerCode | string)[];
+  can_start_auto?: boolean;
+  /** ESTIMATED metres to the sign now; null when it is not in view */
+  distance_m?: number | null;
+  /** ESTIMATED metres from the sign where a run lands */
+  arrive_distance_m?: number;
+  /** the sign grew enough in this run to show the drone flew toward it */
+  flight_confirmed?: boolean;
+  /** seconds left on the ground before an automatic takeoff; null outside the countdown */
+  countdown_remaining_s?: number | null;
+  /** an automatic run stopped early without landing: the drone may still be in the air */
+  needs_pilot?: boolean;
+  /** the pilot marked the drone ready on its start spot; scheduled automatic flights need it */
+  ready_for_dose?: boolean;
 }
 
 export interface HoverTestResult {
@@ -193,13 +220,16 @@ export interface ScheduleDoseInput {
 }
 
 export interface MissionStartBody {
-  confirm_airborne: true;
+  /** manual runs only; an automatic run does not need it */
+  confirm_airborne?: true;
   dose_id: string | null;
+  automatic?: boolean;
 }
 
 export interface MissionSettingsBody {
   land_on_arrival?: boolean;
   drift_assist?: boolean;
+  auto_fly?: boolean;
 }
 
 export interface BlockersResponse {
@@ -213,7 +243,8 @@ export type EventType =
   | "run_aborted"
   | "pickup_acknowledged"
   | "needs_attention"
-  | "hover_test";
+  | "hover_test"
+  | "auto_run_skipped";
 
 export interface CareEvent {
   ts: number;

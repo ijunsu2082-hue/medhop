@@ -291,8 +291,8 @@ class SuccessTests(RunnerTestCase):
         self.assert_aborted("timeout")
 
     def test_side_view_arrives_on_apparent_width(self):
-        side = marker(width=0.12, aspect=0.75)                 # 0.16 tall
-        self.assertAlmostEqual(apparent_width(side), 0.16 / 0.75)
+        side = marker(width=0.14, aspect=0.85)                 # 0.165 tall, about 32 degrees off
+        self.assertAlmostEqual(apparent_width(side), 0.14 / 0.85 / 0.85)
         self.assertAlmostEqual(apparent_width(marker(width=0.12)), 0.12)
         self.start()
         self.approach(stop=0.10)
@@ -680,7 +680,7 @@ class AbortTests(RunnerTestCase):
     def test_every_abort_reason_is_covered_here(self):
         covered = {"marker_not_found", "marker_lost", "video_stale", "timeout", "pilot_took_over",
                    "person_in_view", "battery_low", "estop", "off_axis", "pilot_link_lost",
-                   "unexpected_descent"}
+                   "unexpected_descent", "takeoff_refused", "not_lined_up", "already_at_station"}
         self.assertEqual(set(ABORT_REASONS), covered)
 
     def test_pilot_input_during_landing_just_ends_the_run(self):
@@ -916,7 +916,8 @@ class DriftAssistRunnerTests(RunnerTestCase):
         self.assertEqual(assist, {"enabled": False, "active": False, "roll": 0.0, "disabled_reason": None,
                                   "suggested_trim_roll": None})
         self.assertEqual(set(assist), ASSIST_KEYS)
-        self.assertEqual(self.runner.settings(), {"land_on_arrival": False, "drift_assist": False})
+        self.assertEqual(self.runner.settings(), {"land_on_arrival": False, "drift_assist": False,
+                                                  "auto_fly": False})
 
     def test_switch_is_persisted_in_the_data_directory(self):
         self.assertIs(self.runner.set_drift_assist(True), True)

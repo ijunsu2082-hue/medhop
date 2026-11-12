@@ -5,7 +5,7 @@ Files (all local, demo data only):
   events.jsonl       one JSON object per line: {"ts", "type", "dose_id", "run_id", "detail"}
   trim.json          {"roll", "pitch"}
   calibration.json   {"arrive_width"}
-  mission.json       {"drift_assist", "land_on_arrival"}
+  mission.json       {"drift_assist", "land_on_arrival", "auto_fly"}
   runs/<run_id>.json per-run trace written by the mission runner
 """
 from __future__ import annotations
@@ -30,6 +30,7 @@ EVENT_TYPES = (
     "pickup_acknowledged",
     "needs_attention",
     "hover_test",
+    "auto_run_skipped",   # a dose came due with automatic flights on, but the run could not start
 )
 
 SEED_DOSES = (
@@ -353,11 +354,20 @@ class CareStore:
     def save_land_on_arrival(self, enabled: bool) -> None:
         self._save_mission_setting("land_on_arrival", bool(enabled))
 
+    def load_auto_fly(self) -> bool:
+        """The stored automatic-flights switch. Off unless the file says exactly `true`."""
+        with self._lock:
+            raw = self._read_json(self._mission_path)
+        return isinstance(raw, dict) and raw.get("auto_fly") is True
+
+    def save_auto_fly(self, enabled: bool) -> None:
+        self._save_mission_setting("auto_fly", bool(enabled))
+
     def _save_mission_setting(self, key: str, value: bool) -> None:
         """Read-modify-write of mission.json, so saving one switch keeps the other."""
         with self._lock:
             raw = self._read_json(self._mission_path)
-            settings = {name: raw.get(name) is True for name in ("drift_assist", "land_on_arrival")
+            settings = {name: raw.get(name) is True for name in ("drift_assist", "land_on_arrival", "auto_fly")
                         if isinstance(raw, dict) and name in raw}
             settings[key] = value
             self._write_json(self._mission_path, settings)

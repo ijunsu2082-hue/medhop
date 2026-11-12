@@ -22,7 +22,9 @@ VISION_KEYS = {"marker", "person", "brightness", "dark"}
 MARKER_KEYS = {"id", "cx", "cy", "width", "age_s"}
 PERSON_KEYS = {"enabled", "detected", "count", "age_s"}
 MISSION_KEYS = {"state", "reason", "run_id", "dose_id", "elapsed_s", "command", "arrive_width",
-                "land_on_arrival", "drift_assist", "can_start", "blockers", "last_landing"}
+                "land_on_arrival", "drift_assist", "can_start", "blockers", "last_landing",
+                "automatic", "auto_fly", "auto_blockers", "can_start_auto", "countdown_remaining_s",
+                "distance_m", "arrive_distance_m", "flight_confirmed", "needs_pilot", "ready_for_dose"}
 COMMAND_KEYS = {"yaw", "pitch"}
 DRIFT_ASSIST_KEYS = {"enabled", "active", "roll", "disabled_reason", "suggested_trim_roll"}
 HH_MM = r"^([01]\d|2[0-3]):[0-5]\d$"
@@ -312,17 +314,17 @@ class MissionApiTests(ApiTestCase):
         # land_on_arrival alone
         response = put({"land_on_arrival": False})
         self.assertEqual((response.status_code, response.json()),
-                         (200, {"land_on_arrival": False, "drift_assist": False}))
+                         (200, {"land_on_arrival": False, "drift_assist": False, "auto_fly": False}))
         self.assertIs(self.status()["mission"]["land_on_arrival"], False)
         # drift_assist alone: the other setting is left as it was
         response = put({"drift_assist": True})
         self.assertEqual((response.status_code, response.json()),
-                         (200, {"land_on_arrival": False, "drift_assist": True}))
+                         (200, {"land_on_arrival": False, "drift_assist": True, "auto_fly": False}))
         self.assertIs(self.status()["mission"]["drift_assist"]["enabled"], True)
         # both together
-        response = put({"land_on_arrival": True, "drift_assist": False})
+        response = put({"land_on_arrival": True, "drift_assist": False, "auto_fly": False})
         self.assertEqual((response.status_code, response.json()),
-                         (200, {"land_on_arrival": True, "drift_assist": False}))
+                         (200, {"land_on_arrival": True, "drift_assist": False, "auto_fly": False}))
         self.assertIs(self.status()["mission"]["land_on_arrival"], True)
         self.assertIs(self.status()["mission"]["drift_assist"]["enabled"], False)
         self.assertEqual(put({}).status_code, 422)

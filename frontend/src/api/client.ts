@@ -85,9 +85,16 @@ export const api = {
     const body: MissionStartBody = { confirm_airborne: true, dose_id: doseId };
     return request<unknown>("POST", "/api/mission/start", body);
   },
+  /** Automatic run: the backend takes off by itself, so no airborne confirmation is sent. */
+  missionStartAuto: (doseId: string | null) => {
+    const body: MissionStartBody = { automatic: true, dose_id: doseId };
+    return request<unknown>("POST", "/api/mission/start", body);
+  },
+  /** Marks the drone ready on its start spot for the next scheduled automatic flight (no body). */
+  missionReady: () => request<unknown>("POST", "/api/mission/ready"),
   missionAbort: () => request<unknown>("POST", "/api/mission/abort"),
   calibrateArrival: () => request<unknown>("POST", "/api/mission/calibrate-arrival"),
-  /** Send only the setting(s) being changed: `{"land_on_arrival": bool}` and/or `{"drift_assist": bool}`. */
+  /** Send only the setting(s) being changed: `{"land_on_arrival": bool}`, `{"drift_assist": bool}` and/or `{"auto_fly": bool}`. */
   missionSettings: (body: MissionSettingsBody) => request<unknown>("PUT", "/api/mission/settings", body),
   hoverTestStart: () => request<unknown>("POST", "/api/hover-test/start"),
   getSchedule: () => request<ScheduleResponse>("GET", "/api/schedule"),

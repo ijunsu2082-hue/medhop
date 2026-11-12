@@ -94,6 +94,8 @@ describe("wording", () => {
         "confirm_airborne_required",
         "marker_not_visible",
         "no_pilot_link",
+        "drone_flying",
+        "recent_toggle",
       ].sort(),
     );
     expect(Object.keys(ABORT_TEXT).sort()).toEqual(
@@ -109,6 +111,9 @@ describe("wording", () => {
         "video_stale",
         "pilot_link_lost",
         "unexpected_descent",
+        "takeoff_refused",
+        "not_lined_up",
+        "already_at_station",
       ].sort(),
     );
     expect(blockerText("new_thing")).toContain("new_thing");
@@ -314,6 +319,25 @@ describe("caregiver helpers (SPEC 10.5)", () => {
     expect(eventDetailText(ev({ type: "needs_attention", detail: { time: "08:00" } }))).toBe("due 08:00, logged 14:30");
     expect(eventDetailText(ev({ type: "needs_attention", detail: null }))).toBeNull();
     expect(eventDetailText(ev({ type: "run_aborted", detail: { reason: "pilot_link_lost" } }))).toMatch(/lost its control link/);
+  });
+  it("marks automatic runs and explains skipped automatic flights", () => {
+    expect(eventText("auto_run_skipped")).toBe("Automatic flight skipped");
+    expect(eventDetailText(ev({ type: "run_started", detail: { automatic: true, mode: "sim" } }))).toBe("Automatic");
+    expect(eventDetailText(ev({ type: "run_started", detail: { automatic: false } }))).toBeNull();
+    expect(eventDetailText(ev({ type: "run_started", detail: null }))).toBeNull();
+    expect(eventDetailText(ev({ type: "auto_run_skipped", detail: { blockers: ["stale_due"] } }))).toBe(
+      "Not started: the dose time had already passed.",
+    );
+    expect(eventDetailText(ev({ type: "auto_run_skipped", detail: { blockers: ["not_ready", "already_arrived"] } }))).toBe(
+      "Not started: the drone was not marked ready; the drone had already arrived at the station for this dose.",
+    );
+    expect(eventDetailText(ev({ type: "auto_run_skipped", detail: { blockers: ["no_video"] } }))).toBe(
+      "Not started: there is no live video from the drone.",
+    );
+    expect(eventDetailText(ev({ type: "auto_run_skipped", detail: { blockers: [] } }))).toBeNull();
+    expect(eventDetailText(ev({ type: "auto_run_skipped", detail: null }))).toBeNull();
+    // A skipped flight is not a flight: no simulator label.
+    expect(simulatorSuffix(ev({ type: "auto_run_skipped", detail: { mode: "sim" } }))).toBe("");
   });
   it("labels a simulator arrival in the doses table", () => {
     expect(doseTableStatusLine(dose("d1", "08:00", "arrived", { arrived_at: "08:12", arrived_mode: "sim" }))).toBe(

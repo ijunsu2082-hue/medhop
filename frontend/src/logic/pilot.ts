@@ -1,8 +1,8 @@
 // Pure Pilot-page decisions (SPEC 10.5): the emergency-stop banner state, takeoff/land availability, matching
 // server acks/errors to the command they answer, and the drone-link line. Unit-tested in pilot.test.ts.
 
-import type { ControlServerMessage, Status } from "../api/types";
-import { LAST_LANDING_TEXT, controlErrorText } from "../text/wording";
+import type { ControlServerMessage, MissionStatus, Status } from "../api/types";
+import { LAST_LANDING_TEXT, abortText, blockerText, controlErrorText } from "../text/wording";
 
 // ---------------------------------------------------------------- emergency stop banner
 
@@ -236,4 +236,153 @@ export function doneMessage(lastLanding: string | null | undefined): string {
     default:
       return LAST_LANDING_TEXT.unknown;
   }
+}
+
+// ---------------------------------------------------------------- automatic station run
+
+/** The five stages of an automatic run, in order. */
+export const AUTO_STAGES = ["Take off", "Find the sign", "Fly to the sign", "Land", "At the station"] as const;
+
+/** Mission states during which a station run is in progress (automatic or step by step). */
+export const RUN_ACTIVE_STATES: ReadonlySet<string> = new Set([
+  "countdown",
+  "taking_off",
+  "searching",
+  "approaching",
+  "arrived",
+  "landing",
+]);
+
+/** Which of AUTO_STAGES a mission state belongs to, or -1 for a state outside a run (idle, aborted, unknown). */
+export function autoStageIndex(state: string): number {
+  switch (state) {
+    case "countdown":
+    case "taking_off":
+      return 0;
+    case "searching":
+      return 1;
+    case "approaching":
+      return 2;
+    case "arrived":
+    case "landing":
+      return 3;
+    case "done":
+      return 4;
+    default:
+      return -1;
+  }
+}
+
+/** True when the backend sends the automatic-run fields (an older backend does not). */
+export function autoSupported(m: MissionStatus): boolean {
+  return typeof m.can_start_auto === "boolean" && Array.isArray(m.auto_blockers);
+}
+
+/** Metres to one decimal ("0.8"), or null for a missing, negative or non-finite value. */
+export function formatMetres(x: unknown): string | null {
+  if (typeof x !== "number" || !Number.isFinite(x) || x < 0) return null;
+  return x.toFixed(1);
+}
+
+/** "Sign about 1.9 m away. It lands at about 0.8 m." The first half is left out while the sign is not in view. */
+export function autoDistanceLine(distance: number | null | undefined, arrive: number | null | undefined): string | null {
+  const d = formatMetres(distance);
+  const a = formatMetres(arrive);
+  const parts: string[] = [];
+  if (d !== null) parts.push(`Sign about ${d} m away.`);
+  if (a !== null) parts.push(`It lands at about ${a} m.`);
+  return parts.length ? parts.join(" ") : null;
+}
+
+/** "Taking off in 3" during the countdown (whole seconds, rounded up), else null. */
+export function countdownText(state: string, remaining: number | null | undefined): string | null {
+  if (state !== "countdown") return null;
+  if (typeof remaining !== "number" || !Number.isFinite(remaining)) return "Taking off in a few seconds";
+  return `Taking off in ${Math.max(0, Math.ceil(remaining))}`;
+}
+
+export const AUTO_CONTROL_LINK_BLOCKER = "Your control link is not connected, so you could not take over or stop.";
+export const AUTO_BACKEND_REFUSES = "The backend reports it cannot start a run right now.";
+
+/** The "Before it can fly:" list for an automatic start. Empty while a run is in progress. */
+export function autoBlockerTexts(m: MissionStatus, controlOpen: boolean): string[] {
+  if (RUN_ACTIVE_STATES.has(m.state)) return [];
+  const out = (m.auto_blockers ?? []).map((c) => blockerText(String(c)));
+  if (m.can_start_auto === false && out.length === 0) out.push(AUTO_BACKEND_REFUSES);
+  if (!controlOpen) out.push(AUTO_CONTROL_LINK_BLOCKER);
+  return out;
+}
+
+/** "The station sign was lost ... again." -> "the station sign was lost ... again", to follow "Stopped early: ". */
+function asClause(sentence: string): string {
+  const t = sentence.trim().replace(/\.$/, "");
+  return t ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+}
+
+function firstSentence(text: string): string {
+  const match = text.trim().match(/^[^.]*\./);
+  return match ? match[0] : text;
+}
+
+export interface AutoResultView {
+  tone: "pass" | "warn";
+  text: string;
+}
+
+/** The result card after an automatic run, or null when the last run was not automatic or has not ended. */
+export function autoResultView(m: MissionStatus): AutoResultView | null {
+  if (m.automatic !== true) return null;
+  if (m.state === "done") {
+    if (m.last_landing !== "sent") return { tone: "warn", text: doneMessage(m.last_landing) };
+    const a = formatMetres(m.arrive_distance_m);
+    return {
+      tone: "pass",
+      text: a !== null
+        ? `At the station, about ${a} m in front of the sign. The land command was sent: check that it has landed.`
+        : "At the station, in front of the sign. The land command was sent: check that it has landed.",
+    };
+  }
+  if (m.state === "aborted") {
+    const reason = asClause(abortText(m.reason));
+    if (m.last_landing === "safe_landing") {
+      // Only the reason's first sentence: some reasons go on with "land by hand", which no longer applies.
+      return { tone: "warn", text: `Stopped early: ${asClause(firstSentence(abortText(m.reason)))}. The land command was sent where it was: check that it has landed.` };
+    }
+    return {
+      tone: "warn",
+      text: `Stopped early: ${reason}. If it is still in the air, land it with T or the emergency stop.`,
+    };
+  }
+  return null;
+}
+
+export const NEEDS_PILOT_TEXT = "The drone may still be in the air. Land it with T or press the emergency stop.";
+
+/** Under the "Fly automatically" switch: whether the drone is marked ready for the next scheduled flight. */
+export function autoReadyView(m: MissionStatus): { ready: boolean; text: string } | null {
+  if (m.auto_fly !== true || typeof m.ready_for_dose !== "boolean") return null;
+  return m.ready_for_dose
+    ? { ready: true, text: "Ready. It will take off by itself when the next dose is due." }
+    : { ready: false, text: "Before the next dose: put the drone on its start spot facing the sign, then press" };
+}
+
+/** The "Where does it land?" explainer, with the backend's arrival distance when it sends one. */
+export function landingExplainerText(arrive: number | null | undefined): string {
+  const a = formatMetres(arrive) ?? "0.8";
+  return (
+    "It only lands when the sign fills enough of the camera view, sits in the middle of the picture and is seen " +
+    "from the front, three frames in a row, after the drone has clearly flown toward it. " +
+    `That is about ${a} m in front of the sign (it can settle a little closer): put the landing spot there. ` +
+    "A sign farther than about 5 m is too small to count, and signs with another number are ignored."
+  );
+}
+
+// ---------------------------------------------------------------- run mode (Automatic / Step by step)
+
+export type RunMode = "auto" | "steps";
+export const RUN_MODE_KEY = "medhop.runMode";
+
+/** A stored run mode, defaulting to Automatic for anything missing or unknown. */
+export function parseRunMode(v: string | null | undefined): RunMode {
+  return v === "steps" ? "steps" : "auto";
 }

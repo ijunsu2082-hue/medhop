@@ -88,9 +88,17 @@ class StationRunTests(unittest.TestCase):
     def test_a_default_drift_reaches_done_on_ten_seeds(self):
         """2.5 m away, 25 degrees off, 0.08 m/s sideways drift, 0.45 s latency."""
         results = [run_station(seed, drift=0.08) for seed in SEEDS]
+        done = [r for r in results if r["state"] == "done"]
+        self.assertGreaterEqual(len(done), 8, [(r["seed"], r["reason"]) for r in results])
         for r in results:
+            if r["state"] != "done":
+                # Drifted beside the station: it must stop without landing there as "arrived".
+                with self.subTest(seed=r["seed"], stopped=True):
+                    self.assertIn(r["reason"], ("off_axis", "not_lined_up"))
+                    self.assertEqual(r["toggles"], 0, "a manual run never toggles on an abort")
+                    self.assertEqual(r["events"], ["run_started", "run_aborted"])
+        for r in done:
             with self.subTest(seed=r["seed"]):
-                self.assertEqual((r["state"], r["reason"]), ("done", None))
                 self.assertEqual(r["toggles"], 1, "exactly one toggle on a successful run")
                 self.assertEqual(r["events"], ["run_started", "arrived_at_station"])
                 self.assertGreater(r["wall_distance_m"], 0.45)

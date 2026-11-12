@@ -9,7 +9,7 @@ import { DriftAssistControl } from "./DriftAssist";
 import { HoldButton, type Hold } from "./HoldButton";
 import { IconChevron } from "./PilotIcons";
 
-const RUN_ACTIVE = new Set(["searching", "approaching", "arrived", "landing"]);
+const RUN_ACTIVE = new Set(["countdown", "taking_off", "searching", "approaching", "arrived", "landing"]);
 
 // The live track while a run is active. "Done" is shown as the outcome card once the run ends.
 const TRACK: { state: MissionState; label: string }[] = [
@@ -44,7 +44,6 @@ interface Blocker {
 export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNote, takeoffAcked, onResetEstop }: Props) {
   const m = status.mission;
   const doses = status.care.doses;
-  const sim = status.mode === "sim";
   const [doseId, setDoseId] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState<null | "start" | "abort" | "settings">(null);
@@ -145,17 +144,6 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
 
   return (
     <div className="run-steps">
-      <h2 id="h-run">
-        Station run
-        {sim && (
-          <>
-            {" "}
-            <span className="chip run-title-chip">
-              <span className="sr-only">(</span>simulator<span className="sr-only">)</span>
-            </span>
-          </>
-        )}
-      </h2>
       <ol className="run-step-list">
         {step(
           1,

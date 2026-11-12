@@ -2,7 +2,7 @@
 // events, "Last run result" limited to today, and the dose time on reminder rows. Tested in logic.test.ts.
 
 import type { CareEvent, DoseToday } from "../api/types";
-import { abortText, doseStatusLine } from "../text/wording";
+import { abortText, blockerText, doseStatusLine } from "../text/wording";
 import { formatClock } from "./time";
 
 /** Event types that describe a flight (a station run or a hover test). */
@@ -39,10 +39,29 @@ export function simulatorSuffix(e: Pick<CareEvent, "type" | "detail">): string {
   return isSimulatorRunEvent(e) ? " (simulator)" : "";
 }
 
+/** Why a scheduled automatic flight did not start: codes only the scheduler sends. Lower case, to follow "Not started: ". */
+export const AUTO_SKIP_TEXT: Record<string, string> = {
+  stale_due: "the dose time had already passed",
+  not_ready: "the drone was not marked ready",
+  already_arrived: "the drone had already arrived at the station for this dose",
+};
+
+function skipReason(code: string): string {
+  const known = Object.prototype.hasOwnProperty.call(AUTO_SKIP_TEXT, code) ? AUTO_SKIP_TEXT[code] : undefined;
+  if (known) return known;
+  const t = blockerText(code).trim().replace(/\.$/, "");
+  return t.charAt(0).toLowerCase() + t.slice(1);
+}
+
 /** Extra text for an event row. reminder_due / needs_attention show the dose time: "due 08:00, logged 14:30". */
 export function eventDetailText(e: CareEvent): string | null {
   const d = e.detail ?? {};
   if (e.type === "run_aborted") return abortText(typeof d.reason === "string" ? d.reason : null);
+  if (e.type === "run_started" && d.automatic === true) return "Automatic";
+  if (e.type === "auto_run_skipped") {
+    const codes = Array.isArray(d.blockers) ? d.blockers.map(String).filter((c) => c.trim()) : [];
+    return codes.length ? `Not started: ${codes.map(skipReason).join("; ")}.` : null;
+  }
   if (e.type === "hover_test" && typeof d.pass === "boolean") return d.pass ? "Passed" : "Did not pass";
   if ((e.type === "reminder_due" || e.type === "needs_attention") && typeof d.time === "string" && d.time.trim()) {
     return `due ${d.time.trim()}, logged ${e.time_local}`;

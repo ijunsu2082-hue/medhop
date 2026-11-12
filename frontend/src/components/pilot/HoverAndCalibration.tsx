@@ -5,7 +5,7 @@ import { blockerText } from "../../text/wording";
 import { VerdictTag } from "../Verdict";
 
 const HOVER_TEST_S = 10;
-const RUN_ACTIVE = new Set(["searching", "approaching", "arrived", "landing", "hover_test"]);
+const RUN_ACTIVE = new Set(["countdown", "taking_off", "searching", "approaching", "arrived", "landing", "hover_test"]);
 
 export function HoverTestPanel({ status }: { status: Status }) {
   const [busy, setBusy] = useState(false);

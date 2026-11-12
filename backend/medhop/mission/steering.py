@@ -143,9 +143,12 @@ class Steering:
             self._yaw_log.popleft()
         return out
 
-    def update(self, history: Sequence[MarkerSample], now: float, arrive_width: float) -> Tuple[float, float]:
+    def update(self, history: Sequence[MarkerSample], now: float, arrive_width: float,
+               no_forward: bool = False) -> Tuple[float, float]:
+        """`no_forward`: yaw only (the drone is already at the arrive distance and must not creep on
+        toward the wall while it lines up)."""
         yaw, pitch = steer(history, tuple(self._yaw_log), now, arrive_width, self.cfg)
-        return self.shape(yaw, pitch, now)
+        return self.shape(yaw, 0.0 if no_forward else pitch, now)
 
     def yaw_seen_between(self, earlier_ts: float, later_ts: float) -> float:
         """Integral (stick x seconds) of the yaw commands whose effect appears in the video between

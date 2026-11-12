@@ -43,6 +43,21 @@ drone; no real-drone flight with MedHop has been done yet at the time of writing
   lands it by hand. When it is switched on, the run sends the land command once, after a 1.2 s settle and
   only once the settle descent guard has cleared; if the guard has not cleared in time, the run skips
   the land command and the pilot lands by hand.
+- Automatic station run ("Hold to fly to the station", or a dose coming due with "Fly automatically
+  when a dose is due" switched on): a 5 s countdown on the ground (Stop cancels it), then the run sends
+  the takeoff command itself, waits 4 s, finds the sign, flies to it with drift assist on, and always
+  sends the land command on arrival. Scheduled flights only start within 90 s of the dose time, only
+  after a person has pressed "Ready for the next dose" with the drone on its start spot, and only while
+  a Pilot page is open (the emergency stop must stay one press away). If an automatic run stops early,
+  it sends the land command only on current camera evidence that the drone is still flying (the sign
+  grew since first seen, is in view now and is not rising in the picture); otherwise the page warns
+  that the drone may still be in the air. Tested in the simulator only.
+- Where it lands: a frame only counts toward arrival when the sign is at least the arrive width (about
+  0.8 m away with the defaults), near the middle of the picture and seen from the front (at most about
+  37 degrees off), three frames in a row, after the sign has grown since it was first seen. At that
+  distance it flies no further forward; if it cannot line up within 2.5 s it stops ("not_lined_up")
+  instead of landing beside the station. Seeing the sign from far away only starts the approach: beyond
+  about 5 m the 18 cm sign is too small to be detected, and signs with any other ArUco number are ignored.
 - Hover test (measures the peak sideways excursion while hands-off) and arrival calibration.
 - Drift assist (off by default): a small, bounded roll command during the approach that counters
   sideways drift seen by the camera, and switches itself off if it makes things worse. It was added
@@ -51,7 +66,9 @@ drone; no real-drone flight with MedHop has been done yet at the time of writing
 
 **Does not do:**
 - It never carries real medicine and is never flown near people.
-- It does not take off by itself; the pilot takes off and confirms the drone is hovering.
+- It does not fly back to its start spot: a person puts it back before the next automatic flight.
+- An automatic flight is not unattended home use: this toy drone has no obstacle sensing, and someone
+  stays in the room with the emergency stop.
 - It does not prove a dose was taken. "Acknowledged" means a button was pressed.
 - It does not measure position: no GPS, no distance sensor. Arrival is judged from the camera picture.
 - The person check is not a safety system. It is advisory only.
@@ -186,6 +203,7 @@ commands are held and repeated. Those changes are uncommitted and unpublished. S
 | `MEDHOP_BATTERY_LOW_RAW` | `-1` | raw battery byte at or below which the battery counts as low. `-1` switches the check **off** (the default), because the byte's meaning is not verified |
 | `MEDHOP_HOVER_MAX_EXCURSION_M` | `0.5` | hover-test pass limit for the peak sideways excursion, in metres (an estimate) |
 | `MEDHOP_GRACE_MIN` | `15` | minutes after a dose time before it "needs attention" |
+| `MEDHOP_CAMERA_HFOV_DEG` | `70` | camera field of view, only for the "sign about X m away" estimate (unmeasured on the real drone) |
 | `MEDHOP_HOST` | `127.0.0.1` | address the backend listens on |
 | `MEDHOP_PYTHON` | `python3` | interpreter used by the scripts in `scripts/` |
 

@@ -1509,3 +1509,78 @@
     padding: 12px;
   }
 }
+
+/* ---------- Station run: Automatic / Step by step ---------- */
+
+.pilot .run-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin: 0 0 16px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.pilot .run-mode-option {
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font: 500 14px/20px var(--sans);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease);
+}
+.pilot .run-mode-option:hover {
+  color: var(--text);
+}
+.pilot .run-mode-option[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--e1);
+}
+.pilot .run-mode-option:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+.pilot .auto-run .auto-help {
+  margin: 8px 0 0;
+}
+.pilot .auto-run .auto-countdown {
+  font: 600 28px/36px var(--sans);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.pilot .auto-schedule {
+  display: grid;
+  gap: 6px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.pilot .auto-schedule p {
+  margin: 0;
+}
+.pilot .auto-ready {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--text-2);
+}
+.pilot .auto-run .run-options p {
+  margin: 0;
+  color: var(--text-2);
+}
+/* Narrow phones: let the five stage labels wrap instead of overflowing the panel. */
+@media (max-width: 420px) {
+  .pilot .auto-run .run-track {
+    grid-auto-columns: minmax(0, 1fr);
+  }
+}

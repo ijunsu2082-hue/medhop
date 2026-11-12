@@ -327,10 +327,13 @@ class ControlMixer:
             return ToggleResult(False, _LINK_DOWN_MESSAGE, DRONE_LINK_DOWN)
         return ToggleResult(True, "")
 
-    def mission_toggle(self, now: Optional[float] = None) -> bool:
-        """The mission runner lands on confirmed arrival. Refused when e-stopped, just toggled, when the
-        drone link is down, when any pilot input arrived since the runner's last mission_command, or
-        when any pilot input arrived in the last MISSION_TOGGLE_PILOT_QUIET_S.
+    def mission_toggle(self, now: Optional[float] = None, landing: bool = True) -> bool:
+        """The mission runner's toggle: a landing (confirmed arrival, or an automatic run's safe
+        landing) or, with landing=False, an automatic run's takeoff. Refused when e-stopped, just
+        toggled, when the drone link is down, when any pilot input arrived since the runner's last
+        mission_command, or when any pilot input arrived in the last MISSION_TOGGLE_PILOT_QUIET_S.
+        Only a landing starts the LANDING_GUARD_S window that refuses a pilot toggle (after a takeoff
+        the pilot must be able to land at once).
         True only when the toggle went onto an open socket."""
         now = self._clock() if now is None else now
         control_up = self._link.control_up() is True   # called out before the lock (lock rule)
@@ -350,11 +353,12 @@ class ControlMixer:
                 logger.warning("mission toggle refused: drone link down")
                 return False
             self._last_toggle_at = now
-        logger.info("mission takeoff/land toggle (confirmed arrival)")
+        logger.info("mission takeoff/land toggle (%s)", "landing" if landing else "automatic takeoff")
         if self._link.takeoff_land_toggle() is not True:
             return False
-        with self._lock:
-            self._mission_toggle_at = now
+        if landing:
+            with self._lock:
+                self._mission_toggle_at = now
         return True
 
     def pilot_estop(self, now: Optional[float] = None) -> bool:
@@ -452,6 +456,12 @@ class ControlMixer:
             self._mission_cmd = (clamp(yaw), clamp(pitch), roll)
             self._mission_at = now
             self._pilot_since_mission = False
+
+    def seconds_since_toggle(self, now: Optional[float] = None) -> Optional[float]:
+        """Time since the last takeoff/land toggle went out (pilot or mission); None if never."""
+        now = self._clock() if now is None else now
+        with self._lock:
+            return None if self._last_toggle_at is None else now - self._last_toggle_at
 
     def clear_mission_command(self) -> None:
         with self._lock:
