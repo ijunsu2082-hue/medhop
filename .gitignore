@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# virtual environments
+venv/
+.venv/
+env/
+
+# Node / frontend build
+node_modules/
+dist/
+
+# runtime data (keep only the README)
+data/*
+!data/README.md
+
+# model weights are never committed
+*.pt
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
