@@ -96,10 +96,21 @@ Only `ControlMixer` may call `set_axes`. Only the mixer (on pilot request) and t
 - 2-D kinematic model: position (x, y) in metres, heading, airborne flag. Stick fractions map to
   velocities through configurable gains (defaults: forward 1.0 m/s, lateral 1.0 m/s, yaw 150 deg/s at full stick),
   with first-order lag, configurable constant lateral drift (default 0.08 m/s), and small noise.
-- Camera: 640x360, 15 fps, horizontal FOV 70 deg (configurable), JPEG quality 50, added sensor noise and
-  mild blur, and a transport delay so command-to-video latency is about 0.45 s.
-- World: one wall with the station marker (ArUco DICT_4X4_50, id 7, default printed size 0.18 m) plus
-  simple wall/floor texture. The marker is rendered by perspective projection of its corners.
+- Camera: horizontal FOV 70 deg (configurable) and a transport delay so command-to-video latency is
+  about 0.45 s, in one of two profiles:
+  - Drone-like (the `SimConfig` defaults, `MEDHOP_SIM_CAMERA=drone`): 640x360, 15 fps, JPEG quality 50,
+    added sensor noise and mild blur. The existing closed-loop, marker and vision tests and every
+    published simulator figure use it; `tests/test_sim_high_quality.py` covers the display profile, and a
+    test that builds the app from default `Settings` (for example in `tests/test_automatic.py`) also runs on it.
+  - Display (`SimConfig.high_quality()`, default for the interactive app, `MEDHOP_SIM_CAMERA=high`): a
+    rendered room at 1280x720, 15 fps, JPEG quality 92, light noise, starting 3.2 m from the sign. Sign
+    detection in the interactive simulator therefore runs on a cleaner picture than the real camera
+    gives. UI captions must not present this picture as the drone's 640x360 stream.
+- World: the station marker (ArUco DICT_4X4_50, id 7, default printed size 0.18 m) on the wall at z = 0.
+  The drone-like profile draws one wall and a floor with simple texture; the display profile draws a
+  closed room (floor, ceiling, four walls, doors, prints); with the sign hidden, 200 random test poses
+  decode no ArUco id at all (`tests/test_sim_high_quality.py`).
+  The marker is rendered by perspective projection of its corners.
 - Toggle: on the ground it takes off (airborne after about 1.5 s); in the air it lands. Supports test
   hooks: force auto-land (simulates low battery), freeze video, drop marker, set pose.
 - Telemetry is simulated and its values are labelled as simulated in status (`telemetry.simulated: true`).

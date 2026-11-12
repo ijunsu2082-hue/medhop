@@ -7,7 +7,7 @@ import { PilotPage } from "./pages/PilotPage";
 
 function NotFound() {
   return (
-    <div className="panel">
+    <div className="container not-found">
       <h1>Page not found</h1>
       <p>Use the navigation above to open Pilot, Care or Caregiver.</p>
     </div>

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type PointerEvent as RPointerEvent, type K
 import type { Axis, AxisInput, Axes, FlightInput } from "../../control/flightInput";
 import type { ControlMessage } from "../../api/types";
 import { PadPointers } from "../../control/release";
+import { STICKPAD_LOCKED_REASON } from "../../text/panelsWording";
+import "./manual.css";
 
 const AXES: { axis: Axis; label: string }[] = [
   { axis: "throttle", label: "Throttle" },
@@ -10,9 +12,30 @@ const AXES: { axis: Axis; label: string }[] = [
   { axis: "roll", label: "Roll" },
 ];
 
+/** A marker position inside a stick square: x and y are axis values from -1 to 1, up is positive. */
+function stickPos(x: number, y: number) {
+  const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+  return { left: `${50 + clamp(x) * 50}%`, top: `${50 - clamp(y) * 50}%` };
+}
+
 export function AxisIndicators({ axes, maxStick }: { axes: Axes; maxStick: number | null }) {
   return (
     <div className="axes" role="group" aria-label="Stick values being sent">
+      {/* Decorative: the two sticks as squares. The meters and values below carry the information. */}
+      <div className="sticks" aria-hidden="true">
+        <div className="stick">
+          <span className="stick-square">
+            <span className="stick-marker" style={stickPos(axes.yaw, axes.throttle)} />
+          </span>
+          <span className="stick-label">Throttle / yaw</span>
+        </div>
+        <div className="stick">
+          <span className="stick-square">
+            <span className="stick-marker" style={stickPos(axes.roll, axes.pitch)} />
+          </span>
+          <span className="stick-label">Pitch / roll</span>
+        </div>
+      </div>
       {AXES.map(({ axis, label }) => {
         const v = axes[axis];
         const pct = Math.abs(v) * 50;
@@ -23,7 +46,7 @@ export function AxisIndicators({ axes, maxStick }: { axes: Axes; maxStick: numbe
               <span className="axis-zero" />
               <span className="axis-fill" style={{ left: v < 0 ? `${50 - pct}%` : "50%", width: `${pct}%` }} />
             </span>
-            <span className="axis-value mono">{v > 0 ? `+${v.toFixed(2)}` : v.toFixed(2)}</span>
+            <span className="axis-value mono">{v < 0 ? v.toFixed(2) : `+${Math.abs(v).toFixed(2)}`}</span>
           </div>
         );
       })}
@@ -158,7 +181,7 @@ export function StickPad({ flight, disabled }: { flight: FlightInput; disabled: 
             <button
               type="button"
               key={b.id}
-              className="hold-btn"
+              className="btn hold-btn"
               disabled={disabled}
               onPointerDown={down(b.id, b.input)}
               onPointerUp={up(b.id)}
@@ -176,6 +199,7 @@ export function StickPad({ flight, disabled }: { flight: FlightInput; disabled: 
           ))}
         </div>
       ))}
+      {disabled && <p className="hint stickpad-reason">{STICKPAD_LOCKED_REASON}</p>}
     </div>
   );
 }
@@ -225,9 +249,9 @@ export function MaxStickSlider({
   const shown = local ?? serverValue ?? 0.5;
   return (
     <div className="maxstick">
-      <label htmlFor="max-stick">Max stick</label>
       <input
         id="max-stick"
+        aria-labelledby="h-maxstick"
         type="range"
         min={0.2}
         max={1}
@@ -252,7 +276,7 @@ export function MaxStickSlider({
         }}
         aria-describedby="max-stick-desc"
       />
-      <output htmlFor="max-stick" className="mono">
+      <output htmlFor="max-stick" className="data">
         {shown.toFixed(2)}
       </output>
       <span id="max-stick-desc" className="hint">

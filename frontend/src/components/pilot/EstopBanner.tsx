@@ -1,4 +1,5 @@
 import type { EstopBannerView } from "../../logic/pilot";
+import { IconStop, IconWarn } from "../Icons";
 
 interface Props {
   /** from logic/pilot.ts estopBanner(); null hides the banner */
@@ -16,6 +17,7 @@ export function EstopBanner({ view, controlOpen, onReset, onRetry, onDismiss }: 
 
   return (
     <div className={`estop-banner${failed ? " estop-banner-unsent" : ""}`} role="alert" data-estop-state={view.kind}>
+      {failed ? <IconWarn className="estop-banner-icon" size={20} /> : <IconStop className="estop-banner-icon" size={20} />}
       <strong className="estop-banner-title">{view.headline}</strong>
       <span className="estop-banner-detail">{view.detail}</span>
       <div className="row estop-banner-actions">

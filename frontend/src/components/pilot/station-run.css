@@ -1,0 +1,456 @@
+/* Station run: StationRun, AutoRun, RunSteps and DriftAssist (spec 9, contract C4).
+   Every rule is scoped under .pilot and uses tokens only. The hold buttons are styled in pilot.css;
+   this file only places them. Section head, tabs, fields, switches, checkboxes, buttons and callouts are the
+   shared primitives from styles.css. */
+
+/* ------------------------------------------------------------------ Mode tabs */
+
+.pilot .run-mode {
+  margin: 0 0 var(--s-4);
+}
+
+/* Each tab reserves its bold width; the label sits on the left of that reservation, so 'Automatic' lines
+   up with the section's left edge whether or not it is pressed. */
+.pilot .run-mode > button {
+  align-items: flex-start;
+}
+
+/* ------------------------------------------------------------------ Shared run layout */
+
+.pilot .run-steps .field {
+  margin: 0 0 var(--s-4);
+}
+
+.pilot .run-steps .field select {
+  width: 100%;
+}
+
+.pilot .run-steps .field .hint {
+  margin: 0;
+}
+
+/* 'Before it can fly': a ruled list directly above the hold button it explains. No fill, no box. */
+.pilot .blockers {
+  margin: 0 0 var(--s-3);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-0);
+}
+
+.pilot .blockers-title {
+  margin: 0 0 var(--s-2);
+  font: var(--t-label);
+  color: var(--c-fg);
+}
+
+.pilot .blockers ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pilot .blockers li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  border-top: 1px solid var(--c-rule);
+  font: var(--t-body);
+  color: var(--c-fg);
+}
+
+/* The 20px icon is drawn centred in a 24px-tall box, so it sits on the first 24px line of a wrapping reason. */
+.pilot .blockers li > svg {
+  flex: none;
+  height: 24px;
+  color: var(--c-fail);
+}
+
+.pilot .blocker-step {
+  font-weight: 700;
+}
+
+/* The hint under a hold button or the Stop button. */
+.pilot .auto-run .auto-help {
+  margin: var(--s-2) 0 0;
+}
+
+/* ------------------------------------------------------------------ Running view */
+
+.pilot .run-live {
+  margin: 0;
+}
+
+/* Six stages as a compact ruled grid: as many per row as fit (three in the 384px column), wrapping on phones. */
+.pilot .run-track {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  margin: 0 0 var(--s-4);
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--c-rule);
+}
+
+.pilot .run-track li {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  min-height: 40px;
+  padding: var(--s-2) var(--s-2) var(--s-2) 0;
+  border-bottom: 1px solid var(--c-rule);
+  font: var(--t-caption);
+  color: var(--c-fg-2);
+}
+
+/* Square marker: next is an outline, past an ink square with a paper check, now a signal square. */
+.pilot .run-track li::before {
+  content: "";
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-0);
+}
+
+.pilot .run-track .run-track-past {
+  color: var(--c-fg);
+}
+
+.pilot .run-track .run-track-past::before {
+  background: var(--c-fg) var(--c-check-icon) center / 14px 14px no-repeat;
+  border-color: var(--c-fg);
+}
+
+.pilot .run-track .run-track-now {
+  color: var(--c-fg);
+  font-weight: 700;
+}
+
+.pilot .run-track .run-track-now::before {
+  background: var(--c-signal);
+  border-color: var(--c-signal);
+}
+
+.pilot .run-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin: 0 0 var(--s-4);
+  color: var(--c-fg);
+}
+
+.pilot .run-state strong {
+  font: var(--t-subhead);
+}
+
+/* Sentences (the live line, 'For: ...') are body text with proportional figures (Schibsted's tabular set also
+   widens '.' and ':'); only the pure readouts (.mono: Elapsed, Command) are mono with tabular figures. */
+.pilot .run-state span {
+  font: var(--t-body);
+  color: var(--c-fg);
+}
+
+.pilot .run-state .mono {
+  font: var(--t-data);
+}
+
+/* 'Taking off in 3': the sentence in the state type, the number in Plex Mono 40px. */
+.pilot .run-state .auto-countdown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--s-2);
+}
+
+.pilot .run-state .auto-countdown-num {
+  font: 600 40px/44px var(--font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-fg);
+}
+
+/* ------------------------------------------------------------------ Outcomes */
+
+/* Finished: a pass callout. */
+.pilot .run-outcome {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  margin: 0 0 var(--s-4);
+  padding: var(--s-1) 0 var(--s-1) var(--s-4);
+  background: transparent;
+  border-left: 6px solid var(--c-pass);
+  font: var(--t-body);
+  color: var(--c-fg);
+}
+
+.pilot .run-outcome > svg {
+  flex: none;
+  color: var(--c-pass);
+}
+
+.pilot .run-outcome-body {
+  min-width: 0;
+}
+
+.pilot .run-outcome-body p {
+  margin: 0 0 var(--s-2);
+}
+
+.pilot .run-outcome-body strong {
+  display: block;
+  font: var(--t-subhead);
+}
+
+.pilot .run-care-link {
+  margin-top: var(--s-1);
+}
+
+/* Aborted or needs the pilot: a warn callout. Its first line is the bold state. */
+.pilot .abort-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  margin: 0 0 var(--s-4);
+  padding: var(--s-1) 0 var(--s-1) var(--s-4);
+  background: transparent;
+  border-left: 6px solid var(--c-warn);
+  font: var(--t-body);
+  color: var(--c-fg);
+}
+
+.pilot .abort-notice > svg {
+  flex: none;
+  height: 24px;
+  color: var(--c-warn);
+}
+
+.pilot .abort-notice > div {
+  min-width: 0;
+}
+
+.pilot .abort-notice > div > :first-child {
+  display: block;
+  font-weight: 700;
+}
+
+.pilot .abort-notice p {
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ Secondary settings */
+
+/* Below a hairline, in body and caption type, with no boxes and no fills. */
+.pilot .auto-schedule {
+  margin: var(--s-5) 0 0;
+  padding: var(--s-4) 0 0;
+  background: transparent;
+  border-top: 1px solid var(--c-rule);
+}
+
+.pilot .auto-schedule .hint {
+  margin: var(--s-1) 0 0;
+}
+
+.pilot .auto-ready {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
+  margin: var(--s-3) 0 0;
+  background: transparent;
+}
+
+.pilot .auto-ready p {
+  margin: 0;
+}
+
+/* The visible On / Off word after a switch track; three characters wide so the label never shifts. */
+.pilot .switch-word {
+  flex: none;
+  min-width: 3ch;
+  font: 600 14px/20px var(--font-data);
+  color: var(--c-fg);
+}
+
+/* 'Where does it land?' and 'Run options': a ruled disclosure row. */
+.pilot .auto-run > .disclosure,
+.pilot .run-step-body > .disclosure {
+  display: flex;
+  width: 100%;
+  margin: var(--s-4) 0 0;
+  border-top: 1px solid var(--c-rule);
+}
+
+/* The disclosed text lines up with the label, past the 16px chevron and its 8px gap. */
+.pilot .run-options {
+  margin: 0;
+  padding: 0 0 var(--s-2) var(--s-5);
+  background: transparent;
+  border: 0;
+}
+
+.pilot .run-options p {
+  margin: 0;
+}
+
+.pilot .run-options > label {
+  margin: var(--s-2) 0 var(--s-3);
+}
+
+.pilot .drift-assist {
+  margin: var(--s-3) 0 0;
+  padding: var(--s-4) 0 0;
+  background: transparent;
+  border-top: 1px solid var(--c-rule);
+}
+
+.pilot .drift-assist p {
+  margin: var(--s-1) 0 0;
+}
+
+.pilot .drift-assist .msg {
+  margin: var(--s-3) 0 0;
+}
+
+.pilot .drift-assist .row {
+  margin: var(--s-3) 0 0;
+}
+
+/* ------------------------------------------------------------------ Step by step */
+
+.pilot .run-step-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pilot .run-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: var(--s-2);
+  padding: var(--s-3) 0 var(--s-4);
+}
+
+.pilot .run-step:first-child {
+  padding-top: var(--s-1);
+}
+
+.pilot .run-step + .run-step {
+  border-top: 1px solid var(--c-rule);
+}
+
+/* Connector from a step's square down to the next step. */
+.pilot .run-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 13px; /* whole pixel: a crisp 1px line on the 28px square's centre */
+  top: calc(var(--s-3) + 32px);
+  bottom: 0;
+  width: 1px;
+  background: var(--c-rule);
+}
+
+.pilot .run-step:first-child:not(:last-child)::before {
+  top: calc(var(--s-1) + 32px);
+}
+
+/* Later steps: a 1px outline with an ink-2 numeral. */
+.pilot .run-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-1);
+  font: 600 14px/1 var(--font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-fg-2);
+}
+
+/* The current step: a signal square with a paper numeral. */
+.pilot .run-step-current .run-step-num {
+  background: var(--c-signal);
+  border-color: var(--c-signal);
+  color: var(--paper);
+}
+
+/* Steps before the current one: an ink square with a paper check (the numeral is hidden; the h3 names the step). */
+.pilot .run-step:has(~ .run-step-current) .run-step-num {
+  background: var(--c-fg) var(--c-check-icon) center / 20px 20px no-repeat;
+  border-color: var(--c-fg);
+  color: transparent;
+}
+
+/* Every body reserves the 3px bar so the columns line up; the current one shows it in signal blue. */
+.pilot .run-step-body {
+  min-width: 0;
+  padding-left: var(--s-3);
+  border-left: 3px solid transparent;
+}
+
+.pilot .run-step-current .run-step-body {
+  border-left-color: var(--c-signal);
+}
+
+/* A 28px line box, so the title's first line is centred on the 28px step square. */
+.pilot .run-step-title {
+  margin: 0 0 var(--s-3);
+  font: var(--t-subhead);
+  font-weight: 600;
+  line-height: 28px;
+  color: var(--c-fg);
+}
+
+.pilot .run-step-current .run-step-title {
+  font-weight: 700;
+}
+
+.pilot .run-step-text {
+  margin: var(--s-2) 0 0;
+}
+
+.pilot .run-step-live {
+  margin: var(--s-2) 0 0;
+  font: var(--t-body);
+  color: var(--c-fg);
+}
+
+.pilot .run-step-live:empty {
+  display: none;
+}
+
+.pilot .run-step-reset {
+  margin-top: var(--s-3);
+}
+
+.pilot .run-step-body > .hint {
+  margin: var(--s-2) 0 0;
+}
+
+/* Step 2: a plain checkbox row, no card. */
+.pilot .confirm-card {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-0);
+}
+
+.pilot .confirm-card:has(input:disabled) {
+  color: var(--c-fg-2);
+  cursor: not-allowed;
+}
+
+.pilot .run-step-body > .blockers {
+  margin-top: 0;
+}
+
+.pilot .run-step-body .run-state-aborted {
+  margin-bottom: var(--s-3);
+}

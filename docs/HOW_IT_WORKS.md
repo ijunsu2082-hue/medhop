@@ -61,13 +61,23 @@ lands. That is a hazard, and a lot of the safety rules exist because of it.
 
 **What it does.** A 2-D model of the drone in a corridor facing a wall with the station sign. Stick
 fractions become speeds (1 m/s forward or sideways and 150 deg/s turning at full stick) with a lag, a
-steady 0.08 m/s sideways drift and small random noise. It renders a 640x360 camera picture at 15 fps
-(70-degree field of view, JPEG quality 50, noise and blur) with the sign drawn in perspective, and delays
-commands and video so the command-to-video latency is about 0.45 s, similar to the real drone.
+steady 0.08 m/s sideways drift and small random noise. It delays commands and video so the
+command-to-video latency is about 0.45 s, similar to the real drone. The camera has two profiles, both
+with a 70-degree field of view and the sign drawn in perspective:
 
-**The one idea.** The simulator is deliberately unkind (drift, latency, noise, a low-quality picture) so
-the station-run code is tested against the problems the real drone is expected to have. It also has
-test hooks: force an auto-land, freeze the video, hide the sign, set the pose.
+- **Drone-like** (the `SimConfig` defaults, `MEDHOP_SIM_CAMERA=drone`): a plain wall and floor at 640x360
+  and 15 fps, JPEG quality 50, with noise and blur, close to what the toy drone's camera gives. The
+  existing closed-loop, marker and vision tests and every published simulator figure use this profile;
+  `tests/test_sim_high_quality.py` covers the display profile, and a test that builds the app from default
+  `Settings` (for example in `tests/test_automatic.py`) also runs on it.
+- **Display** (`SimConfig.high_quality()`, `drone/sim_scene.py`, the interactive app's default): a
+  rendered care-home room at 1280x720 and 15 fps, so the Pilot page has a clear picture to watch. It is
+  not the drone's stream, and sign detection in the interactive simulator therefore runs on a cleaner
+  picture than the real camera gives. The interactive simulator starts 3.2 m from the sign.
+
+**The one idea.** The simulator is deliberately unkind (drift, latency, noise, and in the tests a
+low-quality picture) so the station-run code is tested against the problems the real drone is expected
+to have. It also has test hooks: force an auto-land, freeze the video, hide the sign, set the pose.
 
 **Judge:** "Isn't a simulator result just a made-up result?"
 **Answer:** It is not a flight result, and the README keeps the two apart. It shows the control logic

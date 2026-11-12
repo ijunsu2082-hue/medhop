@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { api, errorText } from "../../api/client";
 import type { ScheduleDose, ScheduleDoseInput } from "../../api/types";
 import { normaliseHHMM } from "../../logic/time";
+import { IconChevron } from "../Icons";
 
 interface FormState {
   time: string;
@@ -10,6 +11,12 @@ interface FormState {
 }
 
 const EMPTY: FormState = { time: "", label: "", notes: "" };
+
+/** Ids of the row controls, so focus can be put back on them when the control the user pressed goes away. */
+const ADD_TOGGLE_ID = "schedule-add-toggle";
+const editId = (doseId: string) => `schedule-${doseId}-edit`;
+const deleteId = (doseId: string) => `schedule-${doseId}-delete`;
+const keepId = (doseId: string) => `schedule-${doseId}-keep`;
 
 function validate(f: FormState): { value: ScheduleDoseInput | null; errors: Partial<Record<keyof FormState, string>> } {
   const errors: Partial<Record<keyof FormState, string>> = {};
@@ -23,12 +30,17 @@ function validate(f: FormState): { value: ScheduleDoseInput | null; errors: Part
 
 function DoseForm({
   idPrefix,
+  layout,
   initial,
   submitLabel,
   onSubmit,
   onCancel,
 }: {
   idPrefix: string;
+  /** "row": fields and the submit button on one line when the form itself is at least 720px wide (a container
+   *  query in caregiver.css; viewports of about 784-959px and 1160px and up). Narrower, it falls back to the stacked
+   *  fields with the button beneath. "stacked": the actions always sit under the fields. */
+  layout: "row" | "stacked";
   initial: FormState;
   submitLabel: string;
   onSubmit: (v: ScheduleDoseInput) => Promise<boolean>;
@@ -42,7 +54,12 @@ function DoseForm({
     e.preventDefault();
     const { value, errors: errs } = validate(f);
     setErrors(errs);
-    if (!value) return;
+    if (!value) {
+      // Put the cursor in the first field that needs fixing; its error is read out through aria-describedby.
+      const first = (["time", "label"] as const).find((k) => errs[k]);
+      if (first) requestAnimationFrame(() => document.getElementById(`${idPrefix}-${first}`)?.focus());
+      return;
+    }
     setBusy(true);
     const ok = await onSubmit(value);
     setBusy(false);
@@ -58,12 +75,12 @@ function DoseForm({
   });
 
   return (
-    <form className="dose-form" onSubmit={(e) => void submit(e)} noValidate>
+    <form className={`dose-form dose-form--${layout}`} onSubmit={(e) => void submit(e)} noValidate>
       <div className="field field-time">
         <label htmlFor={`${idPrefix}-time`}>
           Time <span className="muted">HH:MM</span>
         </label>
-        <input {...field("time")} className="mono" type="text" inputMode="numeric" placeholder="08:00" autoComplete="off" maxLength={5} />
+        <input {...field("time")} className="mono" type="text" inputMode="numeric" placeholder="e.g. 08:00" autoComplete="off" maxLength={5} />
         {errors.time && (
           <span className="field-error" id={`${idPrefix}-time-err`}>
             {errors.time}
@@ -72,7 +89,7 @@ function DoseForm({
       </div>
       <div className="field field-label">
         <label htmlFor={`${idPrefix}-label`}>Label</label>
-        <input {...field("label")} type="text" placeholder="Morning dose (demo)" autoComplete="off" maxLength={80} />
+        <input {...field("label")} type="text" placeholder="e.g. Morning dose (demo)" autoComplete="off" maxLength={80} />
         {errors.label && (
           <span className="field-error" id={`${idPrefix}-label-err`}>
             {errors.label}
@@ -86,7 +103,7 @@ function DoseForm({
         <input {...field("notes")} type="text" autoComplete="off" maxLength={200} />
       </div>
       <div className="row form-actions">
-        <button type="submit" className="btn btn-primary" disabled={busy}>
+        <button type="submit" className="btn btn-primary" disabled={busy} aria-busy={busy ? true : undefined}>
           {busy ? "Saving..." : submitLabel}
         </button>
         {onCancel && (
@@ -106,6 +123,35 @@ export function ScheduleEditor() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const addToggle = useRef<HTMLButtonElement | null>(null);
+  /** Where focus goes after the add form opens or closes; set only by the user's own actions. */
+  const focusAfter = useRef<"field" | "toggle" | null>(null);
+  /**
+   * The id of the element to focus after the next render, when the control the user pressed goes away (a row opens
+   * into its form, the form closes, the confirm pair replaces Edit and Delete, a row is deleted). Set only by the
+   * user's own actions; if the element is gone by then, focus falls back to the "Add a dose" toggle.
+   */
+  const focusNext = useRef<string | null>(null);
+  const requestFocus = (id: string) => {
+    focusNext.current = id;
+  };
+
+  useEffect(() => {
+    const id = focusNext.current;
+    if (!id) return;
+    focusNext.current = null;
+    (document.getElementById(id) ?? addToggle.current)?.focus();
+  });
+
+  // Opening the add form puts the cursor in its first field; a successful add returns focus to the toggle.
+  useEffect(() => {
+    const target = focusAfter.current;
+    focusAfter.current = null;
+    if (target === "field" && adding) document.getElementById("add-time")?.focus();
+    if (target === "toggle" && !adding) addToggle.current?.focus();
+  }, [adding]);
 
   const load = useCallback(async () => {
     try {
@@ -142,7 +188,6 @@ export function ScheduleEditor() {
 
   return (
     <div className="schedule">
-      <p className="small muted schedule-note">Use made-up labels only. No real names or medicines.</p>
       {loadError && (
         <p className="msg msg-warn" role="status">
           {loadError}
@@ -159,18 +204,25 @@ export function ScheduleEditor() {
       {doses !== null && doses.length > 0 && (
         <ul className="schedule-list">
           {doses.map((d) => (
-            <li key={d.id} className={`schedule-item${editing === d.id ? " schedule-item-editing card" : ""}`}>
+            <li key={d.id} className={`schedule-item${editing === d.id ? " schedule-item-editing" : ""}`}>
               {editing === d.id ? (
                 <DoseForm
                   idPrefix={`edit-${d.id}`}
+                  layout="stacked"
                   initial={{ time: d.time, label: d.label, notes: d.notes ?? "" }}
                   submitLabel="Save changes"
                   onSubmit={async (v) => {
                     const ok = await run("Saving", () => api.updateDose(d.id, v));
-                    if (ok) setEditing(null);
+                    if (ok) {
+                      requestFocus(editId(d.id));
+                      setEditing(null);
+                    }
                     return ok;
                   }}
-                  onCancel={() => setEditing(null)}
+                  onCancel={() => {
+                    requestFocus(editId(d.id));
+                    setEditing(null);
+                  }}
                 />
               ) : (
                 <>
@@ -184,21 +236,46 @@ export function ScheduleEditor() {
                       <>
                         <button
                           type="button"
-                          className="btn btn-danger-outline btn-sm"
-                          onClick={() => void run("Deleting", () => api.deleteDose(d.id)).then(() => setConfirmDelete(null))}
+                          className="btn btn-danger"
+                          disabled={deleting === d.id}
+                          aria-busy={deleting === d.id ? true : undefined}
+                          aria-label={deleting === d.id ? undefined : `Confirm delete ${d.label} at ${d.time}`}
+                          onClick={() => {
+                            // After a delete, focus the next row's Edit (or the previous row's, or the toggle).
+                            const i = doses.findIndex((x) => x.id === d.id);
+                            const neighbour = doses[i + 1] ?? doses[i - 1];
+                            setDeleting(d.id);
+                            void run("Deleting", () => api.deleteDose(d.id)).then((ok) => {
+                              requestFocus(ok ? (neighbour ? editId(neighbour.id) : ADD_TOGGLE_ID) : deleteId(d.id));
+                              setDeleting(null);
+                              setConfirmDelete(null);
+                            });
+                          }}
                         >
-                          Confirm delete
+                          {deleting === d.id ? "Deleting..." : "Confirm delete"}
                         </button>
-                        <button type="button" className="btn btn-quiet btn-sm" onClick={() => setConfirmDelete(null)}>
+                        <button
+                          id={keepId(d.id)}
+                          type="button"
+                          className="btn"
+                          disabled={deleting === d.id}
+                          aria-label={`Keep ${d.label} at ${d.time}`}
+                          onClick={() => {
+                            requestFocus(deleteId(d.id));
+                            setConfirmDelete(null);
+                          }}
+                        >
                           Keep
                         </button>
                       </>
                     ) : (
                       <>
                         <button
+                          id={editId(d.id)}
                           type="button"
-                          className="btn btn-quiet btn-sm"
+                          className="btn btn-quiet"
                           onClick={() => {
+                            requestFocus(`edit-${d.id}-time`);
                             setEditing(d.id);
                             setConfirmDelete(null);
                           }}
@@ -207,9 +284,14 @@ export function ScheduleEditor() {
                           Edit
                         </button>
                         <button
+                          id={deleteId(d.id)}
                           type="button"
-                          className="btn btn-quiet btn-sm schedule-delete"
-                          onClick={() => setConfirmDelete(d.id)}
+                          className="btn btn-danger-quiet schedule-delete"
+                          onClick={() => {
+                            // The safe choice takes focus, so a second Enter keeps the dose rather than deleting it.
+                            requestFocus(keepId(d.id));
+                            setConfirmDelete(d.id);
+                          }}
                           aria-label={`Delete ${d.label} at ${d.time}`}
                         >
                           Delete
@@ -225,8 +307,39 @@ export function ScheduleEditor() {
       )}
 
       <div className="schedule-add">
-        <h3 className="eyebrow">Add a dose</h3>
-        <DoseForm idPrefix="add" initial={EMPTY} submitLabel="Add dose" onSubmit={(v) => run("Adding", () => api.addDose(v))} />
+        <button
+          ref={addToggle}
+          id={ADD_TOGGLE_ID}
+          type="button"
+          className="btn schedule-add-toggle"
+          aria-expanded={adding}
+          aria-controls="add-dose-form"
+          onClick={() => {
+            focusAfter.current = adding ? null : "field";
+            setAdding(!adding);
+          }}
+        >
+          <IconChevron size={16} className="disclosure-chevron" />
+          Add a dose
+        </button>
+        <div id="add-dose-form" className="schedule-add-body" hidden={!adding}>
+          {adding && (
+            <DoseForm
+              idPrefix="add"
+              layout="row"
+              initial={EMPTY}
+              submitLabel="Add dose"
+              onSubmit={async (v) => {
+                const ok = await run("Adding", () => api.addDose(v));
+                if (ok) {
+                  focusAfter.current = "toggle";
+                  setAdding(false);
+                }
+                return ok;
+              }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

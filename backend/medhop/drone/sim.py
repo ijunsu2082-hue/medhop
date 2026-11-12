@@ -6,6 +6,14 @@ wall; positive heading is a turn to the right.
 
 The simulator can run on its own thread against a real clock (the default, used by the server) or be
 stepped by a test with an injected clock (`realtime=False`, call `advance_to(now)`).
+
+Two camera profiles. The `SimConfig()` defaults are the drone-like profile: a plain wall and floor at
+640x360, blurred, noisy and JPEG quality 50, close to what the toy drone's camera gives. The existing
+closed-loop, marker and vision tests and every published simulator figure use it. `SimConfig.high_quality()`
+is the display profile the interactive app uses by default: a rendered room (sim_scene.py) at 1280x720
+and 15 fps. tests/test_sim_high_quality.py covers it, and a test that builds the app from default
+`Settings` also gets it. Marker detection in that profile runs on a cleaner picture than the real camera
+gives.
 """
 from __future__ import annotations
 
@@ -14,7 +22,7 @@ import math
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Deque, List, Optional, Tuple
 
 import cv2
@@ -53,7 +61,12 @@ class SimConfig:
     jpeg_quality: int = 50
     sensor_noise: float = 6.0          # sigma, grey levels
     blur_sigma: float = 0.8
-    light: float = 1.0                 # scene brightness gain (below about 0.35 the frame reads as dark)
+    light: float = 1.0                 # scene brightness gain; mean grey falls under the vision worker's
+                                       # "dark" level (40) below about 0.25 on the ground and 0.2 in the
+                                       # air, in either scene (at 0.35 it is still 55 to 68)
+    scene: str = "plain"               # "plain" (drone-like wall and floor) or "room" (sim_scene.py)
+    supersample: int = 1               # room scene: render this many times larger, then scale down
+    vignette: float = 0.0              # room scene: darkening toward the corners (0 = none)
     # transport: command delay + video delay = command-to-video latency (about 0.45 s)
     command_delay_s: float = 0.10
     video_delay_s: float = 0.35
@@ -73,6 +86,18 @@ class SimConfig:
     # the takeoff spot. The interactive simulator turns this on so repeated demo runs start the same way.
     reset_pose_on_takeoff: bool = False
     seed: Optional[int] = None
+
+    @classmethod
+    def high_quality(cls, **overrides) -> "SimConfig":
+        """The display camera profile: a rendered room at 1280x720, 15 fps, a clean picture.
+
+        The interactive simulator uses it by default (tests/test_sim_high_quality.py covers it). The
+        existing closed-loop and marker tests and the published simulator figures use the drone-like
+        defaults, which are much closer to the real toy camera.
+        """
+        base = cls(width=1280, height=720, fps=15.0, jpeg_quality=92, sensor_noise=1.2, blur_sigma=0.0,
+                   scene="room", supersample=2, vignette=0.16)
+        return replace(base, **overrides)
 
 
 class SimLink:
@@ -289,6 +314,10 @@ class SimLink:
                         timestamp=self._t,
                     )
                     self._next_telemetry_t += 0.5
+        if self._realtime and len(captures) > 1:
+            # Running late (a busy machine, a slow frame): render only the newest capture. The frame
+            # rate drops for a moment instead of a burst of stale frames being released.
+            captures = captures[-1:]
         rendered = [(t + self.cfg.video_delay_s, self._render_jpeg(snap)) for t, snap in captures]
         with self._lock:
             self._pending.extend(rendered)
@@ -381,6 +410,33 @@ class SimLink:
     # scene and camera
     # ------------------------------------------------------------------ #
     def _build_scene(self) -> None:
+        if self.cfg.scene == "room":
+            self._build_room_scene()
+        elif self.cfg.scene == "plain":
+            self._build_plain_scene()
+        else:
+            raise ValueError(f"SimConfig.scene must be 'plain' or 'room', got {self.cfg.scene!r}")
+
+    def _build_room_scene(self) -> None:
+        from medhop.drone.sim_scene import RoomRenderer
+
+        c = self.cfg
+        self._focal = (c.width / 2.0) / math.tan(math.radians(c.hfov_deg) / 2.0)
+        self._K = np.array([[self._focal, 0.0, c.width / 2.0],
+                            [0.0, self._focal, c.height / 2.0],
+                            [0.0, 0.0, 1.0]])
+        self._sign_levels = []
+        ppm = 2000.0
+        while ppm > 100.0:
+            sheet, _rect = station_sign(c.marker_id, c.marker_size_m, ppm)
+            self._sign_levels.append((ppm, cv2.cvtColor(sheet, cv2.COLOR_GRAY2BGR)))
+            ppm /= math.sqrt(2.0)
+        self._sign_left_x = -A4_WIDTH_M / 2.0
+        self._sign_top_y = c.marker_height_m + c.marker_size_m / 2.0 + SIGN_TOP_MARGIN_M
+        self._room = RoomRenderer(c, self._focal, self._sign_levels, self._sign_left_x, self._sign_top_y,
+                                  self._rng)
+
+    def _build_plain_scene(self) -> None:
         c = self.cfg
         rng = np.random.default_rng(1234)  # the room looks the same in every run
         self._focal = (c.width / 2.0) / math.tan(math.radians(c.hfov_deg) / 2.0)
@@ -438,6 +494,11 @@ class SimLink:
         ] if c.sensor_noise > 0 else []
 
     def _render_bgr(self, snap: dict) -> np.ndarray:
+        if self.cfg.scene == "room":
+            return self._room.render(snap, self._rng)
+        return self._render_plain(snap)
+
+    def _render_plain(self, snap: dict) -> np.ndarray:
         c = self.cfg
         heading = snap["heading"]
         sin_h, cos_h = math.sin(heading), math.cos(heading)

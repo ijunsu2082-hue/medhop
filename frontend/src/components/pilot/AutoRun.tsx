@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { api, blockersFrom, errorText } from "../../api/client";
 import type { Status } from "../../api/types";
@@ -18,9 +18,8 @@ import {
   landingExplainerText,
 } from "../../logic/pilot";
 import { blockerText, missionStateText } from "../../text/wording";
-import { IconCheck, IconCross, IconWarn } from "../Icons";
+import { IconChevron, IconCross, IconPass, IconWarn } from "../Icons";
 import { HoldButton } from "./HoldButton";
-import { IconChevron } from "./PilotIcons";
 
 interface Props {
   status: Status;
@@ -57,6 +56,18 @@ function useBeep() {
       /* no sound: the countdown is still shown */
     }
   }, []);
+}
+
+/** The countdown sentence with its trailing number in its own span, so the number can be set large. Same text. */
+function countdownParts(text: string): ReactNode {
+  const m = /^(.*?)(\d+)$/.exec(text);
+  if (!m) return text;
+  return (
+    <>
+      {m[1]}
+      <span className="auto-countdown-num">{m[2]}</span>
+    </>
+  );
 }
 
 /** The Automatic view of the Station run panel: one hold starts a run that takes off, finds the sign and lands. */
@@ -193,7 +204,7 @@ export function AutoRun({ status, controlOpen }: Props) {
           </ol>
           <div className="run-state" aria-live="polite" aria-atomic="true">
             {countdown !== null ? (
-              <strong className="auto-countdown">{countdown}</strong>
+              <strong className="auto-countdown">{countdownParts(countdown)}</strong>
             ) : (
               <strong>{missionStateText(m.state)}</strong>
             )}
@@ -202,7 +213,7 @@ export function AutoRun({ status, controlOpen }: Props) {
           </div>
           <button
             type="button"
-            className="btn btn-secondary btn-lg btn-block run-wide"
+            className="btn btn-lg btn-block"
             onClick={(e) => {
               void abort();
               e.currentTarget.blur();
@@ -224,7 +235,7 @@ export function AutoRun({ status, controlOpen }: Props) {
             !(needsPilot && result.tone === "warn") &&
             (result.tone === "pass" ? (
               <div className="run-outcome" aria-live="polite" aria-atomic="true">
-                <IconCheck size={24} />
+                <IconPass size={24} />
                 <div className="run-outcome-body">
                   <p>{result.text}</p>
                   {runDose && <p className="small">For: {runDose.label}</p>}
@@ -252,7 +263,6 @@ export function AutoRun({ status, controlOpen }: Props) {
                 // Non-text controls give focus back after a change so nothing on the page holds it (SPEC 10.5).
                 e.currentTarget.blur();
               }}
-              className="select-lg"
             >
               <option value="">No dose (practice run)</option>
               {doses.map((d) => (
@@ -269,7 +279,7 @@ export function AutoRun({ status, controlOpen }: Props) {
               <ul>
                 {blockers.map((b) => (
                   <li key={b}>
-                    <IconCross size={14} />
+                    <IconCross size={20} />
                     <span>{b}</span>
                   </li>
                 ))}
@@ -321,6 +331,9 @@ export function AutoRun({ status, controlOpen }: Props) {
               aria-describedby="auto-fly-desc"
             />
             <span className="switch-track" aria-hidden="true" />
+            <span className="switch-word" aria-hidden="true">
+              {autoChecked ? "On" : "Off"}
+            </span>
             <span>Fly automatically when a dose is due</span>
           </label>
           <p className="hint small" id="auto-fly-desc">

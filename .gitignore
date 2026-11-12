@@ -28,3 +28,6 @@ data/*
 .DS_Store
 .idea/
 .vscode/
+
+# Netlify CLI local link
+.netlify/

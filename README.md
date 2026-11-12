@@ -67,11 +67,11 @@ drone; no real-drone flight with MedHop has been done yet at the time of writing
   for 1 s. Through the 1.2 s settle and the landing it keeps holding that spot sideways with roll.
   Not lined up after 15 s: it lands anyway if within 12 cm (the arrival says "could not line up
   exactly"), otherwise it stops ("not_lined_up"). It also gives up if it gets 90 cm off the line or
-  closer to the wall than 70 % of the landing distance (at least 30 cm). In the simulator (30 automatic
-  runs from 2.5 m, sideways drift 0 to 0.12 m/s) every run landed within 6 cm of the centre line and
-  0.35 to 0.55 m from the wall (the program's measure is exact there). Seeing the sign from far away
-  only starts the approach: beyond about 5 m the 18 cm sign is too small to be detected, and signs with
-  any other ArUco number are ignored.
+  closer to the wall than 70 % of the landing distance (at least 30 cm). In the simulator (drone-like
+  camera profile, 30 automatic runs from 2.5 m, sideways drift 0 to 0.12 m/s) every run landed within
+  6 cm of the centre line and 0.35 to 0.55 m from the wall (the program's measure is exact there).
+  Seeing the sign from far away only starts the approach: beyond about 5 m the 18 cm sign is too small
+  to be detected, and signs with any other ArUco number are ignored.
   On the real drone the centimetres are estimates: the camera's field of view is unmeasured, which
   scales the distances (the centre line itself does not depend on it).
 - Hover test (measures the peak sideways excursion while hands-off) and arrival calibration.
@@ -222,6 +222,7 @@ commands are held and repeated. Those changes are uncommitted and unpublished. S
 | `MEDHOP_GRACE_MIN` | `15` | minutes after a dose time before it "needs attention" |
 | `MEDHOP_CAMERA_HFOV_DEG` | `70` | camera field of view, for the "sign about X m away" estimate and for turning `MEDHOP_LAND_DISTANCE_M` into the arrive width (unmeasured on the real drone) |
 | `MEDHOP_HOST` | `127.0.0.1` | address the backend listens on |
+| `MEDHOP_SIM_CAMERA` | `high` | simulator only: `high` (a rendered room at 1280x720, 15 fps, a clearer picture than the real camera gives; starts 3.2 m from the sign) or `drone` (the drone-like 640x360 profile with noise, blur and JPEG quality 50 that the simulator closed-loop tests and the published figures use) |
 | `MEDHOP_PYTHON` | `python3` | interpreter used by the scripts in `scripts/` |
 
 The station sign is `docs/station-marker-A4.png` (ArUco DICT_4X4_50, id 7, 180 mm black square on A4).
@@ -304,9 +305,13 @@ MedHop has been done yet at the time of writing.*
 ### Simulator (not flight results)
 
 These numbers come from the simulator in `backend/medhop/drone/sim.py` and from the test suites, not
-from the real drone.
+from the real drone. These figures, and the simulator closed-loop and marker tests, use the simulator's
+drone-like camera profile and a 2.5 m start (`tests/test_sim_high_quality.py` covers the display profile, and a test that builds the app from default settings, for example in `tests/test_automatic.py`, also runs on it). The interactive simulator (`dev-sim.sh`) uses the display profile by default instead: a
+rendered room at 1280x720 that starts 3.2 m from the sign, so the sign is in view from the ground. Its
+picture is cleaner than the real camera's, so it is not a guide to how well the real camera sees the sign.
 
-These are simulator results, not real-drone results: 10 seeds per row, start 2.5 m from the sign,
+These are simulator results, not real-drone results, from the drone-like camera profile (640x360, noise,
+blur, JPEG quality 50; `MEDHOP_SIM_CAMERA=drone`): 10 seeds per row, start 2.5 m from the sign,
 heading 25 degrees off (alternating side with the seed), 0.45 s command-to-video latency, Revision 3 build
 (1.2 s settle), run on 2026-11-11. "Wall distance" and "lateral" are the simulated drone's distance from
 the wall and its sideways offset from the sign's axis, in metres, when the run ended. With "Land on

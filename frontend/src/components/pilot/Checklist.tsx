@@ -1,11 +1,10 @@
 import { useState } from "react";
 import type { Status } from "../../api/types";
 import { preflightChecklist, type Verdict } from "../../logic/checklist";
-import { IconCheck, IconClock, IconCross, IconWarn } from "../Icons";
-import { IconChevron } from "./PilotIcons";
+import { IconChevron, IconCross, IconInfo, IconPass, IconWarn } from "../Icons";
 
 const WORD: Record<Verdict, string> = { pass: "Pass", warn: "Warn", fail: "Fail", info: "Info" };
-const ICON: Record<Verdict, typeof IconCheck> = { pass: IconCheck, warn: IconWarn, fail: IconCross, info: IconClock };
+const ICON: Record<Verdict, typeof IconPass> = { pass: IconPass, warn: IconWarn, fail: IconCross, info: IconInfo };
 
 /**
  * Pre-flight checklist as a grouped status list (verdict icon + label + verdict word). Each row opens to show its text; a failing row
@@ -35,15 +34,15 @@ export function Checklist({ status }: { status: Status }) {
                 e.currentTarget.blur();
               }}
             >
-              <span className={`check-icon verdict-${r.verdict}`}>
-                <Icon size={16} />
+              <span className={`check-icon tone-${r.verdict}`}>
+                <Icon size={20} />
               </span>
               <span className="check-label">{r.label}</span>
               <span className="sr-only">: {WORD[r.verdict]}</span>
-              <span className="check-state" aria-hidden="true">
+              <span className={`check-state stamp stamp--${r.verdict}`} aria-hidden="true">
                 {WORD[r.verdict]}
               </span>
-              <IconChevron className="check-chevron" size={14} />
+              <IconChevron className="check-chevron" size={16} />
             </button>
             <p className="check-text" id={textId} hidden={!open}>
               <span className="check-word">{WORD[r.verdict]}:</span> {r.text}

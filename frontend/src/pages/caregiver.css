@@ -1,519 +1,681 @@
-/* Caregiver page (/caregiver). Visual spec v3 section 8: quiet header, one summary row, clean lists.
-   Shared primitives (.panel, .table, .kv, .btn, .chip, .conn, .card, .eyebrow, inputs) come from styles.css;
-   this file only sizes and places them. Every rule is scoped under .caregiver. */
+/* Caregiver page (/caregiver): a typeset daily report on paper.
+   Reads top to bottom: the date, one headline that states the day, the counts, the one alert, then a main column
+   (01 Today, 02 Schedule) and a narrower rail (03 Recent events, 04 Drone) of ruled sections.
+   Shared primitives (.section, .table, .kv, .btn*, .stamp, .status-line, .banner, .msg, fields) come from styles.css;
+   this file only sets the page's type, places things and adds page-scoped details. Every rule is scoped under
+   .caregiver and uses tokens only. Breakpoints: 640px and 960px. */
 
 .caregiver {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 32px 0 var(--sp-6);
-  color: var(--text);
+  padding-top: var(--s-6);
+  padding-bottom: var(--s-8);
+  color: var(--ink);
 }
 
-/* ---------- Header and summary ---------- */
+/* Nothing on this page is set under 14px: the stamps and section numbers step up from the shared 12 and 13px. */
+.caregiver .stamp {
+  height: 24px;
+  font: var(--t-stamp);
+  font-size: 14px;
+}
+
+.caregiver .section-index {
+  font-size: 14px;
+}
+
+.caregiver .caregiver-empty {
+  margin: 0;
+  font: var(--t-body);
+  color: var(--ink-2);
+}
+
+/* ===================================================================================== Header */
 
 .caregiver .caregiver-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px 24px;
+  margin-bottom: var(--s-6);
 }
-.caregiver .caregiver-title {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.caregiver h1 {
-  margin: 0;
-  font-size: var(--fs-xl);
-  line-height: 28px;
-  font-weight: 600;
-  letter-spacing: -0.019em;
-}
+
 .caregiver .caregiver-when {
-  margin: 0;
-  font-size: var(--fs-sm);
-  line-height: 18px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
+  margin: 0 0 var(--s-2);
+  font: var(--t-body);
+  color: var(--ink-2);
 }
 
-/* One white panel split into three cells. Full width under the title (DOM order unchanged). */
-.caregiver .stat-tiles {
-  flex-basis: 100%;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  background: var(--surface);
-  border-radius: var(--r-lg);
-  box-shadow: var(--e1);
-  overflow: hidden;
+.caregiver .caregiver-headline {
+  max-width: 28ch;
+  margin: 0 0 var(--s-2);
+  font: var(--t-display);
+  letter-spacing: -0.015em;
+  font-variation-settings: "opsz" 72;
+  font-variant-numeric: lining-nums;
+  text-wrap: balance;
+  color: var(--ink);
 }
-.caregiver .stat-tile {
-  display: grid;
-  gap: 6px;
-  padding: 18px 24px;
-  border: 0;
-  border-radius: 0;
-  background: none;
+
+/* The counts line: numbers in the data face, every count at ink-2, zeros included. Items break only between. */
+.caregiver .caregiver-counts {
+  margin: 0;
+  font: var(--t-body);
+  color: var(--ink-2);
+}
+
+.caregiver .caregiver-count {
+  white-space: nowrap;
+}
+
+/* Figures inside a sentence keep the data face but take the sentence's own size, so the clock and the counts are
+   not smaller than the words around them. */
+.caregiver .caregiver-when .data,
+.caregiver .caregiver-count .data {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+/* The one alert on the page, directly under the header. */
+.caregiver > .banner {
+  margin: 0 0 var(--s-6);
+  color: var(--ink);
+}
+
+/* The banner is 600, so a plain strong would resolve to 900. The state word steps up one weight only. */
+.caregiver > .banner strong {
+  font-weight: 700;
+}
+
+/* A label can be one long unbroken word (the form allows 80 characters); it wraps inside the banner instead of
+   pushing the page sideways. */
+.caregiver > .banner > span {
   min-width: 0;
-}
-.caregiver .stat-tile + .stat-tile {
-  box-shadow: inset 1px 0 0 var(--line);
-}
-.caregiver .stat-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-sm);
-  line-height: 18px;
-  font-weight: 500;
-  color: var(--muted);
-}
-.caregiver .stat-label svg {
-  flex: none;
-  color: var(--faint);
-}
-.caregiver .stat-value {
-  font-size: var(--fs-2xl);
-  line-height: 34px;
-  font-weight: 600;
-  letter-spacing: -0.021em;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-}
-/* Zero counts recede so a real number stands out. */
-.caregiver .stat-zero .stat-value {
-  color: var(--faint);
-}
-.caregiver .stat-attention.stat-active {
-  background: var(--fail-bg);
-}
-.caregiver .stat-attention.stat-active .stat-value,
-.caregiver .stat-attention.stat-active .stat-label svg {
-  color: var(--fail);
+  overflow-wrap: anywhere;
 }
 
-/* ---------- Attention banner (role="alert") ---------- */
-
-.caregiver .banner-attention {
-  margin: 0;
-  border-radius: var(--r-md);
-}
-.caregiver .banner-attention svg {
-  flex: none;
-  color: var(--fail);
-}
-.caregiver .banner-attention strong {
-  font-weight: 600;
-}
-
-/* ---------- Grid: Today full width; Recent events left; Schedule then Drone right ---------- */
+/* ===================================================================================== Layout */
 
 .caregiver .caregiver-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "today" "events" "schedule" "drone";
-  gap: 20px;
-  margin: 0;
-  align-items: start;
+  gap: var(--s-7);
 }
-.caregiver .caregiver-today {
-  grid-area: today;
+
+.caregiver .caregiver-main,
+.caregiver .caregiver-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-7);
+  min-width: 0;
 }
-.caregiver .caregiver-events {
-  grid-area: events;
-}
-.caregiver .caregiver-schedule {
-  grid-area: schedule;
-}
-.caregiver .caregiver-drone {
-  grid-area: drone;
-}
-@media (min-width: 900px) {
+
+@media (min-width: 960px) {
   .caregiver .caregiver-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "today today"
-      "events schedule"
-      "events drone";
-    grid-template-rows: auto auto 1fr;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--s-6);
+  }
+
+  .caregiver .caregiver-main {
+    grid-column: 1 / span 8;
+  }
+
+  .caregiver .caregiver-rail {
+    grid-column: 9 / span 4;
   }
 }
 
-.caregiver .panel {
-  margin: 0;
-}
-.caregiver .panel p {
-  margin: 0;
+/* ===================================================================================== 01 Today */
+
+/* Every first cell is indented by the width of the attention bar plus its gap, so times line up in every row. */
+.caregiver .dose-table th:first-child,
+.caregiver .dose-table td:first-child {
+  padding-left: var(--s-4);
 }
 
-/* Title row: h2 on the left, a quiet action on the right. */
-.caregiver .panel-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-  margin: 0 0 16px;
-}
-.caregiver .panel-head h2 {
-  margin: 0;
-}
-.caregiver .panel-head p {
-  font-size: var(--fs-sm);
-  line-height: 18px;
+.caregiver .dose-table td {
+  height: 64px;
+  vertical-align: top;
 }
 
-/* ---------- Today ---------- */
-
-.caregiver .table td {
-  height: 52px;
-  box-sizing: border-box;
-}
 .caregiver .dose-time {
-  width: 72px;
-  font-size: var(--fs-md);
-  line-height: 22px;
-  font-weight: 600;
+  font: var(--t-data-lg);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-.caregiver .dose-label {
-  font-size: var(--fs-md);
-  line-height: 22px;
-  font-weight: 400;
-}
-.caregiver .dose-label .block {
-  display: block;
-  margin-top: 2px;
-  font-size: var(--fs-sm);
-  line-height: 18px;
-  color: var(--muted);
+  color: var(--ink);
 }
 
-/* Borderless status tag; the tag carries attention, the row edge stays clean. */
+.caregiver .dose-label {
+  font: var(--t-body);
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.caregiver .dose-notes {
+  display: block;
+  font: var(--t-caption);
+  color: var(--ink-2);
+}
+
+/* The state: a 20px icon and the state word, both in the state's colour. The rest of the line sits beneath. */
 .caregiver .dose-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 24px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--r-xs);
-  font-size: var(--fs-xs);
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.005em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  background: var(--surface-2);
-  color: var(--text-2);
+  gap: var(--s-3);
+  font: var(--t-subhead);
+  color: var(--ink-2);
 }
-.caregiver .dose-status svg {
+
+.caregiver .dose-status > svg {
   flex: none;
-  width: 14px;
-  height: 14px;
 }
-.caregiver .dose-status-upcoming {
-  background: var(--surface-2);
-  color: var(--text-2);
-}
-.caregiver .dose-status-due {
-  background: var(--warn-bg);
-  color: var(--warn);
-}
-.caregiver .dose-status-arrived {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.caregiver .dose-status-acknowledged {
-  background: var(--pass-bg);
-  color: var(--pass);
-}
+
 .caregiver .dose-status-needs_attention {
-  background: var(--fail-bg);
   color: var(--fail);
 }
 
-.caregiver .caregiver-foot {
-  display: grid;
-  gap: 4px;
-  max-width: 70ch;
-  margin-top: 16px;
-}
-.caregiver .caregiver-foot p {
-  font-size: var(--fs-xs);
-  line-height: 16px;
-  color: var(--muted);
+.caregiver .dose-status-acknowledged,
+.caregiver .dose-status-arrived {
+  color: var(--pass);
 }
 
-/* ---------- Recent events timeline ---------- */
-
-.caregiver .events {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 520px;
-  overflow: auto;
-  /* Soft 24px fade at the bottom edge so a long, scrolled list does not end on a hard cut.
-     The last row keeps 18px of bottom padding, so a short list loses nothing to the fade. */
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent);
-  mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent);
+.caregiver .dose-status-due {
+  color: var(--warn);
 }
-.caregiver .event {
+
+.caregiver .dose-status-upcoming {
+  color: var(--ink-2);
+}
+
+/* Aligned under the state word: 20px icon plus the 12px gap. */
+.caregiver .dose-status-detail {
+  display: block;
+  padding-left: var(--s-6);
+  font: var(--t-caption);
+  color: var(--ink-2);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* A dose that needs attention: a 6px oxblood bar at the left of the row, no fill. */
+.caregiver .dose-needs_attention > td:first-child {
   position: relative;
-  display: grid;
-  grid-template-columns: 76px 16px minmax(0, 1fr);
-  column-gap: 10px;
-  align-items: start;
-  padding: 0 0 18px;
 }
-.caregiver .event:not(:last-child)::after {
+
+.caregiver .dose-needs_attention > td:first-child::before {
   content: "";
   position: absolute;
-  left: calc(76px + 10px + 7.25px);
-  top: 18px;
-  bottom: 2px;
-  width: 1.5px;
-  background: var(--line);
-}
-.caregiver .event-time {
-  font-size: var(--fs-xs);
-  line-height: 20px;
-  color: var(--muted);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.caregiver .event-date {
-  display: block;
-  white-space: nowrap;
-  color: var(--faint);
-}
-.caregiver .event-dot {
-  width: 8px;
-  height: 8px;
-  margin: 6px 4px 0;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 2px #b9c2c2;
-}
-.caregiver .event-arrived_at_station .event-dot,
-.caregiver .event-pickup_acknowledged .event-dot {
-  background: var(--pass);
-  box-shadow: none;
-}
-.caregiver .event-run_aborted .event-dot {
-  background: #c98a0b;
-  box-shadow: none;
-}
-.caregiver .event-needs_attention .event-dot {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
   background: var(--fail);
-  box-shadow: none;
-}
-.caregiver .event-body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.caregiver .event-name {
-  font-size: var(--fs-ui);
-  line-height: 20px;
-  font-weight: 500;
-  color: var(--text);
-}
-.caregiver .event-dose,
-.caregiver .event-detail {
-  margin-top: 2px;
-  font-size: var(--fs-sm);
-  line-height: 18px;
-  color: var(--muted);
 }
 
-/* ---------- Schedule ---------- */
+/* From 640px the columns hold still: fixed proportions, so the Status column does not move when a dose changes
+   state or a longer label arrives. The time column fits HH:MM in the large data face plus the bar's indent. */
+@media (min-width: 640px) {
+  .caregiver .dose-table {
+    table-layout: fixed;
+  }
 
-.caregiver .schedule-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  .caregiver .dose-table th:nth-child(1) {
+    width: 104px;
+  }
+
+  .caregiver .dose-table th:nth-child(2) {
+    width: 42%;
+  }
 }
+
+/* Below 640px each dose stacks: time and label on one line, the status and its detail beneath at full width.
+   The header row is visually hidden but stays for assistive technology (the markup carries explicit roles). */
+@media (max-width: 639px) {
+  .caregiver .dose-table,
+  .caregiver .dose-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .caregiver .dose-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .caregiver .dose-table tbody tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: var(--s-3);
+    padding: var(--s-3) 0 var(--s-3) var(--s-4);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .caregiver .dose-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .caregiver .dose-table td,
+  .caregiver .dose-table td:first-child,
+  .caregiver .dose-table td:last-child {
+    display: block;
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+
+  .caregiver .dose-time {
+    width: auto;
+  }
+
+  .caregiver .dose-table .dose-status-cell {
+    grid-column: 1 / -1;
+    padding-top: var(--s-2);
+  }
+
+  .caregiver .dose-needs_attention > td:first-child {
+    position: static;
+  }
+
+  .caregiver .dose-needs_attention > td:first-child::before {
+    content: none;
+  }
+
+  .caregiver .dose-table tbody tr.dose-needs_attention::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 6px;
+    background: var(--fail);
+  }
+}
+
+/* Footnotes, then the notification control as a quiet row of its own. */
+.caregiver .caregiver-foot {
+  margin-top: var(--s-4);
+}
+
+.caregiver .caregiver-foot .small {
+  margin: 0 0 var(--s-1);
+}
+
+.caregiver .caregiver-notify {
+  margin-top: var(--s-3);
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--rule);
+}
+
+.caregiver .caregiver-notify .notify-state {
+  margin: 0;
+  padding-top: var(--s-1);
+}
+
+.caregiver .notify-btn {
+  padding-inline: 0;
+  font: var(--t-label);
+}
+
+/* ===================================================================================== 02 Schedule */
+
 .caregiver .schedule-note {
-  font-size: var(--fs-sm);
-  line-height: 18px;
-  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+  margin: 0 0 var(--s-4);
+  font: var(--t-caption);
+  color: var(--ink-2);
+}
+
+.caregiver .schedule-note .stamp {
+  color: var(--ink);
 }
 
 .caregiver .schedule-list {
-  list-style: none;
-  margin: 16px 0 0;
+  margin: 0;
   padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--rule);
 }
+
+/* Time, label and actions sit on the label's first line (baseline), as the Today table top-aligns its rows; a label
+   that wraps grows downward without moving the time or the buttons. */
 .caregiver .schedule-item {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  min-height: 52px;
-  padding: 8px 0;
-  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2) var(--s-4);
+  min-height: 56px;
+  padding: var(--s-2) 0;
+  border-top: 1px solid var(--rule);
 }
-.caregiver .schedule-item:first-child,
-.caregiver .schedule-item-editing,
-.caregiver .schedule-item-editing + .schedule-item {
-  border-top: 0;
-}
+
 .caregiver .schedule-time {
   flex: none;
-  width: 56px;
-  font-size: var(--fs-md);
-  line-height: 22px;
-  font-weight: 600;
+  min-width: 5ch;
+  font: var(--t-data-lg);
+  font-size: 18px;
   font-variant-numeric: tabular-nums;
+  color: var(--ink);
 }
+
 .caregiver .schedule-label {
-  flex: 1;
+  flex: 1 1 120px;
   min-width: 0;
-  font-size: var(--fs-md);
-  line-height: 22px;
+  font: var(--t-body);
+  color: var(--ink);
   overflow-wrap: anywhere;
 }
+
 .caregiver .schedule-label .block {
-  display: block;
-  font-size: var(--fs-sm);
-  line-height: 18px;
-  color: var(--muted);
+  font: var(--t-caption);
 }
+
+/* Row actions: always at full strength, 16px apart. The confirm pair sits 12px apart. */
 .caregiver .schedule-actions {
   flex: none;
   flex-wrap: nowrap;
-  gap: 2px;
+  gap: var(--s-4);
   margin-left: auto;
 }
-.caregiver .schedule-delete {
-  color: var(--muted);
-}
-.caregiver .schedule-delete:hover:not(:disabled) {
-  color: var(--fail);
-  background: var(--fail-bg);
-}
-/* Row actions sit slightly recessed until the row is hovered (pointer devices only; never hidden). */
-@media (hover: hover) {
-  .caregiver .schedule-actions {
-    opacity: 0.75;
-    transition: opacity var(--t-fast) var(--ease);
-  }
-  .caregiver .schedule-item:hover .schedule-actions,
-  .caregiver .schedule-actions:focus-within {
-    opacity: 1;
-  }
+
+.caregiver .schedule-actions:has(.btn-danger) {
+  gap: var(--s-3);
 }
 
-/* Editing: the row opens into a grey nested card holding the form. */
+/* Editing: the row opens in place into the form; no box around it. */
 .caregiver .schedule-item-editing {
   display: block;
-  min-height: 0;
-  margin: 8px -8px;
-  padding: 16px;
+  padding: var(--s-4) 0;
 }
 
-/* Add a dose: eyebrow heading above a hairline. */
+/* Add a dose: a disclosure button, then the form. */
 .caregiver .schedule-add {
-  margin-top: 8px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
+  margin-top: var(--s-4);
 }
-.caregiver .schedule-add .eyebrow {
-  margin: 0 0 12px;
+
+.caregiver .schedule-add-body {
+  margin-top: var(--s-4);
+  container: dose-add / inline-size;
 }
-/* Keep one primary per panel: while a row is being edited, "Save changes" is the primary
-   and "Add dose" steps back to the standard secondary look. */
+
+/* Keep one primary per section: while a row is being edited, "Save changes" is the primary and the add form's
+   "Add dose" steps back to the secondary look. */
 .caregiver .caregiver-schedule:has(.schedule-item-editing) .schedule-add .btn-primary:not(:disabled) {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--e-control);
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--ink);
 }
+
 .caregiver .caregiver-schedule:has(.schedule-item-editing) .schedule-add .btn-primary:hover:not(:disabled) {
-  background: var(--surface-2);
-  box-shadow: var(--e-control-hover);
+  background: var(--sunken);
+  color: var(--ink);
+  border-color: var(--ink);
 }
 
 .caregiver .dose-form {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-4) var(--s-3);
   align-items: start;
   width: 100%;
 }
+
 .caregiver .dose-form .field {
-  margin: 0;
   min-width: 0;
+  margin: 0;
 }
+
 .caregiver .dose-form label .muted {
-  margin-left: 2px;
+  margin-left: var(--s-1);
   font-weight: 400;
-  color: var(--muted);
+  color: var(--ink-2);
 }
+
 .caregiver .dose-form input {
   width: 100%;
   min-width: 0;
-  box-sizing: border-box;
 }
+
 .caregiver .dose-form input.mono {
+  font: var(--t-data);
+  font-size: 16px;
+  line-height: 24px;
   font-variant-numeric: tabular-nums;
 }
-.caregiver .form-actions {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 4px;
+
+.caregiver .dose-form .form-actions {
+  gap: var(--s-3);
 }
-@media (max-width: 560px) {
+
+@media (min-width: 640px) {
+  /* Time is wide enough for its "e.g. 08:00" example in the data face; Label and Notes share the rest equally, and
+     Label never gets less than its own example. */
   .caregiver .dose-form {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 152px minmax(240px, 1fr) minmax(0, 1fr);
+  }
+
+  .caregiver .dose-form .form-actions {
+    grid-column: 1 / -1;
   }
 }
 
-/* ---------- Drone ---------- */
+/* The add form on one row: Time 152px, Label, Notes, then the primary button level with the inputs. It takes the
+   row only when the row fits (the main column is at least 720px wide, about 1160px of viewport); narrower, it keeps
+   the stacked three-column form with the button beneath, so no example placeholder is ever cut. A container query
+   on the form's own width, not a third viewport breakpoint.
+   The field wrappers step aside (display: contents) so labels, inputs and errors sit on the form's own grid:
+   labels in row 1, inputs and the button in row 2, and each error on a full-width line of its own beneath,
+   so an error never squeezes into the time column and never moves the button. */
+@container dose-add (min-width: 720px) {
+  .caregiver .dose-form--row {
+    grid-template-columns: 152px minmax(240px, 1fr) minmax(0, 1fr) auto;
+    row-gap: 0;
+  }
+
+  .caregiver .dose-form--row .field {
+    display: contents;
+  }
+
+  .caregiver .dose-form--row .field > label {
+    grid-row: 1;
+    margin-bottom: var(--s-2);
+  }
+
+  .caregiver .dose-form--row .field > input {
+    grid-row: 2;
+  }
+
+  .caregiver .dose-form--row .field-time > * {
+    grid-column: 1;
+  }
+
+  .caregiver .dose-form--row .field-label > * {
+    grid-column: 2;
+  }
+
+  .caregiver .dose-form--row .field-notes > * {
+    grid-column: 3;
+  }
+
+  .caregiver .dose-form--row .field > .field-error {
+    grid-column: 1 / -1;
+    margin-top: var(--s-2);
+  }
+
+  .caregiver .dose-form--row .field-time > .field-error {
+    grid-row: 3;
+  }
+
+  .caregiver .dose-form--row .field-label > .field-error {
+    grid-row: 4;
+  }
+
+  .caregiver .dose-form--row .form-actions {
+    grid-column: 4;
+    grid-row: 2;
+    flex-wrap: nowrap;
+  }
+}
+
+/* ===================================================================================== 03 Recent events */
+
+/* A ruled log: day captions, then one row per event. No rail, no dots, no inner scroller. */
+.caregiver .events {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.caregiver .event-day h3 {
+  margin: 0;
+  padding: var(--s-5) 0 var(--s-2);
+  font: var(--t-label);
+  color: var(--ink-2);
+}
+
+.caregiver .event-day:first-child h3 {
+  padding-top: 0;
+}
+
+.caregiver .event {
+  display: grid;
+  grid-template-columns: 56px 16px minmax(0, 1fr);
+  align-items: start;
+  column-gap: var(--s-3);
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--rule);
+}
+
+.caregiver .event-time {
+  font: var(--t-data);
+  font-variant-numeric: tabular-nums;
+  line-height: 24px;
+  color: var(--ink-2);
+}
+
+/* The day caption above already says which day; the per-event date stays for screen readers reading row by row. */
+.caregiver .event-date {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.caregiver .event-icon {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  color: var(--ink-2);
+}
+
+.caregiver .event-arrived_at_station .event-icon,
+.caregiver .event-pickup_acknowledged .event-icon {
+  color: var(--pass);
+}
+
+.caregiver .event-run_aborted .event-icon {
+  color: var(--warn);
+}
+
+.caregiver .event-needs_attention .event-icon {
+  color: var(--fail);
+}
+
+.caregiver .event-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.caregiver .event-name {
+  display: block;
+  font: var(--t-body);
+}
+
+/* Care events read first: 600 ink. Drone-run events recede: 400 ink-2. */
+.caregiver .event-care .event-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.caregiver .event-run .event-name {
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.caregiver .event-dose,
+.caregiver .event-detail {
+  display: block;
+  font: var(--t-caption);
+  color: var(--ink-2);
+}
+
+.caregiver .events-more {
+  margin-top: var(--s-3);
+}
+
+/* ===================================================================================== 04 Drone */
+
+/* While the backend is not reachable the values below are the last ones received; said once, in words. */
+.caregiver .drone-stale {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  margin: 0 0 var(--s-3);
+  font: var(--t-caption);
+  color: var(--ink-2);
+}
+
+.caregiver .drone-stale > svg {
+  flex: none;
+  margin-top: 2px;
+}
 
 .caregiver .drone-kv dd {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
-.caregiver .drone-kv .chip,
-.caregiver .drone-kv .badge {
-  vertical-align: middle;
+
+.caregiver .drone-battery-raw {
+  display: block;
+  font: var(--t-data-lg);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
 }
-.caregiver .drone-kv .conn {
-  font-size: var(--fs-ui);
-  line-height: 20px;
-  color: var(--text);
+
+/* The sentence stays proportional; only its numbers use tabular figures, so the changing age does not make the
+   line jump and the punctuation keeps its natural width. */
+.caregiver .drone-battery-line {
+  display: block;
+  font: var(--t-caption);
+  color: var(--ink-2);
 }
-.caregiver .drone-kv .drone-battery {
-  font-size: var(--fs-sm);
-  line-height: 18px;
-  color: var(--muted);
-}
-.caregiver .drone-kv dd.mono {
+
+.caregiver .drone-battery-line .tnum {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Narrow ---------- */
+/* ===================================================================================== Narrow */
 
-@media (max-width: 760px) {
+@media (max-width: 639px) {
   .caregiver {
-    padding-top: 24px;
+    padding-top: var(--s-5);
+    padding-bottom: var(--s-7);
   }
-}
-@media (max-width: 600px) {
-  .caregiver .stat-tile {
-    padding: 14px 16px;
+
+  .caregiver .caregiver-headline {
+    font-variation-settings: "opsz" 36;
+    letter-spacing: -0.01em;
   }
-  .caregiver .stat-value {
-    font-size: 22px;
-    line-height: 28px;
+
+  /* Reclaim a few pixels so the default demo labels stay on one line beside the time and the actions. */
+  .caregiver .schedule-item {
+    column-gap: var(--s-3);
   }
 }

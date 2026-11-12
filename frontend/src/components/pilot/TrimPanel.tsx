@@ -46,30 +46,30 @@ export function TrimPanel({ trim }: { trim: Trim }) {
 
   return (
     <div className="trim">
-      <div className="trim-values mono" aria-live="polite">
+      <div className="trim-values" aria-live="polite">
         <span className="trim-stat">
-          <span className="trim-k">Roll</span> <span className="trim-v">{formatSigned(shown.roll)}</span>
+          <span className="trim-k">Roll</span> <span className="trim-v data">{formatSigned(shown.roll)}</span>
         </span>
         <span className="trim-stat">
-          <span className="trim-k">Pitch</span> <span className="trim-v">{formatSigned(shown.pitch)}</span>
+          <span className="trim-k">Pitch</span> <span className="trim-v data">{formatSigned(shown.pitch)}</span>
         </span>
       </div>
       <div className="trim-grid">
-        <button type="button" className="btn" onClick={() => nudge(-STEP, 0)} disabled={shown.roll <= -LIMIT}>
+        <button type="button" className="btn btn-sm" onClick={() => nudge(-STEP, 0)} disabled={shown.roll <= -LIMIT}>
           Trim left
         </button>
-        <button type="button" className="btn" onClick={() => nudge(STEP, 0)} disabled={shown.roll >= LIMIT}>
+        <button type="button" className="btn btn-sm" onClick={() => nudge(STEP, 0)} disabled={shown.roll >= LIMIT}>
           Trim right
         </button>
-        <button type="button" className="btn" onClick={() => nudge(0, STEP)} disabled={shown.pitch >= LIMIT}>
+        <button type="button" className="btn btn-sm" onClick={() => nudge(0, STEP)} disabled={shown.pitch >= LIMIT}>
           Trim forward
         </button>
-        <button type="button" className="btn" onClick={() => nudge(0, -STEP)} disabled={shown.pitch <= -LIMIT}>
+        <button type="button" className="btn btn-sm" onClick={() => nudge(0, -STEP)} disabled={shown.pitch <= -LIMIT}>
           Trim back
         </button>
         <button
           type="button"
-          className="btn btn-quiet btn-sm trim-reset"
+          className="btn btn-quiet trim-reset"
           onClick={() => put({ roll: 0, pitch: 0 })}
           disabled={shown.roll === 0 && shown.pitch === 0}
         >

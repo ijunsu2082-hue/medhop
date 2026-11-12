@@ -12,6 +12,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 DRONE_MODES = ("sim", "real")
 PERSON_CHECK_MODES = ("auto", "on", "off")
+# Simulator camera profile: "high" is the display profile (a rendered room at 1280x720), "drone" the
+# drone-like profile (640x360, blur, noise, JPEG quality 50) that the automated tests use.
+SIM_CAMERA_MODES = ("high", "drone")
 
 BACKEND_PORT = 8010
 FRONTEND_ORIGINS = ("http://localhost:5180", "http://127.0.0.1:5180")
@@ -45,16 +48,23 @@ class Settings:
     camera_hfov_deg: float = 70.0
     host: str = "127.0.0.1"
     port: int = BACKEND_PORT
+    # Simulator only: which camera profile the interactive simulator renders (SIM_CAMERA_MODES).
+    sim_camera: str = "high"
 
     def __post_init__(self) -> None:
         self.drone = str(self.drone).strip().lower()
         self.person_check = str(self.person_check).strip().lower()
+        self.sim_camera = str(self.sim_camera).strip().lower()
         self.data_dir = Path(self.data_dir)
         if self.drone not in DRONE_MODES:
             raise ValueError(f"MEDHOP_DRONE must be one of {DRONE_MODES}, got {self.drone!r}")
         if self.person_check not in PERSON_CHECK_MODES:
             raise ValueError(
                 f"MEDHOP_PERSON_CHECK must be one of {PERSON_CHECK_MODES}, got {self.person_check!r}"
+            )
+        if self.sim_camera not in SIM_CAMERA_MODES:
+            raise ValueError(
+                f"MEDHOP_SIM_CAMERA must be one of {SIM_CAMERA_MODES}, got {self.sim_camera!r}"
             )
         if not 1.0 <= self.control_rate <= 100.0:
             raise ValueError("MEDHOP_CONTROL_RATE must be between 1 and 100")
@@ -115,6 +125,7 @@ class Settings:
             ("MEDHOP_GRACE_MIN", "grace_min", int),
             ("MEDHOP_CAMERA_HFOV_DEG", "camera_hfov_deg", float),
             ("MEDHOP_HOST", "host", str),
+            ("MEDHOP_SIM_CAMERA", "sim_camera", str),
         ):
             raw = get(name)
             if raw is None:

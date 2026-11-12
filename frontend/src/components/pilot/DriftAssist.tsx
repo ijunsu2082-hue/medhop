@@ -77,6 +77,9 @@ export function DriftAssistControl({ da, trim, runActive }: Props) {
           aria-describedby="drift-desc"
         />
         <span className="switch-track" aria-hidden="true" />
+        <span className="switch-word" aria-hidden="true">
+          {checked ? "On" : "Off"}
+        </span>
         <span>Drift assist (experimental)</span>
       </label>
       <p className="hint small" id="drift-desc">

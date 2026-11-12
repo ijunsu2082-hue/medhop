@@ -1,1592 +1,1124 @@
-/* Pilot page (/). Every rule is scoped under .pilot. Tokens, primitives and form controls come from styles.css. */
+/* Pilot page (/): the page frame and its two instruments.
+   This file (contract C4, task pilot-console): page frame and grid, command strip, e-stop, annunciator, e-stop
+   banner, every hold-button look, title row, camera figure, video overlays and tag, rails, caption, checklist and
+   the Manual flying wrapper. Everything inside StationRun, AutoRun, RunSteps, KeyLegend, AxisIndicators, StickPad,
+   MaxStickSlider and AdvancedPanel lives in station-run.css, manual.css and setup.css.
+   Every rule is scoped under .pilot. Tokens and shared primitives come from styles.css; no literals here. */
+
+/* ===================================================================================== Frame */
 
 .pilot {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding-top: 0;
-  color: var(--text);
+  /* Full-bleed bands (strip, banner, annunciator) keep their content on the .container edges. */
+  --pilot-gutter: max(var(--s-6), calc((100% - 1200px) / 2));
+  min-width: 0;
 }
-.pilot [hidden] {
-  display: none !important;
-}
-.pilot p {
-  margin: 0 0 8px;
-}
-.pilot strong {
-  font-weight: 600;
-}
-.pilot .msg {
-  margin: 12px 0 0;
-}
-
-/* ---------- Sticky safety bar ---------- */
 
 .pilot .pilot-sticky {
   position: sticky;
-  top: 8px;
+  top: 0;
   z-index: 20;
-  margin: 12px 0 0;
-}
-.pilot .command-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
-  padding-right: 16px;
-  background: rgba(255, 255, 255, 0.92);
-  -webkit-backdrop-filter: saturate(1.4) blur(14px);
-  backdrop-filter: saturate(1.4) blur(14px);
-  border: 0;
-  border-radius: var(--r-lg);
-  box-shadow: var(--e2);
 }
 
-.pilot .estop {
-  flex: none;
+.pilot .pilot-body {
+  padding-top: var(--s-5);
+  padding-bottom: var(--s-8);
+}
+
+/* ===================================================================================== Command strip */
+
+/* A grid at every width, so nothing drops to a stray line:
+   1200 and up   one row: e-stop, takeoff, reason (takes the rest), readout as legend/value rows.
+   640 to 1199   e-stop, takeoff and the reason; the readout as one line beneath (see the media blocks).
+   below 640     e-stop and takeoff; the readout line; the reason.
+   Rows after the first are spaced by margins, so an empty reason leaves no gap behind. */
+.pilot .command-bar {
   display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas:
-    "main key"
-    "sub key";
-  column-gap: 16px;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "estop takeoff note status";
   align-items: center;
-  min-width: 300px;
-  height: 56px;
-  padding: 0 14px 0 18px;
-  text-align: left;
-  border: 0;
-  border-radius: 10px;
+  column-gap: var(--s-4);
+  padding: var(--s-3) var(--pilot-gutter);
+}
+
+/* Real drone: a 4px amber rule along the top; the strip keeps its height. */
+.pilot .command-bar--real {
+  border-top: 4px solid var(--amber);
+  padding-top: var(--s-2);
+}
+
+/* The takeoff button and its reason, and the backend alert and the readout, are cells of the strip grid. */
+.pilot .takeoff-wrap,
+.pilot .command-status {
+  display: contents;
+}
+
+/* EMERGENCY STOP: the largest control and the only saturated red on the page. */
+.pilot .estop {
+  grid-area: estop;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "icon main key"
+    "icon sub key";
+  align-content: center;
+  align-items: center;
+  column-gap: var(--s-3);
+  height: 72px;
+  min-width: 360px;
+  margin: 0;
+  padding: 0 var(--s-4);
   background: var(--estop);
   color: var(--estop-text);
-  font-family: var(--sans);
+  border: 2px solid var(--estop-text);
+  border-radius: var(--r-2);
+  text-align: left;
   cursor: pointer;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 25, 0.2),
-    0 6px 14px -6px rgba(217, 45, 32, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  transition:
-    background-color var(--t-fast) var(--ease),
-    transform var(--t-fast) var(--ease),
-    box-shadow var(--t-fast) var(--ease);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--t-fast) var(--ease);
 }
+
 .pilot .estop:hover {
   background: var(--estop-hover);
 }
+
 .pilot .estop:active {
-  background: var(--estop-edge);
-  transform: translateY(1px);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.28);
+  background: var(--estop-deep);
 }
+
 .pilot .estop:focus-visible {
-  outline: 3px solid var(--estop);
+  outline: 3px solid var(--estop-text);
   outline-offset: 3px;
 }
+
+.pilot .estop-icon {
+  grid-area: icon;
+}
+
 .pilot .estop-main {
   grid-area: main;
   align-self: end;
-  font: 700 15px/20px var(--sans);
-  letter-spacing: 0.045em;
+  font: 800 22px/26px var(--font-body);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
+
 .pilot .estop-sub {
   grid-area: sub;
   align-self: start;
-  font: 400 12px/16px var(--sans);
-  letter-spacing: 0;
-  color: rgba(255, 255, 255, 0.86);
-}
-.pilot .estop-key {
-  grid-area: key;
-  height: 24px;
-  min-width: 0;
-  padding: 0 8px;
-  font: 600 11px/1 var(--sans);
-  letter-spacing: 0.02em;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
-  border: 0;
-  border-radius: 6px;
+  font: 500 14px/20px var(--font-body);
+  color: var(--estop-text);
 }
 
-.pilot .takeoff-wrap {
-  display: flex;
+.pilot .estop-key {
+  grid-area: key;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  min-width: 0;
+  height: 26px;
+  padding: 0 var(--s-2);
+  background: var(--estop-text);
+  color: var(--ink);
+  border: 1px solid var(--estop-text);
+  border-radius: var(--r-1);
+  font: 600 13px/1 var(--font-data);
 }
+
+/* Takeoff / Land in the strip: paper on ink when it can be used, the console disabled recipe otherwise. */
 .pilot .takeoff.takeoff-compact {
-  flex: none;
+  grid-area: takeoff;
   width: auto;
-  min-width: 232px;
-  height: 56px;
+  min-width: 260px;
+  height: 72px;
+  min-height: 72px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--paper);
 }
+
+.pilot .takeoff.takeoff-compact:hover:not(:disabled) {
+  background: var(--sheet);
+}
+
+.pilot .takeoff-compact .takeoff-label {
+  font: 700 16px/24px var(--font-body);
+}
+
+.pilot .takeoff-compact .takeoff-sub {
+  color: var(--ink-2);
+}
+
+.pilot .takeoff-compact .takeoff-fill {
+  background: var(--sweep-on-light);
+}
+
+/* The reason beside it: the full text, wrapping, never cut. */
 .pilot .takeoff-note {
-  max-width: 200px;
-  overflow: hidden;
-  font: 400 12px/16px var(--sans);
-  color: var(--muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  grid-area: note;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  min-width: 0;
+  font: var(--t-caption);
+  color: var(--c-fg-2);
+  overflow-wrap: anywhere;
 }
+
 .pilot .takeoff-note:empty {
   display: none;
 }
 
-.pilot .command-status {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 4px 18px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  min-width: 0;
-}
-.pilot .command-status .conn {
-  font: 500 13px/18px var(--sans);
-  color: var(--text-2);
-}
-.pilot .command-status .conn-fail {
-  color: var(--fail);
-}
-.pilot .command-status .backend-down {
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 8px;
-  background: var(--fail-bg);
-  color: var(--fail);
-  white-space: normal;
-}
-.pilot .command-status .backend-down strong {
-  font-weight: 500;
+.pilot .takeoff-note--blocked {
+  font-weight: 600;
+  color: var(--c-fg);
 }
 
-/* Emergency-stop banner, directly under the bar. */
-.pilot .estop-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 16px;
-  margin-top: 10px;
-  padding: 12px 12px 12px 16px;
-  border: 0;
-  border-radius: 14px;
-  background: var(--fail-bg);
-  box-shadow:
-    inset 0 0 0 1px rgba(190, 38, 27, 0.18),
-    var(--e2);
-}
-.pilot .estop-banner-unsent {
-  box-shadow:
-    inset 0 0 0 1.5px var(--fail),
-    var(--e2);
-}
-.pilot .estop-banner-title {
-  font: 600 15px/22px var(--sans);
-  color: var(--fail);
-}
-.pilot .estop-banner-detail {
-  flex: 1 1 280px;
-  min-width: 0;
-  font: 400 14px/20px var(--sans);
-  color: #7e1a12;
-}
-.pilot .estop-banner-actions {
-  margin-left: auto;
-  justify-content: flex-end;
-  gap: 8px 12px;
-}
-.pilot .estop-banner-note {
-  font: 400 13px/18px var(--sans);
-  color: #7e1a12;
-}
-
-.pilot .pilot-refused {
-  margin: 0;
-}
-
-/* ---------- Intro ---------- */
-
-.pilot .pilot-intro {
-  padding: 8px 0 0;
-}
-.pilot .pilot-intro h1 {
-  margin: 0 0 8px;
-}
-.pilot .pilot-lede {
-  max-width: 68ch;
-  margin: 0;
-  font: 400 15px/22px var(--sans);
-  color: var(--text-2);
-}
-.pilot .pilot-sim-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 12px 0 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: 500 13px/18px var(--sans);
-  color: var(--text-2);
-}
-
-/* ---------- Main grid ---------- */
-
-/* DOM order is run steps, then camera: that is the single-column order. Wide screens put the camera left. */
-.pilot .pilot-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-}
-@media (min-width: 980px) {
-  .pilot .pilot-grid {
-    grid-template-columns: minmax(0, 1.5fr) minmax(360px, 1fr);
-    grid-template-areas: "camera run";
-  }
-  .pilot .pilot-camera {
-    grid-area: camera;
-  }
-  .pilot .pilot-run {
-    grid-area: run;
-  }
-}
-
-/* ---------- Camera ---------- */
-
-.pilot .pilot-camera {
-  padding: 16px;
-}
-.pilot .pilot-camera-head {
-  padding: 4px 4px 12px;
-}
-.pilot .pilot-camera-head h2 {
-  margin: 0;
-}
-.pilot .video-frame {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--r-md);
-  background: var(--video-bg);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 1px 2px rgba(15, 23, 25, 0.2);
-}
-.pilot .video-frame::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  /* A soft scrim so the chips stay readable over a bright frame. */
-  height: 18%;
-  background: linear-gradient(rgba(11, 15, 16, 0.55), rgba(11, 15, 16, 0));
-  z-index: 1;
-  pointer-events: none;
-}
-.pilot .video-img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  /* 640x360 shown enlarged: smooth scaling, never pixelated. The frame and the stream are both 16:9. */
-  image-rendering: auto;
-}
-.pilot .video-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 16px;
-  background: var(--video-bg);
-  font: 500 14px/20px var(--sans);
-  color: rgba(255, 255, 255, 0.86);
-  text-align: center;
-}
-.pilot .video-overlay strong {
-  font: 600 15px/22px var(--sans);
-  color: #fff;
-}
-.pilot .video-overlay span {
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.72);
-}
-.pilot .video-overlay-soft {
-  background: rgba(11, 15, 16, 0.55);
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
-}
-.pilot .video-chips {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  right: 10px;
-  z-index: 2;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  pointer-events: none;
-}
-.pilot .vchip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 24px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: var(--r-pill);
-  font: 500 12px/16px var(--sans);
-  letter-spacing: 0.005em;
-  color: #fff;
-  white-space: nowrap;
-  background: rgba(15, 23, 25, 0.58);
-  -webkit-backdrop-filter: blur(10px) saturate(1.3);
-  backdrop-filter: blur(10px) saturate(1.3);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
-}
-.pilot .vchip-real {
-  background: rgba(138, 90, 0, 0.72);
-}
-.pilot .vchip-state {
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--text);
-  box-shadow: none;
-}
-.pilot .vchip-state-idle,
-.pilot .vchip-state-done {
-  background: rgba(15, 23, 25, 0.58);
-  color: #fff;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
-}
-.pilot .vchip-pass::before {
-  content: "";
+/* As tall as one line of the reason, so the padlock centres on the first line without a nudge. */
+.pilot .takeoff-note-icon {
   flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #5bd08c;
-}
-.pilot .vchip-muted {
-  color: rgba(255, 255, 255, 0.72);
-}
-.pilot .vchip-fail {
-  background: rgba(217, 45, 32, 0.9);
-  box-shadow: none;
-}
-.pilot .pilot-caption {
-  max-width: none;
-  margin: 10px 4px 0;
-  font: 400 12px/16px var(--sans);
-  color: var(--muted);
+  height: 1lh;
 }
 
-/* ---------- Pre-flight checklist: a grouped status list ---------- */
-
-.pilot .pilot-check .eyebrow {
-  margin: 20px 4px 8px;
-  font-size: var(--fs-xs);
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.pilot .checklist {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 12px;
-  row-gap: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  background: none;
-}
-.pilot .check {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--line);
-}
-.pilot .check:nth-child(-n + 2) {
-  border-top: 0;
-}
-.pilot .check-chip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  height: 40px;
-  padding: 0 4px;
-  background: none;
-  border: 0;
-  border-radius: var(--r-sm);
-  font: 500 14px/20px var(--sans);
-  letter-spacing: -0.006em;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  transition: background-color var(--t-fast) var(--ease);
-}
-.pilot .check-chip:hover {
-  background: var(--surface-2);
-}
-.pilot .check-icon {
-  display: inline-flex;
-  flex: none;
-}
-.pilot .check-icon.verdict-pass {
-  color: var(--pass);
-}
-.pilot .check-icon.verdict-warn {
-  color: var(--warn);
-}
-.pilot .check-icon.verdict-fail {
-  color: var(--fail);
-}
-.pilot .check-icon.verdict-info {
-  color: var(--muted);
-}
-.pilot .check-label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pilot .check-state {
-  flex: none;
-  font: 400 13px/18px var(--sans);
-  color: var(--muted);
-}
-.pilot .check-fail .check-state {
-  color: var(--fail);
-  font-weight: 500;
-}
-.pilot .check-warn .check-state {
-  color: var(--warn);
-}
-.pilot .check-chevron {
-  flex: none;
-  color: var(--faint);
-  transition: transform var(--t-fast) var(--ease);
-}
-.pilot .check-open .check-chevron {
-  transform: rotate(90deg);
-}
-.pilot .check-text {
-  margin: 0 4px 10px 30px;
-  font: 400 13px/18px var(--sans);
-  color: var(--text-2);
-}
-.pilot .check-word {
-  font-weight: 500;
-  color: var(--text);
-}
-@media (max-width: 560px) {
-  .pilot .checklist {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .pilot .check:nth-child(2) {
-    border-top: 1px solid var(--line);
-  }
-}
-
-/* ---------- Station run stepper ---------- */
-
-.pilot .run-title-chip {
-  margin-left: 4px;
-  vertical-align: 1px;
-  text-transform: capitalize;
-}
-.pilot .run-step-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0 -8px;
-  padding: 0;
-  list-style: none;
-}
-.pilot .run-step {
-  position: relative;
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  column-gap: 14px;
-  padding: 14px 14px 16px;
-  border: 0;
-  border-radius: var(--r-md);
-  background: transparent;
-  transition: background-color var(--t-med) var(--ease);
-}
-.pilot .run-step:not(:last-child)::before {
-  content: "";
-  position: absolute;
-  left: 27.25px;
-  top: 46px;
-  bottom: -10px;
-  width: 1.5px;
-  background: var(--line);
-}
-.pilot .run-step-num {
-  position: relative;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--surface);
-  color: var(--muted);
-  font: 600 13px/1 var(--sans);
-  font-variant-numeric: tabular-nums;
-  box-shadow: inset 0 0 0 1.5px var(--line-strong);
-  transition:
-    background-color var(--t-med) var(--ease),
-    color var(--t-med) var(--ease),
-    box-shadow var(--t-med) var(--ease);
-}
-.pilot .run-step-body {
-  grid-column: 2;
-  min-width: 0;
-}
-.pilot .run-step-title {
-  margin: 0 0 8px;
-  font: 600 15px/28px var(--sans);
-  letter-spacing: -0.011em;
-  color: var(--text-2);
-}
-.pilot .run-step-current {
-  background: var(--accent-soft);
-}
-.pilot .run-step-current .run-step-num {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 0 4px rgba(11, 107, 110, 0.16);
-}
-.pilot .run-step-current .run-step-title {
-  color: var(--text);
-}
-/* Done: the steps before the current one. Browsers without :has show the neutral node. */
-.pilot .run-step:has(~ .run-step-current) .run-step-num {
-  background: var(--accent-soft);
-  color: var(--accent);
-  box-shadow: inset 0 0 0 1.5px var(--accent-soft-2);
-}
-.pilot .run-step:has(~ .run-step-current)::before {
-  background: var(--accent-soft-2);
-}
-
-.pilot .run-step-text {
-  margin: 10px 0 0;
-  font: 400 13px/18px var(--sans);
-  color: var(--muted);
-}
-.pilot .run-step-live {
-  margin: 6px 0 0;
-  font: 500 13px/18px var(--sans);
-  color: var(--text);
-}
-.pilot .run-step-live:empty {
+/* Backend down: the alert takes the reason's cell and says it once; the reason (aria-hidden) is not drawn. */
+.pilot .command-bar--down .takeoff-note {
   display: none;
 }
-.pilot .run-step-reset {
-  margin-top: 10px;
-}
-.pilot .run-step-body > .hint {
-  margin: 6px 0 0;
+
+.pilot .command-down {
+  grid-area: note;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  min-width: 0;
+  margin: 0;
+  font: var(--t-label);
 }
 
-/* Press-and-hold buttons (takeoff/land in the bar and in step 1, calibrate level). */
+/* Readout: legend / value rows. A square sits on the baseline like a glyph, at the height of the lowercase. */
+.pilot .readout {
+  grid-area: status;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: var(--s-4);
+  min-width: 0;
+  max-width: 360px;
+}
+
+.pilot .readout-row {
+  display: contents;
+}
+
+.pilot .readout-legend {
+  font: 600 12px/16px var(--font-data);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-fg-2);
+  white-space: nowrap;
+}
+
+.pilot .readout-data {
+  min-width: 0;
+  font: 500 13px/16px var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.pilot .readout-mode .readout-data {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+}
+
+.pilot .readout-value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+
+/* ===================================================================================== E-stop bands */
+
+/* Deep red, so the button above stays the brightest red on the page. */
+.pilot .estop-banner {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: var(--s-3);
+  row-gap: var(--s-1);
+  padding: var(--s-3) var(--pilot-gutter);
+  background: var(--estop-deep);
+  color: var(--estop-text);
+}
+
+/* Centred on the title row. */
+.pilot .estop-banner-icon {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+}
+
+.pilot .estop-banner-title,
+.pilot .estop-banner-detail,
+.pilot .estop-banner-actions {
+  grid-column: 2;
+}
+
+.pilot .estop-banner-title {
+  font: 700 18px/26px var(--font-body);
+}
+
+.pilot .estop-banner-detail {
+  max-width: 80ch;
+  font: var(--t-body);
+}
+
+.pilot .estop-banner-actions {
+  margin-top: var(--s-2);
+}
+
+/* Not sent or not confirmed: a 6px white bar on the container edge. */
+.pilot .estop-banner-unsent {
+  padding-left: calc(var(--pilot-gutter) + var(--s-5));
+}
+
+.pilot .estop-banner-unsent::before {
+  content: "";
+  position: absolute;
+  top: var(--s-3);
+  bottom: var(--s-3);
+  left: var(--pilot-gutter);
+  width: 6px;
+  background: var(--estop-text);
+}
+
+.pilot .estop-banner .btn {
+  background: var(--estop-text);
+  color: var(--estop-deep);
+  border: 1px solid var(--estop-text);
+  font-weight: 700;
+}
+
+.pilot .estop-banner .btn:hover:not(:disabled) {
+  background: var(--sheet);
+  color: var(--estop-deep);
+  text-decoration: none;
+}
+
+.pilot .estop-banner .btn:focus-visible {
+  outline: 3px solid var(--estop-text);
+  outline-offset: 3px;
+}
+
+.pilot .estop-banner .btn:disabled {
+  background: transparent;
+  color: var(--estop-text);
+  border: 1px dashed var(--estop-text);
+}
+
+.pilot .estop-banner-note {
+  font: var(--t-caption);
+  color: var(--estop-text);
+}
+
+/* The refused-link annunciator. */
+.pilot .pilot-annunciator {
+  padding: var(--s-3) var(--pilot-gutter);
+  background: var(--console-2);
+  color: var(--on-console);
+  border-top: 1px solid var(--console-rule);
+}
+
+.pilot .pilot-annunciator-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.pilot .pilot-annunciator-state {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--s-2);
+  height: 24px;
+}
+
+.pilot .pilot-annunciator-text {
+  font: var(--t-body);
+  text-wrap: pretty;
+}
+
+/* ===================================================================================== Hold buttons (C2) */
+
+/* Base: the secondary look. The fill is frame driven (scaleX from useHoldGuard): never transition transform. */
 .pilot .takeoff {
   position: relative;
   isolation: isolate;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     "label key"
     "sub key";
-  column-gap: 14px;
+  align-content: center;
   align-items: center;
-  width: 100%;
-  height: 56px;
-  padding: 0 14px 0 16px;
+  column-gap: var(--s-3);
+  min-height: 64px;
+  max-width: 100%;
+  margin: 0;
+  padding: var(--s-2) var(--s-4);
+  background: transparent;
+  color: var(--c-fg);
+  border: 1px solid var(--c-fg);
+  border-radius: var(--r-2);
   text-align: left;
-  border: 0;
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--text);
-  font-family: var(--sans);
   cursor: pointer;
-  box-shadow: var(--e-control);
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
-    box-shadow var(--t-fast) var(--ease),
-    transform var(--t-fast) var(--ease),
-    background-color var(--t-fast) var(--ease);
+    background-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
 }
+
 .pilot .takeoff:hover:not(:disabled) {
-  box-shadow: var(--e-control-hover);
+  background: var(--c-hover-fill);
 }
+
 .pilot .takeoff[data-holding="true"] {
-  box-shadow:
-    0 0 0 1.5px var(--accent),
-    0 0 0 5px var(--accent-ring);
-  transform: scale(0.992);
+  outline: 2px solid var(--c-signal);
+  outline-offset: 2px;
 }
+
 .pilot .takeoff-fill {
   position: absolute;
   inset: 0;
   z-index: -1;
-  transform-origin: 0 50%;
-  will-change: transform;
+  transform-origin: left center;
+  background: var(--sweep-on-light);
   pointer-events: none;
-  background:
-    linear-gradient(var(--accent), var(--accent)) left bottom / 100% 3px no-repeat,
-    linear-gradient(90deg, rgba(11, 107, 110, 0.07), rgba(11, 107, 110, 0.16));
-  opacity: 0;
-  /* never transition transform: progress is frame driven */
-  transition: opacity 140ms var(--ease);
+  transition: none;
 }
-.pilot .takeoff[data-holding="true"] .takeoff-fill {
-  opacity: 1;
-}
+
 .pilot .takeoff-label {
   grid-area: label;
-  align-self: end;
-  font: 600 15px/20px var(--sans);
-  letter-spacing: -0.011em;
-  white-space: nowrap;
+  min-width: 0;
+  font: var(--t-action);
 }
+
 .pilot .takeoff-paren {
   font-weight: 400;
-  color: var(--muted);
 }
+
 .pilot .takeoff-sub {
   grid-area: sub;
-  align-self: start;
-  font: 400 12px/16px var(--sans);
-  letter-spacing: 0;
-  color: var(--muted);
+  min-width: 0;
+  font: var(--t-sub);
+  color: var(--c-fg-2);
 }
-.pilot .takeoff[data-holding="true"] .takeoff-sub {
-  color: var(--accent);
-  font-weight: 500;
-}
+
 .pilot .takeoff-key {
   grid-area: key;
-  height: 24px;
-  min-width: 24px;
-}
-.pilot .takeoff:disabled {
-  cursor: not-allowed;
-  background: var(--surface-2);
-  color: var(--faint);
-  box-shadow: none;
-  transform: none;
-}
-.pilot .takeoff:disabled .takeoff-sub,
-.pilot .takeoff:disabled .takeoff-paren {
-  color: var(--faint);
-}
-.pilot .takeoff:disabled .takeoff-key {
-  color: var(--faint);
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--line-strong);
+  align-self: center;
 }
 
-/* Primary variant: step 1 when it is the current step. */
+/* Primary: ink fill, paper text, full width. */
 .pilot .takeoff-large {
-  height: 64px;
-  background: var(--accent);
-  color: #fff;
-  box-shadow:
-    var(--e-solid),
-    0 8px 18px -8px rgba(11, 107, 110, 0.5);
-}
-.pilot .takeoff-large:hover:not(:disabled) {
-  background: var(--accent-hover);
-  box-shadow:
-    var(--e-solid),
-    0 8px 18px -8px rgba(11, 107, 110, 0.5);
-}
-.pilot .takeoff-large .takeoff-sub {
-  color: rgba(255, 255, 255, 0.82);
-}
-.pilot .takeoff-large .takeoff-paren {
-  color: rgba(255, 255, 255, 0.75);
-}
-.pilot .takeoff-large .takeoff-key {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
-}
-.pilot .takeoff-large .takeoff-fill {
-  background:
-    linear-gradient(#fff, #fff) left bottom / 100% 3px no-repeat,
-    rgba(255, 255, 255, 0.2);
-}
-.pilot .takeoff-large[data-holding="true"] {
-  box-shadow:
-    0 0 0 2px #fff,
-    0 0 0 4px var(--accent);
-}
-.pilot .takeoff-large[data-holding="true"] .takeoff-sub {
-  color: #fff;
-}
-/* Step 1 not current: the white secondary look. */
-.pilot .run-step:not(.run-step-current) .takeoff-large {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--e-control);
-}
-.pilot .run-step:not(.run-step-current) .takeoff-large:hover:not(:disabled) {
-  box-shadow: var(--e-control-hover);
-}
-.pilot .run-step:not(.run-step-current) .takeoff-large .takeoff-sub,
-.pilot .run-step:not(.run-step-current) .takeoff-large .takeoff-paren {
-  color: var(--muted);
-}
-.pilot .run-step:not(.run-step-current) .takeoff-large .takeoff-key {
-  color: var(--text-2);
-  background: var(--surface);
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 25, 0.12),
-    0 1px 0 1px rgba(15, 23, 25, 0.08);
-}
-.pilot .run-step:not(.run-step-current) .takeoff-large .takeoff-fill {
-  background:
-    linear-gradient(var(--accent), var(--accent)) left bottom / 100% 3px no-repeat,
-    linear-gradient(90deg, rgba(11, 107, 110, 0.07), rgba(11, 107, 110, 0.16));
-}
-.pilot .run-step:not(.run-step-current) .takeoff-large[data-holding="true"] {
-  box-shadow:
-    0 0 0 1.5px var(--accent),
-    0 0 0 5px var(--accent-ring);
-}
-.pilot .run-step:not(.run-step-current) .takeoff-large[data-holding="true"] .takeoff-sub {
-  color: var(--accent);
-}
-/* Disabled wins over both looks. */
-.pilot .takeoff-large:disabled,
-.pilot .run-step:not(.run-step-current) .takeoff-large:disabled {
-  background: var(--surface-2);
-  color: var(--faint);
-  box-shadow: none;
-}
-.pilot .takeoff-large:disabled .takeoff-sub,
-.pilot .takeoff-large:disabled .takeoff-paren,
-.pilot .run-step:not(.run-step-current) .takeoff-large:disabled .takeoff-sub,
-.pilot .run-step:not(.run-step-current) .takeoff-large:disabled .takeoff-paren {
-  color: var(--faint);
-}
-.pilot .takeoff-large:disabled .takeoff-key,
-.pilot .run-step:not(.run-step-current) .takeoff-large:disabled .takeoff-key {
-  color: var(--faint);
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--line-strong);
+  width: 100%;
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
 }
 
-/* Step 2: confirm check card. */
-.pilot .confirm-card {
+.pilot .takeoff-large:hover:not(:disabled) {
+  background: var(--ink-hover);
+}
+
+.pilot .takeoff-large .takeoff-sub {
+  color: var(--on-console-2);
+}
+
+.pilot .takeoff-large .takeoff-fill {
+  background: var(--sweep-on-ink);
+}
+
+/* Full width in the secondary look. */
+.pilot .takeoff-large.takeoff-secondary {
+  background: transparent;
+  color: var(--c-fg);
+  border-color: var(--c-fg);
+}
+
+.pilot .takeoff-large.takeoff-secondary:hover:not(:disabled) {
+  background: var(--c-hover-fill);
+}
+
+.pilot .takeoff-large.takeoff-secondary .takeoff-sub {
+  color: var(--c-fg-2);
+}
+
+.pilot .takeoff-large.takeoff-secondary .takeoff-fill {
+  background: var(--sweep-on-light);
+}
+
+/* While held, the second line reads "Keep holding..." in the label colour, over the sweep. */
+.pilot .takeoff[data-holding="true"] .takeoff-sub,
+.pilot .takeoff-large[data-holding="true"] .takeoff-sub,
+.pilot .takeoff-large.takeoff-secondary[data-holding="true"] .takeoff-sub {
+  color: inherit;
+  font-weight: 600;
+}
+
+.pilot .calibrate-btn {
+  width: min(100%, 400px);
+}
+
+/* Disabled: the shared recipe from the contextual aliases (paper or console), with a padlock before the label. */
+.pilot .takeoff:disabled,
+.pilot .takeoff.takeoff-compact:disabled,
+.pilot .takeoff-large.takeoff-secondary:disabled {
+  background: var(--c-disabled-fill);
+  color: var(--c-disabled-fg);
+  border: 1px dashed var(--c-disabled-border);
+  cursor: not-allowed;
+}
+
+.pilot .takeoff:disabled .takeoff-sub,
+.pilot .takeoff-large:disabled .takeoff-sub,
+.pilot .takeoff-large.takeoff-secondary:disabled .takeoff-sub {
+  color: var(--c-disabled-fg);
+}
+
+.pilot .takeoff:disabled .takeoff-key {
+  background: transparent;
+  color: var(--c-disabled-fg);
+  border-color: var(--c-disabled-border);
+}
+
+/* A hanging indent: a label that wraps keeps its second line clear of the padlock (16px + 8px). */
+.pilot .takeoff:disabled:not([aria-busy="true"]) .takeoff-label {
+  padding-left: var(--s-5);
+  text-indent: calc(-1 * var(--s-5));
+}
+
+.pilot .takeoff:disabled:not([aria-busy="true"]) .takeoff-label::before {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: var(--s-2);
+  vertical-align: -0.125em;
+  background: currentColor;
+  -webkit-mask: var(--icon-lock) center / 16px 16px no-repeat;
+  mask: var(--icon-lock) center / 16px 16px no-repeat;
+}
+
+/* ===================================================================================== Title row */
+
+.pilot .pilot-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--s-5);
+  margin-bottom: var(--s-4);
+}
+
+.pilot .pilot-title-row h1 {
+  margin: 0;
+}
+
+.pilot .pilot-about {
+  flex: 1 0 100%;
+  max-width: 68ch;
+}
+
+.pilot .pilot-lede {
+  margin: var(--s-1) 0 0;
+  color: var(--ink-2);
+}
+
+/* ===================================================================================== Grid */
+
+.pilot .pilot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-6);
+  align-items: start;
+}
+
+.pilot .pilot-grid ~ section {
+  margin-top: var(--s-7);
+}
+
+/* ===================================================================================== Camera figure */
+
+.pilot .pilot-camera {
+  min-width: 0;
+}
+
+.pilot .camera {
+  margin: 0;
+  border-radius: 0;
+}
+
+.pilot .camera-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--s-3);
+  min-height: 44px;
+  padding: 0 var(--s-4);
+}
+
+.pilot .camera-head h2 {
+  margin: 0;
+  font: 700 16px/24px var(--font-body);
+}
+
+.pilot .camera-readout {
+  margin-left: auto;
+  font: 500 13px/20px var(--font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-fg-2);
+  white-space: nowrap;
+}
+
+.pilot .video-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--console-inset);
+  border-radius: 0;
+}
+
+.pilot .video-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Full-frame states sit on a low-contrast hatch, never a bare black frame. */
+.pilot .video-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: var(--s-1);
+  padding: var(--s-5) max(var(--s-5), calc((100% - 420px) / 2));
+  background: repeating-linear-gradient(135deg, var(--console) 0 8px, var(--console-2) 8px 16px);
+  color: var(--c-fg);
+}
+
+.pilot .video-overlay-title {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 56px;
-  padding: 12px 14px;
-  border: 0;
-  border-radius: var(--r-md);
-  background: var(--surface);
-  box-shadow: var(--e-control);
-  font: 500 15px/22px var(--sans);
-  color: var(--text);
-  cursor: pointer;
-  transition:
-    box-shadow var(--t-fast) var(--ease),
-    background-color var(--t-fast) var(--ease);
-}
-.pilot .confirm-card:hover {
-  box-shadow: var(--e-control-hover);
-}
-.pilot .confirm-card input {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-}
-.pilot .confirm-card-on,
-.pilot .confirm-card-on:hover {
-  background: var(--surface);
-  box-shadow:
-    0 0 0 1.5px var(--accent),
-    0 0 0 4px var(--accent-ring);
-}
-.pilot .confirm-card:has(input:focus-visible) {
-  box-shadow:
-    0 0 0 2px var(--accent),
-    0 0 0 5px var(--accent-ring);
-}
-.pilot .confirm-card:has(input:disabled) {
-  background: var(--surface-2);
-  box-shadow: none;
-  color: var(--muted);
-  cursor: not-allowed;
+  gap: var(--s-3);
+  font: 700 20px/28px var(--font-body);
 }
 
-/* Step 3 */
-.pilot .run-steps .field {
-  margin: 0 0 16px;
-}
-.pilot .run-steps .field label {
-  font: 500 13px/18px var(--sans);
-}
-.pilot .run-steps select {
-  width: 100%;
-}
-
-.pilot .blockers {
-  margin: 0 0 12px;
-  padding: 12px 14px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--surface-2);
-}
-.pilot .run-step-current .blockers {
-  background: rgba(255, 255, 255, 0.7);
-}
-.pilot .blockers-title {
-  margin: 0 0 6px;
-  font: 600 13px/18px var(--sans);
-  color: var(--text);
-}
-.pilot .blockers ul {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.pilot .blockers li {
-  display: flex;
-  gap: 8px;
-  font: 400 13px/18px var(--sans);
-  color: var(--text-2);
-}
-.pilot .blockers li svg {
-  flex: none;
-  margin-top: 2px;
-  color: var(--faint);
-}
-.pilot .blocker-step {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.pilot .run-wide {
-  --btn-h: 48px;
-  font: 600 15px/20px var(--sans);
-}
-
-.pilot .run-live {
-  display: block;
-}
-.pilot .run-track {
-  display: grid;
-  grid-auto-flow: column;
-  /* Equal segments, but never narrower than a label ("Approaching" in 600 would overrun its neighbour). */
-  grid-auto-columns: minmax(max-content, 1fr);
-  gap: 6px;
-  margin: 0 0 14px;
-  padding: 0;
-  list-style: none;
-}
-.pilot .run-track li {
-  --seg: var(--surface-3);
-  min-width: 0;
-  font: 500 12px/16px var(--sans);
-  color: var(--muted);
-}
-.pilot .run-track li::before {
+.pilot .video-overlay-title::before {
   content: "";
-  display: block;
-  height: 3px;
-  margin-bottom: 8px;
-  border-radius: 999px;
-  background: var(--seg);
-  transition: background-color var(--t-med) var(--ease);
-}
-.pilot .run-track .run-track-past {
-  --seg: var(--accent-soft-2);
-  color: var(--text-2);
-}
-.pilot .run-track .run-track-now {
-  --seg: var(--accent);
-  color: var(--text);
-  font-weight: 600;
-}
-.pilot .run-step-current .run-track li {
-  --seg: rgba(11, 107, 110, 0.14);
-}
-.pilot .run-step-current .run-track .run-track-past {
-  --seg: rgba(11, 107, 110, 0.38);
-}
-.pilot .run-step-current .run-track .run-track-now {
-  --seg: var(--accent);
-}
-
-.pilot .run-state {
-  display: grid;
-  gap: 2px;
-  margin: 0 0 12px;
-  padding: 12px 14px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--surface);
-  box-shadow: var(--e1);
-}
-.pilot .run-state strong {
-  font: 600 15px/22px var(--sans);
-}
-.pilot .run-state span {
-  font: 400 13px/18px var(--sans);
-  color: var(--muted);
-}
-.pilot .run-state .mono {
-  font-variant-numeric: tabular-nums;
-}
-.pilot .run-state-aborted {
-  background: var(--warn-bg);
-  box-shadow: inset 0 0 0 1px rgba(138, 90, 0, 0.14);
-}
-
-.pilot .run-outcome {
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  gap: 4px 12px;
-  margin: 0 0 16px;
-  padding: 14px 16px;
-  border: 0;
-  border-radius: var(--r-md);
-  background: var(--pass-bg);
-  box-shadow: inset 0 0 0 1px rgba(30, 117, 72, 0.12);
-}
-.pilot .run-outcome > svg {
-  color: var(--pass);
-}
-.pilot .run-outcome strong {
-  display: block;
-  margin: 0 0 2px;
-  font: 600 15px/22px var(--sans);
-  color: #14532f;
-}
-.pilot .run-outcome p {
-  margin: 0 0 2px;
-  font: 400 14px/20px var(--sans);
-  color: var(--text);
-}
-.pilot .run-outcome p.small {
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--text-2);
-}
-.pilot .run-care-link {
-  margin-top: 10px;
-}
-
-.pilot .abort-notice {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin: 0 0 16px;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: var(--r-md);
-  background: var(--warn-bg);
-  color: #5e3e00;
-  box-shadow: inset 0 0 0 1px rgba(138, 90, 0, 0.14);
-}
-.pilot .abort-notice svg {
   flex: none;
-  margin-top: 1px;
-  color: var(--warn);
-}
-.pilot .abort-notice strong {
-  display: block;
-  margin: 0 0 2px;
-  font: 600 14px/20px var(--sans);
-}
-.pilot .abort-notice p {
-  margin: 0;
-  font: 400 14px/20px var(--sans);
+  width: 12px;
+  height: 12px;
+  background: var(--c-fg-2);
 }
 
-/* Disclosure buttons (aria-expanded; they give focus back after a click). */
-.pilot .disclosure {
+.pilot .video-overlay--no_video .video-overlay-title::before,
+.pilot .video-overlay--unreachable .video-overlay-title::before {
+  background: var(--c-fail);
+}
+
+.pilot .video-overlay--interrupted .video-overlay-title::before {
+  background: var(--c-warn);
+}
+
+.pilot .video-overlay-detail {
+  font: var(--t-body);
+  color: var(--c-fg-2);
+}
+
+.pilot .video-overlay-age {
+  font: 500 13px/20px var(--font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-fg-2);
+}
+
+/* The only tag allowed on the picture: VIDEO DELAYED. */
+.pilot .video-chips {
+  position: absolute;
+  top: var(--s-3);
+  left: var(--s-3);
+  display: flex;
+  gap: var(--s-2);
+}
+
+.pilot .video-tag {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 8px 0 4px;
-  margin: 12px 0 0 -4px;
+  height: 24px;
+  padding: 0 var(--s-2);
+  background: var(--amber);
+  color: var(--ink);
+  border-radius: 0;
+  font: var(--t-stamp);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pilot .camera-estop {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 36px;
+  padding: 0 var(--s-4);
+  background: var(--estop-deep);
+  color: var(--estop-text);
+  font: 700 16px/24px var(--font-body);
+}
+
+.pilot .camera-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--console-rule);
+}
+
+.pilot .camera-cell {
+  min-width: 0;
+  padding: var(--s-2) var(--s-4);
+}
+
+.pilot .camera-cell + .camera-cell {
+  border-left: 1px solid var(--console-rule);
+}
+
+.pilot .camera-cell:only-child {
+  grid-column: 1 / -1;
+}
+
+.pilot .camera-legend {
+  display: block;
+  font: var(--t-stamp);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-fg-2);
+}
+
+.pilot .camera-value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  font: 600 16px/24px var(--font-body);
+}
+
+.pilot .camera-caption {
+  max-width: 68ch;
+  margin: var(--s-3) 0 0;
+  font: var(--t-caption);
+  color: var(--ink-2);
+}
+
+/* ===================================================================================== Checklist */
+
+.pilot .checklist {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  column-gap: var(--s-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pilot .check {
+  min-width: 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.pilot .check-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 0;
   background: none;
   border: 0;
-  border-radius: var(--r-sm);
-  font: 500 13px/18px var(--sans);
-  color: var(--muted);
+  color: var(--ink);
+  font: 500 16px/24px var(--font-body);
+  text-align: left;
   cursor: pointer;
-  transition:
-    background-color var(--t-fast) var(--ease),
-    color var(--t-fast) var(--ease);
 }
-.pilot .disclosure:hover {
-  color: var(--text);
-  background: rgba(15, 23, 25, 0.05);
+
+.pilot .check-chip:hover .check-label {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
-.pilot .disclosure-chevron {
+
+.pilot .check-icon {
+  display: inline-flex;
   flex: none;
-  width: 14px;
-  height: 14px;
-  transition: transform var(--t-fast) var(--ease);
 }
-.pilot .disclosure[aria-expanded="true"] .disclosure-chevron {
+
+.pilot .check-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.pilot .check-state {
+  flex: none;
+}
+
+.pilot .check-chevron {
+  flex: none;
+  color: var(--ink-2);
+}
+
+.pilot .check-chip[aria-expanded="true"] .check-chevron {
   transform: rotate(90deg);
 }
-.pilot .run-options {
-  display: grid;
-  gap: 14px;
-  margin-top: 8px;
-  padding: 14px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--surface);
-  box-shadow: var(--e1);
-}
-.pilot .run-options .check-field {
+
+.pilot .check-text {
   margin: 0;
-}
-.pilot .run-options .check-field .hint {
-  margin-top: 2px;
+  padding: var(--s-2) 0 var(--s-3);
+  font: var(--t-caption);
+  color: var(--ink-2);
 }
 
-.pilot .drift-assist {
-  display: grid;
-  gap: 6px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-}
-.pilot .drift-assist p {
-  margin: 0;
-}
-.pilot .drift-assist .row {
-  font-size: 13px;
-  line-height: 18px;
+.pilot .check-word {
+  font-weight: 600;
+  color: var(--ink);
 }
 
-/* ---------- Manual flying ---------- */
+/* ===================================================================================== Manual flying wrapper */
 
 .pilot .manual-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 40px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-5);
 }
-@media (max-width: 860px) {
-  .pilot .manual-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
-  }
+
+.pilot .manual-keys h3,
+.pilot .manual-live h3 {
+  margin: 0 0 var(--s-3);
 }
-.pilot .manual-grid .eyebrow {
-  margin: 0 0 12px;
-}
+
 .pilot .manual-keys .hint {
-  margin: 16px 0 0;
+  margin: var(--s-3) 0 0;
 }
-.pilot .key-legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  column-gap: 32px;
-  row-gap: 20px;
-}
-.pilot .key-cluster {
-  display: grid;
-  /* Caps are 44px; a column grows only when its label is wider ("Turn right"). */
-  grid-template-columns: repeat(3, minmax(44px, max-content));
-  grid-template-areas:
-    ". up ."
-    "left down right";
-  gap: 6px 6px;
-}
-.pilot .key-singles {
-  flex-basis: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-.pilot .key {
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  gap: 6px;
-}
-.pilot .key kbd,
-.pilot .hold-btn {
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: 9px;
-  background: linear-gradient(#fff, #f7f9f9);
-  color: var(--text);
-  font: 600 14px/1 var(--sans);
-  letter-spacing: 0;
-  display: grid;
-  place-items: center;
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 25, 0.1),
-    0 2px 0 0 rgba(15, 23, 25, 0.1),
-    0 3px 6px -1px rgba(15, 23, 25, 0.1);
-  transition:
-    transform 80ms var(--ease),
-    box-shadow 80ms var(--ease),
-    background-color 80ms;
-}
-.pilot .key .kbd-wide {
-  width: 112px;
-}
-.pilot .key-estop kbd {
-  color: var(--estop);
-  box-shadow:
-    0 0 0 1px rgba(217, 45, 32, 0.35),
-    0 2px 0 0 rgba(217, 45, 32, 0.25);
-}
-.pilot .key-does {
-  font: 400 12px/16px var(--sans);
-  color: var(--muted);
-  white-space: nowrap;
-}
+
 .pilot .manual-live .msg {
-  margin: 0 0 12px;
+  margin: 0 0 var(--s-3);
 }
+
 .pilot .manual-note {
-  margin: 8px 0 0;
-  font: 400 12px/16px var(--sans);
-  color: var(--muted);
+  margin: var(--s-3) 0 0;
 }
+
 .pilot .manual-note-value {
-  font-weight: 500;
-  color: var(--text);
+  font: var(--t-data);
+  font-weight: 600;
+  color: var(--ink);
 }
 
-.pilot .axes {
-  display: grid;
-  gap: 2px;
-  margin: 0;
-}
-.pilot .axis {
-  display: grid;
-  grid-template-columns: 72px 1fr 48px;
-  align-items: center;
-  gap: 12px;
-  height: 28px;
-}
-.pilot .axis-label {
-  font: 500 13px/18px var(--sans);
-  color: var(--text-2);
-}
-.pilot .axis-track {
-  position: relative;
-  height: 6px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--surface-3);
-  overflow: visible;
-}
-.pilot .axis-fill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-radius: 999px;
-  background: var(--accent);
-}
-.pilot .axis-zero {
-  position: absolute;
-  z-index: 1;
-  left: 50%;
-  top: -2px;
-  width: 2px;
-  height: 10px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: #fff;
-  box-shadow: 0 0 0 0.5px rgba(15, 23, 25, 0.2);
-}
-.pilot .axis-value {
-  text-align: right;
-  font: 500 13px/18px var(--sans);
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-}
-.pilot .axes .axes-note {
-  margin: 8px 0 0;
-  font: 400 12px/16px var(--sans);
-  color: var(--muted);
+.pilot .pilot-manual > .disclosure {
+  margin-top: var(--s-4);
 }
 
-.pilot .stickpad {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 12px 0 0;
-}
-@media (max-width: 899px) {
-  .pilot .stickpad {
+/* ===================================================================================== 640 and up */
+
+@media (min-width: 640px) {
+  .pilot .checklist {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-.pilot .stickpad-group {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 12px;
-  border: 0;
-  border-radius: var(--r-md);
-  background: var(--surface-2);
-}
-.pilot .stickpad-title {
-  grid-column: 1 / -1;
-  font-size: var(--fs-xs);
-  line-height: 16px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.pilot .hold-btn {
-  width: 100%;
-  height: auto;
-  min-height: 52px;
-  padding: 6px 4px;
-  gap: 4px;
-  place-content: center;
-  font: 500 13px/16px var(--sans);
-  cursor: pointer;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-.pilot .hold-btn:active:not(:disabled) {
-  transform: translateY(2px);
-  background: var(--accent-soft);
-  color: var(--accent);
-  box-shadow: 0 0 0 1.5px var(--accent);
-}
-.pilot .hold-btn:disabled {
-  background: var(--surface-3);
-  color: var(--faint);
-  box-shadow: none;
-  cursor: not-allowed;
-}
-.pilot .hold-btn kbd {
-  min-width: 0;
-  height: 18px;
-  padding: 0 5px;
-  font-size: 11px;
-}
-.pilot .hold-btn:disabled kbd {
-  color: var(--faint);
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--line-strong);
-}
 
-/* ---------- Setup and tuning ---------- */
+/* ===================================================================================== Below 1200: readout as a line */
 
-.pilot .pilot-setup-heading {
-  margin: 0;
-}
-.pilot .disclosure-heading {
-  display: flex;
-  width: 100%;
-  height: 28px;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  background: none;
-  font: 600 16px/24px var(--sans);
-  letter-spacing: -0.011em;
-  color: var(--text);
-  text-align: left;
-}
-.pilot .disclosure-heading:hover {
-  background: none;
-  color: var(--text);
-}
-.pilot .disclosure-heading .disclosure-chevron {
-  width: 16px;
-  height: 16px;
-  color: var(--muted);
-}
-.pilot .setup-summary {
-  margin-left: auto;
-  font: 400 13px/18px var(--sans);
-  letter-spacing: 0;
-  color: var(--muted);
-}
-.pilot .pilot-setup > .hint {
-  margin: 4px 0 0;
-}
-.pilot .setup-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 12px;
-  margin-top: 20px;
-}
-.pilot .setup-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-  padding: 16px;
-  border: 0;
-  border-radius: var(--r-md);
-  background: var(--surface-2);
-}
-.pilot .setup-card h3 {
-  margin: 0;
-  font: 600 14px/20px var(--sans);
-}
-.pilot .setup-card p {
-  margin: 0;
-}
-.pilot .trim,
-.pilot .hover-test,
-.pilot .calibration,
-.pilot .calibrate-level {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.pilot .setup-card .msg {
-  margin: 0;
-}
-/* The shared disabled fill is --surface-2, the card's own fill: step one level down so the button keeps its shape. */
-.pilot .setup-card .btn:not(.btn-quiet):disabled,
-.pilot .setup-card .takeoff:disabled,
-.pilot .run-step-current .confirm-card:has(input:disabled) {
-  background: var(--surface-3);
-}
-
-.pilot .trim-values {
-  display: flex;
-  gap: 28px;
-}
-.pilot .trim-stat {
-  display: grid;
-  gap: 2px;
-}
-.pilot .trim-k {
-  font: 400 12px/16px var(--sans);
-  color: var(--muted);
-}
-.pilot .trim-v {
-  font: 600 18px/24px var(--sans);
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-}
-.pilot .trim-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.pilot .trim-grid .btn {
-  min-width: 0;
-  padding: 0 10px;
-  white-space: nowrap;
-}
-.pilot .trim-grid .trim-reset {
-  grid-column: 1 / -1;
-  justify-self: start;
-  margin-left: -6px;
-}
-
-.pilot .maxstick {
-  display: grid;
-  grid-template-columns: auto 1fr 44px;
-  gap: 12px;
-  align-items: center;
-}
-.pilot .maxstick label {
-  font: 500 13px/18px var(--sans);
-}
-.pilot .maxstick output {
-  text-align: right;
-  font: 600 14px/20px var(--sans);
-  font-variant-numeric: tabular-nums;
-}
-.pilot .maxstick .hint {
-  grid-column: 1 / -1;
-}
-
-.pilot .setup-action {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.pilot .setup-wide {
-  height: auto;
-  min-height: 40px;
-  padding: 8px 12px;
-  white-space: normal;
-  text-align: center;
-}
-.pilot .setup-readout {
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-}
-.pilot .progress-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  font: 400 13px/18px var(--sans);
-}
-.pilot .progress-row label {
-  font-weight: 500;
-}
-.pilot .hover-result {
-  display: grid;
-  gap: 10px;
-}
-.pilot .calibrate-btn {
-  height: 52px;
-}
-.pilot .calibrate-level .muted {
-  font: 400 13px/18px var(--sans);
-}
-
-/* ---------- Narrow screens ---------- */
-
-@media (max-width: 900px) {
+/* Under 1200px the four cells do not fit one row (e-stop 360 + takeoff 260 + a readout of about 330).
+   The buttons and the reason keep the first row; the readout becomes one line of legend and value pairs. */
+@media (max-width: 1199px) {
   .pilot .command-bar {
-    flex-wrap: wrap;
-    padding-right: 8px;
-    row-gap: 8px;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "estop takeoff note"
+      "status status status";
   }
-  .pilot .estop {
-    flex: 1 1 100%;
+
+  .pilot .readout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--s-5);
+    max-width: none;
+    margin-top: var(--s-3);
+  }
+
+  .pilot .readout-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+  }
+
+  .pilot .readout-legend,
+  .pilot .readout-data {
+    line-height: 22px;
+  }
+}
+
+/* Below 960 the readout line is short of room. In simulator mode the DRONE row only repeats the MODE stamp
+   ("Simulator (no real drone)"): it stays for assistive tech and is not drawn. */
+@media (max-width: 959px) {
+  .pilot .readout-row--redundant {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+
+/* 640 to 959: the reason gets its own row under the readout. */
+@media (min-width: 640px) and (max-width: 959px) {
+  .pilot .command-bar {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    grid-template-areas:
+      "estop takeoff"
+      "status status"
+      "note note";
+  }
+
+  .pilot .estop,
+  .pilot .takeoff.takeoff-compact {
     min-width: 0;
   }
-  .pilot .takeoff-wrap {
-    flex: 1 1 auto;
-  }
-  .pilot .takeoff.takeoff-compact {
-    flex: 1 1 auto;
-  }
-  .pilot .command-status {
-    flex: 1 1 100%;
-    margin: 4px 0 0;
-    padding: 8px 4px 0;
-    justify-content: flex-start;
-    border-top: 1px solid var(--line);
+
+  .pilot .takeoff-note,
+  .pilot .command-down {
+    margin-top: var(--s-2);
   }
 }
-@media (max-width: 760px) {
+
+/* ===================================================================================== 960 and up */
+
+@media (min-width: 960px) {
+  .pilot .pilot-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--s-5);
+  }
+
   .pilot .pilot-camera {
-    padding: 12px;
+    grid-column: 1 / span 8;
+    grid-row: 1;
   }
-}
 
-/* ---------- Station run: Automatic / Step by step ---------- */
-
-.pilot .run-mode {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px;
-  margin: 0 0 16px;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--surface-2);
-}
-.pilot .run-mode-option {
-  height: 34px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  font: 500 14px/20px var(--sans);
-  color: var(--muted);
-  cursor: pointer;
-  transition:
-    background-color var(--t-fast) var(--ease),
-    color var(--t-fast) var(--ease),
-    box-shadow var(--t-fast) var(--ease);
-}
-.pilot .run-mode-option:hover {
-  color: var(--text);
-}
-.pilot .run-mode-option[aria-pressed="true"] {
-  background: var(--surface);
-  color: var(--text);
-  font-weight: 600;
-  box-shadow: var(--e1);
-}
-.pilot .run-mode-option:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent-ring);
-}
-
-.pilot .auto-run .auto-help {
-  margin: 8px 0 0;
-}
-.pilot .auto-run .auto-countdown {
-  font: 600 28px/36px var(--sans);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-.pilot .auto-schedule {
-  display: grid;
-  gap: 6px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-}
-.pilot .auto-schedule p {
-  margin: 0;
-}
-.pilot .auto-ready {
-  display: grid;
-  justify-items: start;
-  gap: 8px;
-  margin-top: 4px;
-  color: var(--text-2);
-}
-.pilot .auto-run .run-options p {
-  margin: 0;
-  color: var(--text-2);
-}
-/* Narrow phones: let the six stage labels wrap instead of overflowing the panel. */
-@media (max-width: 420px) {
-  .pilot .auto-run .run-track {
-    grid-auto-columns: minmax(0, 1fr);
+  .pilot .pilot-run {
+    grid-column: 9 / span 4;
+    grid-row: 1;
   }
-  /* The step by step track is narrower and its labels are single long words: two rows of three. */
-  .pilot .run-step .run-track {
-    grid-auto-flow: row;
+
+  .pilot .pilot-check {
+    grid-column: 1 / -1;
+  }
+
+  .pilot .checklist {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    row-gap: 10px;
+  }
+
+  .pilot .manual-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ===================================================================================== Below 640 */
+
+@media (max-width: 639px) {
+  .pilot {
+    --pilot-gutter: var(--s-4);
+  }
+
+  .pilot .pilot-body {
+    padding-top: var(--s-4);
+  }
+
+  /* Row 1: e-stop and takeoff. Row 2: the readout as one mono line. The reason wraps beneath. */
+  .pilot .command-bar {
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+    grid-template-areas:
+      "estop takeoff"
+      "status status"
+      "note note";
+    column-gap: var(--s-2);
+    padding-block: var(--s-2);
+  }
+
+  .pilot .command-bar--real {
+    padding-top: var(--s-1);
+  }
+
+  .pilot .estop {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "main main"
+      "sub key";
+    column-gap: var(--s-2);
+    height: 64px;
+    min-width: 0;
+    padding: 0 var(--s-3);
+  }
+
+  .pilot .estop-icon {
+    display: none;
+  }
+
+  .pilot .estop-main {
+    font-size: 18px;
+    line-height: 22px;
+    letter-spacing: 0.02em;
+  }
+
+  .pilot .estop-sub {
+    font-size: 13px;
+    line-height: 16px;
+  }
+
+  .pilot .estop-key {
+    align-self: end;
+    height: 22px;
+    padding: 0 var(--s-1);
+  }
+
+  .pilot .takeoff.takeoff-compact {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "label"
+      "sub";
+    min-width: 0;
+    height: 64px;
+    min-height: 64px;
+    padding: var(--s-1) var(--s-2);
+  }
+
+  /* Disabled on a phone: the padlock and label only; the reason is printed in full beneath the strip. */
+  .pilot .takeoff.takeoff-compact:disabled .takeoff-sub {
+    display: none;
+  }
+
+  .pilot .takeoff-compact .takeoff-label {
+    font-size: 15px;
+    line-height: 20px;
+  }
+
+  .pilot .takeoff-compact .takeoff-paren,
+  .pilot .takeoff-compact .takeoff-key {
+    display: none;
+  }
+
+  .pilot .takeoff-compact .takeoff-sub {
+    font-size: 13px;
+    line-height: 16px;
+  }
+
+  /* One line where it fits: short legends (MODE is implied by its stamp), 18px rows, no row gap, tighter pairs. */
+  .pilot .readout {
+    gap: 0 var(--s-3);
+    margin-top: var(--s-1);
+  }
+
+  .pilot .readout-row {
+    gap: var(--s-2);
+  }
+
+  .pilot .readout-value {
+    gap: var(--s-1);
+  }
+
+  .pilot .readout-legend,
+  .pilot .readout-data {
+    line-height: 18px;
+  }
+
+  .pilot .readout-legend--mode,
+  .pilot .readout-legend-more {
+    display: none;
+  }
+
+  .pilot .readout .stamp {
+    height: 18px;
+  }
+
+  .pilot .readout-mode .readout-data {
+    min-height: 18px;
+  }
+
+  .pilot .takeoff-note,
+  .pilot .command-down {
+    margin-top: var(--s-1);
+  }
+
+  /* With the emergency-stop band open, the band explains the disabled takeoff; the strip reason (aria-hidden)
+     would only repeat it. */
+  .pilot .pilot-sticky--banner .takeoff-note {
+    display: none;
+  }
+
+  .pilot .estop-banner {
+    padding-block: var(--s-2);
+  }
+
+  .pilot .estop-banner-detail {
+    font: var(--t-caption);
+    color: var(--estop-text);
+  }
+
+  .pilot .estop-banner .btn {
+    min-height: 48px;
+  }
+
+  .pilot .camera-head {
+    padding-block: var(--s-1);
+  }
+
+  .pilot .camera-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pilot .camera-cell {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    align-items: baseline;
+    gap: var(--s-3);
+    padding: var(--s-2) var(--s-4);
+  }
+
+  .pilot .camera-cell + .camera-cell {
+    border-left: 0;
+    border-top: 1px solid var(--console-rule);
+  }
+
+  .pilot .camera-cell:only-child {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pilot .video-overlay {
+    padding: var(--s-4);
+  }
+
+  .pilot .video-overlay-title {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  .pilot .video-overlay-detail {
+    font: var(--t-caption);
   }
 }

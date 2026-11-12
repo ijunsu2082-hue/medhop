@@ -4,10 +4,9 @@ import { api, blockersFrom, errorText } from "../../api/client";
 import type { MissionState, Status } from "../../api/types";
 import { alignmentLine, doneMessage } from "../../logic/pilot";
 import { abortText, blockerText, missionStateText } from "../../text/wording";
-import { IconCheck, IconCross, IconWarn } from "../Icons";
+import { IconChevron, IconCross, IconPass, IconWarn } from "../Icons";
 import { DriftAssistControl } from "./DriftAssist";
 import { HoldButton, type Hold } from "./HoldButton";
-import { IconChevron } from "./PilotIcons";
 
 const RUN_ACTIVE = new Set(["countdown", "taking_off", "searching", "approaching", "aligning", "arrived", "landing"]);
 
@@ -162,7 +161,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
               sub="Press and hold for 0.6 s"
               subId="takeoff-step-desc"
               keyShortcut="T"
-              className="takeoff-large"
+              className={current === 1 ? "takeoff-large" : "takeoff-large takeoff-secondary"}
             />
             <p className="run-step-text small muted">Hold T, or press and hold this button for 0.6 s.</p>
             <p className="run-step-live" role="status">
@@ -180,7 +179,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
         {step(
           2,
           "Confirm",
-          <label className={`confirm-card${confirmed ? " confirm-card-on" : ""}`}>
+          <label className={`check-field confirm-card${confirmed ? " confirm-card-on" : ""}`}>
             <input
               type="checkbox"
               checked={confirmed}
@@ -219,7 +218,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                   </span>
                   {runDose && <span>For: {runDose.label}</span>}
                 </div>
-                <button type="button" className="btn btn-danger btn-lg btn-block run-wide" onClick={() => void abort()} disabled={busy === "abort"}>
+                <button type="button" className="btn btn-danger btn-lg btn-block" onClick={() => void abort()} disabled={busy === "abort"}>
                   Abort run
                 </button>
               </div>
@@ -227,7 +226,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
               <>
                 {m.state === "done" && (
                   <div className="run-outcome" aria-live="polite" aria-atomic="true">
-                    <IconCheck size={24} />
+                    <IconPass size={24} />
                     <div className="run-outcome-body">
                       <strong>{missionStateText("done")}</strong>
                       <p>{doneMessage(m.last_landing)}</p>
@@ -274,7 +273,6 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                       e.currentTarget.blur();
                     }}
                     disabled={active}
-                    className="select-lg"
                     aria-describedby="run-dose-hint"
                   >
                     <option value="">No dose (practice run)</option>
@@ -295,7 +293,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                     <ul>
                       {allBlockers.map((b) => (
                         <li key={b.text}>
-                          <IconCross size={14} />
+                          <IconCross size={20} />
                           <span>
                             {b.step !== null && <strong className="blocker-step">Step {b.step}:</strong>} {b.text}
                           </span>
@@ -307,7 +305,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
 
                 <button
                   type="button"
-                  className="btn btn-primary btn-lg btn-block run-wide"
+                  className="btn btn-primary btn-lg btn-block"
                   onClick={() => void start()}
                   disabled={!canStart}
                   aria-describedby={allBlockers.length > 0 ? "run-blockers" : undefined}

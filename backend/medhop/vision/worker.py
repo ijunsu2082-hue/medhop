@@ -35,13 +35,18 @@ DARK_BRIGHTNESS = 40.0        # mean grey level below this is reported as dark
 MARKER_VISIBLE_S = 1.0        # status shows the marker for this long after its last detection
 VIDEO_LIVE_S = 0.5            # same threshold as the mixer's video failsafe
 NO_VIDEO_AFTER_S = 2.0        # the stream shows the "No video" card when frames are older than this
-ANNOTATED_JPEG_QUALITY = 80
+ANNOTATED_JPEG_QUALITY = 90
 IDLE_STEP_S = 0.05
 FPS_WINDOW_S = 2.0            # link.fps is averaged over this long
 VIEWER_ACTIVE_S = 2.0         # the annotated picture is produced for this long after it was last asked for
 RATE_LOG_S = 10.0             # how often the camera / vision / marker rates are logged
 
 _FONT = cv2.FONT_HERSHEY_SIMPLEX
+# Overlay colours (BGR): the marker in green, people in amber, labels in paper colour on an ink plate.
+MARKER_BGR = (148, 211, 98)
+PERSON_BGR = (65, 184, 245)
+LABEL_BGR = (232, 240, 243)
+PLATE_BGR = (15, 19, 20)
 
 
 @dataclass(frozen=True)
@@ -63,37 +68,67 @@ def encode_jpeg(image: np.ndarray, quality: int = ANNOTATED_JPEG_QUALITY) -> byt
 
 
 def no_video_jpeg(text: str = "No video", width: int = 640, height: int = 360) -> bytes:
-    """A generated card so the page never hangs waiting for the first frame."""
+    """A generated card so the page never hangs waiting for the first frame.
+
+    Sizes scale by k = max(1, width / 640) like the overlay, so a card the size of a 1280x720 picture
+    reads the same as the 640x360 default."""
+    k = max(1.0, width / 640.0)
+    inset = int(round(8 * k))
+    thickness = max(1, int(round(2 * k)))
     image = np.full((height, width, 3), 28, np.uint8)
-    cv2.rectangle(image, (8, 8), (width - 9, height - 9), (70, 70, 70), 1)
-    (text_w, text_h), _ = cv2.getTextSize(text, _FONT, 1.2, 2)
-    cv2.putText(image, text, ((width - text_w) // 2, (height + text_h) // 2), _FONT, 1.2,
-                (210, 210, 210), 2, cv2.LINE_AA)
+    cv2.rectangle(image, (inset, inset), (width - inset - 1, height - inset - 1), (70, 70, 70),
+                  max(1, int(round(k))))
+    (text_w, text_h), _ = cv2.getTextSize(text, _FONT, 1.2 * k, thickness)
+    cv2.putText(image, text, ((width - text_w) // 2, (height + text_h) // 2), _FONT, 1.2 * k,
+                (210, 210, 210), thickness, cv2.LINE_AA)
     return encode_jpeg(image)
 
 
+def _label(out: np.ndarray, text: str, anchor: tuple, scale: float, k: int) -> None:
+    """Paper-coloured text on a solid ink plate. `anchor` is the plate's preferred bottom-left corner;
+    the plate is moved as needed to stay inside the frame."""
+    height, width = out.shape[:2]
+    thickness = max(1, int(round(k)))
+    (text_w, text_h), base = cv2.getTextSize(text, _FONT, scale, thickness)
+    pad = max(1, int(round(4 * k)))
+    plate_w, plate_h = text_w + 2 * pad, text_h + base + 2 * pad
+    x0 = min(max(0, int(anchor[0])), max(0, width - plate_w))
+    y1 = min(max(plate_h, int(anchor[1])), height)
+    y0 = y1 - plate_h
+    cv2.rectangle(out, (x0, y0), (x0 + plate_w - 1, y1 - 1), PLATE_BGR, -1)
+    cv2.putText(out, text, (x0 + pad, y1 - pad - base), _FONT, scale, LABEL_BGR, thickness, cv2.LINE_AA)
+
+
 def annotate(image: np.ndarray, marker: Optional[MarkerObs], person: PersonStatus, banner: str) -> np.ndarray:
-    """Draw the marker outline, person boxes and a small state banner on a copy of the frame."""
+    """Draw the marker outline, person boxes and a small state banner on a copy of the frame.
+
+    Every pixel size is scaled by k = max(1, width / 640), so the overlay reads the same on a 640 px
+    drone frame and on the simulator's 1280 px display picture."""
     out = image.copy()
     height, width = out.shape[:2]
+    k = max(1.0, width / 640.0)
+
+    def px(value: float) -> int:
+        return max(1, int(round(value * k)))
+
     if person.enabled:
         for x1, y1, x2, y2 in person.boxes:
             cv2.rectangle(out, (int(x1 * width), int(y1 * height)), (int(x2 * width), int(y2 * height)),
-                          (0, 140, 255), 2)
-            cv2.putText(out, "person", (int(x1 * width) + 3, max(12, int(y1 * height) - 5)), _FONT, 0.45,
-                        (0, 140, 255), 1, cv2.LINE_AA)
+                          PERSON_BGR, px(2))
+            _label(out, "person", (int(x1 * width), int(y1 * height) - px(2)), 0.45 * k, k)
     if marker is not None:
         pts = np.array(marker.corners, dtype=np.int32).reshape(-1, 1, 2)
-        cv2.polylines(out, [pts], True, (0, 220, 0), 2, cv2.LINE_AA)
+        cv2.polylines(out, [pts], True, MARKER_BGR, px(2), cv2.LINE_AA)
         centre = (int(marker.cx * width), int(marker.cy * height))
-        cv2.drawMarker(out, centre, (0, 220, 0), cv2.MARKER_CROSS, 12, 1)
+        cv2.drawMarker(out, centre, MARKER_BGR, cv2.MARKER_CROSS, px(12), px(1))
         label = f"station {marker.id}  w={marker.width:.3f}"
-        cv2.putText(out, label, (max(2, centre[0] - 70), max(14, int(min(p[1] for p in marker.corners)) - 8)),
-                    _FONT, 0.45, (0, 220, 0), 1, cv2.LINE_AA)
+        top = int(min(p[1] for p in marker.corners))
+        _label(out, label, (centre[0] - px(70), top - px(6)), 0.45 * k, k)
     if banner:
-        (text_w, text_h), _ = cv2.getTextSize(banner, _FONT, 0.5, 1)
-        cv2.rectangle(out, (0, 0), (text_w + 12, text_h + 12), (0, 0, 0), -1)
-        cv2.putText(out, banner, (6, text_h + 6), _FONT, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+        thickness = px(1)
+        (text_w, text_h), _ = cv2.getTextSize(banner, _FONT, 0.5 * k, thickness)
+        cv2.rectangle(out, (0, 0), (text_w + px(12), text_h + px(12)), PLATE_BGR, -1)
+        cv2.putText(out, banner, (px(6), text_h + px(6)), _FONT, 0.5 * k, LABEL_BGR, thickness, cv2.LINE_AA)
     return out
 
 
@@ -134,6 +169,8 @@ class VisionWorker:
         self._annotated: Optional[bytes] = None
         self._annotated_seq = 0
         self._no_video = no_video_jpeg()
+        self._no_video_size = (640, 360)
+        self._frame_size: Optional[tuple] = None    # (width, height) of the last decoded frame
 
     # ------------------------------------------------------------------ #
     def start(self) -> None:
@@ -191,6 +228,7 @@ class VisionWorker:
             self._person.submit(image)
         with self._lock:
             self._frame_ts = frame.timestamp
+            self._frame_size = (image.shape[1], image.shape[0])
             self._arrivals.append((now, frame.seq))
             self._brightness = brightness
             if marker is not None:
@@ -294,6 +332,15 @@ class VisionWorker:
         with self._lock:
             self._viewer_at = now
             stale = self._frame_ts is None or (now - self._frame_ts) > NO_VIDEO_AFTER_S
-            if self._annotated is None or stale:
+            if self._annotated is not None and not stale:
+                return self._annotated_seq, self._annotated
+            # The card takes the size of the last frame (never smaller than the 640x360 default), so the
+            # stream keeps one frame size through a gap in the video, for example on the simulator's
+            # 1280x720 display picture. It is only rebuilt here, for a viewer, when that size changes.
+            size = self._frame_size if self._frame_size is not None and self._frame_size[0] >= 640 else (640, 360)
+            if size == self._no_video_size:
                 return -1, self._no_video
-            return self._annotated_seq, self._annotated
+        card = no_video_jpeg(width=size[0], height=size[1])
+        with self._lock:
+            self._no_video, self._no_video_size = card, size
+        return -1, card

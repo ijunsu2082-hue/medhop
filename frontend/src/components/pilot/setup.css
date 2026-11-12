@@ -1,0 +1,244 @@
+/* Setup and tuning: AdvancedPanel and its sub-panels (TrimPanel, MaxStickSlider, HoverTestPanel,
+   ArrivalCalibration, CalibrateLevel). Spec 9, contract C4. Every rule is scoped under .pilot and uses tokens
+   only. The Calibrate level hold button is styled in pilot.css. */
+
+/* ------------------------------------------------------------------ Section and heading */
+
+.pilot .pilot-setup {
+  margin-top: var(--s-7);
+}
+
+/* The heading row is the disclosure button inside the h2, after the section index. */
+.pilot .pilot-setup-head {
+  align-items: center;
+  margin-bottom: 0;
+}
+
+/* Centred on the 44px heading row, the index sits 2px above the heading's baseline: set it down to match. */
+.pilot .pilot-setup-head .section-index {
+  position: relative;
+  top: 2px;
+}
+
+.pilot .pilot-setup-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font: var(--t-heading);
+}
+
+.pilot .disclosure-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--s-2);
+  width: 100%;
+  min-height: 44px;
+  font: var(--t-heading);
+  color: var(--c-fg);
+}
+
+.pilot .setup-summary {
+  margin-left: auto;
+  font: var(--t-caption);
+  color: var(--c-fg-2);
+}
+
+@media (max-width: 639px) {
+  .pilot .setup-summary {
+    flex-basis: 100%;
+    margin-left: 0;
+    padding-bottom: var(--s-2);
+  }
+}
+
+.pilot .pilot-setup > .hint {
+  margin: var(--s-2) 0 0;
+}
+
+/* ------------------------------------------------------------------ Ruled definition list */
+
+.pilot .setup-grid {
+  margin-top: var(--s-3);
+}
+
+/* One row per item: name and one-line description, then the control. Hairline between rows, no fills. */
+.pilot .setup-row {
+  min-width: 0;
+  padding: var(--s-5) 0;
+  border-top: 1px solid var(--c-rule);
+}
+
+.pilot .setup-row:last-child {
+  padding-bottom: 0;
+}
+
+.pilot .setup-row-head {
+  min-width: 0;
+  margin-bottom: var(--s-3);
+}
+
+.pilot .setup-row-head h3 {
+  margin: 0;
+  font: var(--t-subhead);
+  color: var(--c-fg);
+}
+
+.pilot .setup-desc {
+  margin: var(--s-1) 0 0;
+  font: var(--t-caption);
+  color: var(--c-fg-2);
+}
+
+.pilot .setup-row-body {
+  min-width: 0;
+}
+
+/* Controls keep a readable measure in the wide column. */
+.pilot .setup-row-body > * {
+  max-width: 560px;
+}
+
+@media (min-width: 960px) {
+  .pilot .setup-row {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--s-6);
+  }
+
+  .pilot .setup-row-head {
+    grid-column: 1 / span 5;
+    margin-bottom: 0;
+  }
+
+  .pilot .setup-row-body {
+    grid-column: 6 / -1;
+  }
+}
+
+/* Sub-panels stack their parts with one rhythm. */
+.pilot .trim,
+.pilot .hover-test,
+.pilot .calibration,
+.pilot .calibrate-level {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-3);
+}
+
+.pilot .setup-row-body p {
+  margin: 0;
+}
+
+.pilot .setup-row-body .msg {
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ Trim */
+
+.pilot .trim-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-6);
+}
+
+.pilot .trim-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+
+.pilot .trim-k {
+  font: var(--t-label);
+  color: var(--c-fg-2);
+}
+
+.pilot .trim-v {
+  font: var(--t-data-lg);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-fg);
+}
+
+.pilot .trim-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 168px));
+  gap: var(--s-2);
+}
+
+.pilot .trim-grid .btn {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.pilot .trim-grid .trim-reset {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+/* ------------------------------------------------------------------ Max stick */
+
+.pilot .maxstick {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-2) var(--s-4);
+}
+
+.pilot .maxstick output {
+  min-width: 5ch;
+  text-align: right;
+  font: var(--t-data-lg);
+  font-variant-numeric: tabular-nums;
+  color: var(--c-fg);
+}
+
+.pilot .maxstick .hint {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ Hover test and arrival calibration */
+
+.pilot .setup-action {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-2);
+}
+
+.pilot .progress-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.pilot .progress-row label {
+  font: var(--t-label);
+  color: var(--c-fg);
+}
+
+.pilot .hover-result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.pilot .hover-result .kv {
+  align-self: stretch;
+}
+
+.pilot .setup-readout {
+  color: var(--c-fg-2);
+}
+
+/* ------------------------------------------------------------------ Phones: every target at least 44px */
+
+@media (max-width: 639px) {
+  .pilot .setup-row-body .btn-sm,
+  .pilot .setup-row-body .btn-quiet {
+    min-height: 44px;
+  }
+}

@@ -3,16 +3,19 @@ import { useControlSocket } from "../hooks/useControlSocket";
 import { useFlightKeyboard } from "../hooks/useFlightKeyboard";
 import { useHoldGuard } from "../hooks/useHoldGuard";
 import { useStatus } from "../hooks/useStatus";
-import { VideoFeed } from "../components/VideoFeed";
 import { CommandBar } from "../components/pilot/CommandBar";
+import { CameraFigure } from "../components/pilot/CameraFigure";
 import { EstopBanner } from "../components/pilot/EstopBanner";
 import { AxisIndicators, KeyLegend, StickPad } from "../components/pilot/ManualControls";
 import { Checklist } from "../components/pilot/Checklist";
 import { StationRun } from "../components/pilot/StationRun";
 import { AdvancedPanel } from "../components/pilot/AdvancedPanel";
-import { IconChevron, IconSign } from "../components/pilot/PilotIcons";
+import { IconChevron } from "../components/Icons";
 import { releaseOnLinkChange } from "../control/release";
-import { missionStateText } from "../text/wording";
+import { preflightChecklist } from "../logic/checklist";
+import type { StreamState } from "../logic/streamController";
+import { videoHealth } from "../logic/videoHealth";
+import { checklistSummary, videoRailTone, videoRailValue } from "../text/pilotWording";
 import "./pilot.css";
 import {
   ACK_NOTE_MS,
@@ -43,6 +46,9 @@ export function PilotPage() {
   // Presentation only: moves the highlighted run step from 1 to 2 once the backend acknowledged a toggle.
   const [takeoffAcked, setTakeoffAcked] = useState(false);
   const [padOpen, setPadOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  // This window's MJPEG stream state: the camera rail and the strip readout both show it.
+  const [streamState, setStreamState] = useState<StreamState>("connecting");
   // Send time of each command still waiting for an ack/error; cleared once its reply is consumed.
   const awaiting = useRef<Record<PendingCommand, number | null>>({ takeoff_land: null, calibrate: null });
 
@@ -207,10 +213,21 @@ export function PilotPage() {
     if (calBlocked !== null) calCancel();
   }, [calBlocked, calCancel]);
 
+  const health = videoHealth({
+    backendReachable: !backendDown,
+    videoLive: status ? status.link.video_live : null,
+    frameAgeS: status ? status.link.frame_age_s : null,
+  });
+  const videoRail = {
+    value: videoRailValue(health, streamState, status ? status.link.frame_age_s : null),
+    tone: videoRailTone(health, streamState),
+  };
+  const checkSummary = status ? checklistSummary(preflightChecklist(status)) : "";
+
   return (
     <div className="pilot">
       {/* The stop button and the emergency-stop banner stay together at the top while scrolling. */}
-      <div className="pilot-sticky">
+      <div className={`pilot-sticky on-console${estopView ? " pilot-sticky--banner" : ""}`}>
         <CommandBar
           mode={status?.mode ?? null}
           control={control.state}
@@ -220,6 +237,7 @@ export function PilotPage() {
           takeoffBlocked={takeoffBlocked}
           takeoffNote={takeoffNote}
           droneLink={droneLink}
+          video={videoRail}
         />
         <EstopBanner
           view={estopView}
@@ -230,144 +248,157 @@ export function PilotPage() {
         />
       </div>
       {control.state === "refused" && (
-        <div className="banner banner-fail pilot-refused" role="alert">
-          Another pilot window is connected. This window cannot fly the drone. Close the other window; this one retries every 5 s.
+        <div className="pilot-annunciator on-console" role="alert">
+          <span className="pilot-annunciator-inner">
+            <span className="pilot-annunciator-state tone-fail" aria-hidden="true">
+              <span className="status-sq" />
+              <span className="stamp stamp--fail">Refused</span>
+            </span>
+            <span className="pilot-annunciator-text">
+              Another pilot window is connected. This window cannot fly the drone. Close the other window; this one
+              retries every 5 s.
+            </span>
+          </span>
         </div>
       )}
 
-      <header className="pilot-intro">
-        <h1>Pilot: fly the drone to the station</h1>
-        <p className="pilot-lede">
-          Fly a small toy drone from this laptop. A station run turns the drone until its camera sees the printed station
-          sign, flies toward it and stops. The Care page then shows that it arrived at the station.
-        </p>
-        {status?.mode === "sim" && (
-          <p className="pilot-sim-note">
-            <span className="chip">Simulator</span>
-            <span>No real drone moves.</span>
-          </p>
-        )}
-      </header>
-
-      <div className="pilot-grid">
-        <section className="panel pilot-run" aria-labelledby="h-run">
-          {status ? (
-            <StationRun
-              status={status}
-              controlOpen={controlOpen}
-              hold={hold}
-              takeoffBlocked={takeoffBlocked}
-              takeoffNote={takeoffNote}
-              takeoffAcked={takeoffAcked}
-              onResetEstop={resetEstop}
-            />
-          ) : (
-            <>
-              <h2 id="h-run">Station run</h2>
-              {waiting("Waiting for status.")}
-            </>
-          )}
-        </section>
-        <section className="panel pilot-camera" aria-labelledby="h-video">
-          <div className="pilot-camera-head">
-            <h2 id="h-video">Camera</h2>
+      <div className="container pilot-body">
+        <header className="pilot-title-row">
+          <h1>Pilot: fly the drone to the station</h1>
+          <button
+            type="button"
+            className="disclosure pilot-about-toggle"
+            aria-expanded={aboutOpen}
+            aria-controls="pilot-about"
+            onClick={(e) => {
+              setAboutOpen((o) => !o);
+              // Give focus back so Space and the flight keys never land on this button (SPEC 10.5).
+              e.currentTarget.blur();
+            }}
+          >
+            <IconChevron className="disclosure-chevron" />
+            What a station run does
+          </button>
+          <div className="pilot-about" id="pilot-about" hidden={!aboutOpen}>
+            <p className="pilot-lede">
+              Fly a small toy drone from this laptop. A station run turns the drone until its camera sees the printed
+              station sign, flies toward it and stops. The Care page then shows that it arrived at the station.
+            </p>
+            {status?.mode === "sim" && <p className="pilot-lede">No real drone moves.</p>}
           </div>
-          <VideoFeed
-            videoLive={status ? status.link.video_live : null}
-            backendReachable={reachable !== false}
-            chips={
-              status ? (
-                <>
-                  <span className={`vchip ${status.mode === "sim" ? "vchip-sim" : "vchip-real"}`}>
-                    {status.mode === "sim" ? "Simulator" : "Real drone"}
+        </header>
+
+        <div className="pilot-grid">
+          <section className="section pilot-run" aria-labelledby="h-run">
+            {status ? (
+              <StationRun
+                status={status}
+                controlOpen={controlOpen}
+                hold={hold}
+                takeoffBlocked={takeoffBlocked}
+                takeoffNote={takeoffNote}
+                takeoffAcked={takeoffAcked}
+                onResetEstop={resetEstop}
+              />
+            ) : (
+              <>
+                <div className="section-head">
+                  <span className="section-index" aria-hidden="true">
+                    01
                   </span>
-                  <span className={`vchip vchip-state vchip-state-${status.mission.state}`}>
-                    {missionStateText(status.mission.state)}
-                  </span>
-                  <span className={`vchip ${status.vision.marker ? "vchip-pass" : "vchip-muted"}`}>
-                    <IconSign size={14} />
-                    {status.vision.marker ? "Station sign in view" : "Station sign not in view"}
-                  </span>
-                  {status.pilot.estop_active && <span className="vchip vchip-fail">Emergency stop active</span>}
-                </>
-              ) : (
-                <span className="vchip vchip-muted">Waiting for status</span>
-              )
-            }
+                  <h2 id="h-run">Station run</h2>
+                </div>
+                {waiting("Waiting for status.")}
+              </>
+            )}
+          </section>
+
+          <CameraFigure
+            status={status}
+            backendReachable={!backendDown}
+            streamState={streamState}
+            onStreamState={setStreamState}
           />
-          <p className="hint small pilot-caption">
-            640x360 stream from the drone, shown enlarged. The station sign is detected with ArUco (classical computer
-            vision). Person boxes are an advisory check only.
-          </p>
-          <section className="pilot-check" aria-labelledby="h-check">
-            <h2 id="h-check" className="eyebrow">
-              Pre-flight checklist
-            </h2>
+
+          <section className="section pilot-check" aria-labelledby="h-check">
+            <div className="section-head">
+              <span className="section-index" aria-hidden="true">
+                02
+              </span>
+              <h2 id="h-check">Pre-flight checklist</h2>
+              {checkSummary && <span className="section-summary">{checkSummary}</span>}
+            </div>
             {status ? <Checklist status={status} /> : waiting("Waiting for status from the backend.")}
           </section>
+        </div>
+
+        <section className="section pilot-manual" aria-labelledby="h-manual">
+          <div className="section-head">
+            <span className="section-index" aria-hidden="true">
+              03
+            </span>
+            <h2 id="h-manual">Manual flying</h2>
+          </div>
+          <div className="manual-grid">
+            <div className="manual-keys">
+              <h3>Keyboard</h3>
+              <KeyLegend />
+              <p className="hint">
+                Keys work anywhere on this page, including while a slider, checkbox, list or button is selected. They
+                are ignored while you type in a text field.
+              </p>
+            </div>
+            <div className="manual-live">
+              <h3>Live input</h3>
+              {keysPaused && (
+                <p className="msg msg-warn" role="status">
+                  Keys paused while you type in a text field: flight keys, T and Space (emergency stop) do nothing
+                  here. Click an empty part of the page to use them again.
+                </p>
+              )}
+              {!controlOpen && (
+                <p className="msg msg-warn" role="status">
+                  Control link not connected: stick input is not being sent.
+                </p>
+              )}
+              <AxisIndicators axes={axes} maxStick={status?.pilot.max_stick ?? null} />
+              {status && (
+                <p className="small manual-note">
+                  Manual input reaching the backend:{" "}
+                  <span className="manual-note-value">{status.pilot.manual_active ? "yes" : "no"}</span>
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="disclosure"
+            aria-expanded={padOpen}
+            aria-controls="stickpad-body"
+            onClick={(e) => {
+              setPadOpen((o) => !o);
+              // Give focus back so Space and the flight keys never land on this button (SPEC 10.5).
+              e.currentTarget.blur();
+            }}
+          >
+            <IconChevron className="disclosure-chevron" />
+            On-screen sticks
+          </button>
+          <div id="stickpad-body" hidden={!padOpen}>
+            <StickPad flight={flight} disabled={!controlOpen} />
+          </div>
         </section>
+
+        <AdvancedPanel
+          status={status}
+          waiting={waiting("Waiting for status.")}
+          send={control.send}
+          controlOpen={controlOpen}
+          calHold={calHold}
+          calBlocked={calBlocked}
+          calNote={calNote}
+        />
       </div>
-
-      <section className="panel pilot-manual" aria-labelledby="h-manual">
-        <h2 id="h-manual">Manual flying</h2>
-        <div className="manual-grid">
-          <div className="manual-keys">
-            <p className="eyebrow">Keyboard</p>
-            <KeyLegend />
-            <p className="hint small">
-              Keys work anywhere on this page, including while a slider, checkbox, list or button is selected. They are
-              ignored while you type in a text field.
-            </p>
-          </div>
-          <div className="manual-live">
-            <p className="eyebrow">Live input</p>
-            {keysPaused && (
-              <p className="msg msg-warn" role="status">
-                Keys paused while you type in a text field: flight keys, T and Space (emergency stop) do nothing here.
-                Click an empty part of the page to use them again.
-              </p>
-            )}
-            {!controlOpen && (
-              <p className="msg msg-warn" role="status">
-                Control link not connected: stick input is not being sent.
-              </p>
-            )}
-            <AxisIndicators axes={axes} maxStick={status?.pilot.max_stick ?? null} />
-            {status && (
-              <p className="small manual-note">
-                Manual input reaching the backend: <span className="manual-note-value">{status.pilot.manual_active ? "yes" : "no"}</span>
-              </p>
-            )}
-          </div>
-        </div>
-        <button
-          type="button"
-          className="disclosure"
-          aria-expanded={padOpen}
-          aria-controls="stickpad-body"
-          onClick={(e) => {
-            setPadOpen((o) => !o);
-            // Give focus back so Space and the flight keys never land on this button (SPEC 10.5).
-            e.currentTarget.blur();
-          }}
-        >
-          <IconChevron className="disclosure-chevron" />
-          On-screen sticks
-        </button>
-        <div id="stickpad-body" hidden={!padOpen}>
-          <StickPad flight={flight} disabled={!controlOpen} />
-        </div>
-      </section>
-
-      <AdvancedPanel
-        status={status}
-        waiting={waiting("Waiting for status.")}
-        send={control.send}
-        controlOpen={controlOpen}
-        calHold={calHold}
-        calBlocked={calBlocked}
-        calNote={calNote}
-      />
     </div>
   );
 }

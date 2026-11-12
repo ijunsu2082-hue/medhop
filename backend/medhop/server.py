@@ -53,6 +53,11 @@ def build_link(settings: Settings) -> DroneLink:
         )
     from medhop.drone.sim import SimConfig, SimLink
 
+    if settings.sim_camera == "high":
+        # The display profile: a rendered room at 1280x720. It starts 3.2 m out so the whole station
+        # sign is in view from the ground. Tests and published simulator figures use the drone-like one.
+        return SimLink(SimConfig.high_quality(marker_id=settings.marker_id, marker_size_m=settings.marker_size_m,
+                                              reset_pose_on_takeoff=True, start_distance_m=3.2))
     return SimLink(SimConfig(marker_id=settings.marker_id, marker_size_m=settings.marker_size_m,
                              reset_pose_on_takeoff=True))
 

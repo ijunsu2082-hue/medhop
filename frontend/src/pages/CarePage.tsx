@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { api } from "../api/client";
 import { useStatus } from "../hooks/useStatus";
 import { ACK_COOLDOWN_MS, arrivalLine, careFocus, isEarlyArrival, reminderMaySpeak, spokenReminder } from "../logic/care";
-import { IconCheck, IconSpeaker } from "../components/Icons";
+import { IconCheck, IconCross, IconPass, IconPin, IconSpeaker } from "../components/Icons";
+import { formatDateWords } from "../logic/dateWords";
 import "./care.css";
 
 const REPEAT_MS = 2 * 60 * 1000;
@@ -107,102 +108,153 @@ export function CarePage() {
     }
   };
 
+  // The clock, split so the colon can be set tight: "14:26" -> hours, colon, minutes.
+  const clock = status ? status.care.now_local : "";
+  const colonAt = clock.indexOf(":");
+  const dateWords = status ? formatDateWords(status.care.date_local) : null;
+
+  const thanksLine = thanks && (
+    <p className="care-thanks" role="status">
+      <IconPass size={40} />
+      <span>Thank you. We noted that you picked up {thanks.label}.</span>
+    </p>
+  );
+
   let main: ReactNode;
-  // Nothing to act on: same card, smaller headline, no button.
+  // Nothing to act on: the same block and height, a quieter headline, no button.
   const quiet = !(reachable !== false && status && focus?.kind === "pending");
   if (reachable === false || !status || !focus) {
     main = (
       <>
-        <p className="care-main">{reachable === false ? "The reminder system cannot be reached right now." : "Loading your reminders."}</p>
-        {reachable === false && <p className="care-sub">It will keep trying by itself.</p>}
+        <p className="care-quiet-title">
+          {reachable === false ? "The reminder system cannot be reached right now." : "Loading your reminders."}
+        </p>
+        {reachable === false && <p className="care-support">It will keep trying by itself.</p>}
       </>
     );
   } else if (focus.kind === "pending") {
     const d = focus.dose;
     const arrival = arrivalLine(d);
     const early = isEarlyArrival(d, status.care.now_local);
+    const waiting = sending || coolingDown;
+    const note = sending ? "Your answer is being sent." : coolingDown ? "Ready in a moment." : "";
     main = (
       <>
-        {/* After an acknowledgement the card visibly moves on, so a second tap is clearly for a different dose. */}
-        {thanks && (
-          <p className="care-next eyebrow">Next:</p>
-        )}
-        {early ? (
-          <>
-            <p className="care-main">
-              <span className="care-lead">Coming up at {d.time}:</span> {d.label}
-            </p>
-            <p className="care-sub">It is not time for it yet.</p>
-          </>
-        ) : (
-          <>
-            <p className="care-main">
-              <span className="care-lead">It is time for:</span> {d.label}
-            </p>
-            <p className="care-sub">This was due at {d.time}.</p>
-          </>
-        )}
+        {/* One statement, read as one sentence: the lead, then the dose label. After an acknowledgement "Next:"
+            heads the same statement, so the block visibly moves on and a second tap is clearly for a different dose. */}
+        <div className="care-statement">
+          {thanks && <p className="care-next">Next:</p>}
+          <p className="care-lead">{early ? `Coming up at ${d.time}:` : "It is time for:"}</p>{" "}
+          <p className="care-dose">{d.label}</p>
+        </div>
+        <p className="care-sub">{early ? "It is not time for it yet." : `This was due at ${d.time}.`}</p>
         {d.notes && <p className="care-sub">{d.notes}</p>}
         {arrival && (
           <p className="care-arrived">
-            <IconCheck size={22} /> <span>{arrival}.</span>
+            <IconPin size={24} />
+            <span>{arrival}.</span>
           </p>
         )}
-        <button type="button" className="care-ack" onClick={() => void acknowledge()} disabled={sending || coolingDown}>
-          {!sending && <IconCheck size={24} />}
-          <span>{sending ? "Sending..." : "I picked it up"}</span>
-        </button>
         {ackError && (
           <p className="care-error" role="alert">
-            {ackError}
+            <IconCross size={24} />
+            <span>{ackError}</span>
           </p>
         )}
+        {/* Pinned to the bottom edge of the block, so the button never moves when lines above come and go. */}
+        <div className="care-action">
+          <p className="care-ack-note" data-empty={note ? undefined : "true"}>
+            {note}
+          </p>
+          <button
+            type="button"
+            className="care-ack"
+            onClick={() => void acknowledge()}
+            disabled={waiting}
+            aria-busy={sending ? true : undefined}
+          >
+            {!waiting && <IconCheck size={36} />}
+            <span>{sending ? "Sending..." : "I picked it up"}</span>
+          </button>
+        </div>
       </>
     );
   } else if (focus.kind === "upcoming") {
     main = (
       <>
-        <p className="care-main">
-          Next: {focus.dose.label} at {focus.dose.time}
+        <p className="care-upnext">
+          <span className="care-upnext-lead">Next:</span> <span className="care-quiet-title">{focus.dose.label}</span>{" "}
+          <span className="care-upnext-at">
+            at <span className="care-upnext-time">{focus.dose.time}</span>
+          </span>
         </p>
-        <p className="care-sub">Nothing to do right now.</p>
+        <p className="care-support">Nothing to do right now.</p>
       </>
     );
   } else if (focus.kind === "all_done") {
-    main = <p className="care-main">All done for today.</p>;
+    main = <p className="care-quiet-title">All done for today.</p>;
   } else {
-    main = <p className="care-main">No reminders are set for today.</p>;
+    main = <p className="care-quiet-title">No reminders are set for today.</p>;
   }
+
+  const speechActive = speechOn && !muted;
 
   return (
     <div className="care">
       <h1 className="sr-only">Your reminders</h1>
-      {status && reachable !== false && (
-        <p className="care-clock">
-          <span className="care-clock-label">Now</span> <span className="care-clock-time">{status.care.now_local}</span>
-        </p>
+      {status && reachable !== false ? (
+        <div className="care-top">
+          {dateWords && <p className="care-date">{dateWords}</p>}
+          <p className="care-clock">
+            <span className="sr-only">The time is </span>
+            {colonAt > 0 ? (
+              <>
+                {clock.slice(0, colonAt)}
+                <span className="care-clock-colon">:</span>
+                {clock.slice(colonAt + 1)}
+              </>
+            ) : (
+              clock
+            )}
+          </p>
+        </div>
+      ) : (
+        // Loading or unreachable: no date or time is shown, but their space is held so the block does not jump
+        // down when the first status arrives. Invisible and hidden from assistive technology.
+        <div className="care-top care-top--placeholder" aria-hidden="true">
+          <p className="care-date">Wednesday 30 September</p>
+          <p className="care-clock">00:00</p>
+        </div>
       )}
 
-      {thanks && (
-        <p className="care-thanks" role="status">
-          <IconCheck size={22} /> <span>Thank you. We noted that you picked up {thanks.label}.</span>
-        </p>
-      )}
-
-      <section className={quiet ? "care-card care-card-quiet" : "care-card"} aria-live="polite" aria-atomic="true">
+      <section
+        className={quiet ? "care-block care-block--quiet" : "care-block"}
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {thanksLine}
         {main}
       </section>
 
       <section className="care-speech" aria-label="Spoken reminders">
         {!speechSupported ? (
-          <p className="care-note">Spoken reminders are not available in this browser.</p>
-        ) : !speechOn ? (
-          <button type="button" className="btn btn-lg" onClick={turnOnSpeech}>
-            <IconSpeaker size={18} /> <span>Turn on spoken reminders</span>
-          </button>
+          <p className="care-speech-note">Spoken reminders are not available in this browser.</p>
         ) : (
-          <button type="button" className="btn btn-lg" aria-pressed={muted} onClick={() => setMuted((m) => !m)}>
-            <IconSpeaker size={18} muted={muted} /> <span>{muted ? "Spoken reminders are muted. Press to unmute." : "Mute spoken reminders"}</span>
+          <button
+            type="button"
+            className="care-speech-toggle"
+            aria-pressed={speechActive}
+            onClick={() => {
+              // The first switch-on must speak inside this click: that is what unlocks speech in browsers.
+              if (!speechOn) turnOnSpeech();
+              else setMuted((m) => !m);
+            }}
+          >
+            <IconSpeaker size={24} muted={!speechActive} />
+            <span className="care-speech-label">Spoken reminders</span>
+            <span className={speechActive ? "care-speech-state care-speech-state--on" : "care-speech-state"} aria-hidden="true">
+              {speechActive ? "On" : "Off"}
+            </span>
           </button>
         )}
       </section>

@@ -4,6 +4,7 @@ import { RUN_ACTIVE_STATES, RUN_MODE_KEY, parseRunMode, type RunMode } from "../
 import { AutoRun } from "./AutoRun";
 import type { Hold } from "./HoldButton";
 import { RunSteps } from "./RunSteps";
+import "./station-run.css";
 
 interface Props {
   status: Status;
@@ -40,30 +41,25 @@ const MODES: { mode: RunMode; label: string }[] = [
 export function StationRun(props: Props) {
   const { status, controlOpen } = props;
   const [chosen, setMode] = useState<RunMode>(loadMode);
-  const sim = status.mode === "sim";
   // An automatic run in progress (for example one a dose started) always shows the automatic view.
   const autoRunning = status.mission.automatic === true && RUN_ACTIVE_STATES.has(status.mission.state);
   const mode: RunMode = autoRunning ? "auto" : chosen;
 
   return (
     <>
-      <h2 id="h-run">
-        Station run
-        {sim && (
-          <>
-            {" "}
-            <span className="chip run-title-chip">
-              <span className="sr-only">(</span>simulator<span className="sr-only">)</span>
-            </span>
-          </>
-        )}
-      </h2>
-      <div className="run-mode" role="group" aria-label="How to run">
+      <div className="section-head">
+        <span className="section-index" aria-hidden="true">
+          01
+        </span>
+        <h2 id="h-run">Station run</h2>
+      </div>
+      <div className="run-mode tabs" role="group" aria-label="How to run">
         {MODES.map((m) => (
           <button
             key={m.mode}
             type="button"
             className="run-mode-option"
+            data-label={m.label}
             aria-pressed={mode === m.mode}
             onClick={(e) => {
               setMode(m.mode);

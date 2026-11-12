@@ -28,7 +28,6 @@ export function CalibrateLevel({ hold, blocked, note }: Props) {
 
   return (
     <div className="calibrate-level">
-      <p className="hint">Only on flat ground with the motors off.</p>
       <button
         type="button"
         className="takeoff calibrate-btn"
