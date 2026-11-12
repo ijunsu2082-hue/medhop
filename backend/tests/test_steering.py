@@ -58,14 +58,14 @@ class SteerFunctionTests(unittest.TestCase):
         values = [forward_for_width(w, ARRIVE, cfg) for w in widths]
         self.assertTrue(all(a >= b for a, b in zip(values, values[1:])))
         self.assertLessEqual(max(values), 0.22 + 1e-9)
-        self.assertGreaterEqual(min(values), 0.10 - 1e-9)
+        self.assertGreaterEqual(min(values), 0.07 - 1e-9)
 
     def test_spec_defaults(self):
         cfg = SteeringConfig()
         self.assertEqual(cfg.latency_s, 0.45)
         self.assertEqual(cfg.forward_window, 0.15)
         self.assertEqual(cfg.forward_max, 0.22)
-        self.assertEqual(cfg.forward_near, 0.10)
+        self.assertEqual(cfg.forward_near, 0.07)
         self.assertEqual(cfg.rise_per_s, 1.0)
         self.assertEqual(cfg.search_yaw, 0.12)
 

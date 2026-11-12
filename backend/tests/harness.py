@@ -5,6 +5,7 @@ one thread: no sleeping, fully repeatable for a given seed.
 """
 from __future__ import annotations
 
+import random
 import shutil
 import tempfile
 from pathlib import Path
@@ -118,8 +119,14 @@ class SimHarness:
         steering_config: Optional[SteeringConfig] = None,
         runner_config: Optional[RunnerConfig] = None,
         drift_assist_config: Optional[DriftAssistConfig] = None,
+        marker_dropout: float = 0.0,
+        dropout_seed: int = 0,
     ) -> None:
+        """`marker_dropout`: the probability that a frame's detection is thrown away (the detector
+        missing the marker), drawn from a random generator seeded with `dropout_seed`."""
         self.clock = FakeClock()
+        self.marker_dropout = float(marker_dropout)
+        self._dropout_rng = random.Random(dropout_seed)
         self.data_dir = make_temp_dir()
         self.settings = settings or Settings(data_dir=self.data_dir, person_check="off")
         self.sim = SimLink(sim_config or SimConfig(seed=0), clock=self.clock, realtime=False)
@@ -157,6 +164,8 @@ class SimHarness:
             self._last_seq = frame.seq
             image = cv2.imdecode(np.frombuffer(frame.jpeg, np.uint8), cv2.IMREAD_GRAYSCALE)
             marker = self.detector.detect(image, ts=frame.timestamp)
+            if self.marker_dropout > 0 and self._dropout_rng.random() < self.marker_dropout:
+                marker = None
             obs = Observation(ts=frame.timestamp, seq=frame.seq, marker=marker,
                               brightness=float(image.mean()))
             self.observations.append(obs)

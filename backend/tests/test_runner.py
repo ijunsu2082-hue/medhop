@@ -27,7 +27,7 @@ class RunnerTestCase(unittest.TestCase):
     def setUp(self):
         self.clock = FakeClock(500.0)
         self.dir = make_temp_dir()
-        self.settings = Settings(data_dir=self.dir, person_check="off")
+        self.settings = Settings(data_dir=self.dir, person_check="off", arrive_width=ARRIVE)
         self.link = RecordingLink()
         self.store = CareStore(self.dir, wall_clock=lambda: 1_794_000_000.0 + self.clock.t)
         self.person = PersonStatus()
@@ -383,7 +383,9 @@ class AbortTests(RunnerTestCase):
         for _ in range(20):
             self.feed(marker(cx=0.62, width=0.06))
         lost_at = self.clock.t
-        while self.clock.t - lost_at < 0.55:
+        while self.clock.t - lost_at < DT + 0.5:
+            self.assertEqual(self.feed(None)[1], 0.0)    # first a dropout: coasting, no yaw (DropoutCoastTests)
+        while self.clock.t - lost_at < 0.62:
             self.assertEqual(self.feed(None), (0.0, 0.0, 0.0, 0.0))
         creep = []
         while self.clock.t - lost_at < 2.5:
@@ -718,6 +720,169 @@ class AbortTests(RunnerTestCase):
         self.assertIsNone(self.runner.snapshot()["reason"])
 
 
+class DropoutCoastTests(RunnerTestCase):
+    """A detection missing for at most lost_coast_s (0.5 s) is a dropout: the approach coasts on."""
+
+    def test_one_missed_frame_keeps_flying_forward_with_no_yaw(self):
+        self.start()
+        for _ in range(3):
+            axes = self.feed(marker(width=0.06))
+        self.assertGreater(axes[2], 0.0)
+        coast = self.feed(None)
+        self.assertEqual(coast[1], 0.0, "no yaw while the marker's position is unknown")
+        self.assertGreater(coast[2], 0.0, "keeps the forward stick through a dropout")
+        self.assertLessEqual(coast[2], axes[2])
+        self.assertEqual(self.runner.state, "approaching")
+
+    def test_the_coast_fades_and_a_longer_gap_ends_neutral_then_creeps(self):
+        self.start()
+        for _ in range(10):
+            self.feed(marker(width=0.06))
+        lost_at = self.clock.t + DT                     # the first frame without the marker
+        coast = []
+        while self.clock.t + DT - lost_at <= 0.5:
+            coast.append(self.feed(None))
+        self.assertGreater(coast[0][2], 0.0)
+        self.assertTrue(all(a[2] >= b[2] for a, b in zip(coast, coast[1:])), "the forward stick fades")
+        self.assertTrue(all(axes[1] == 0.0 for axes in coast))
+        held = []
+        while self.clock.t + DT - lost_at <= 0.6:
+            held.append(self.feed(None))
+        self.assertTrue(held)
+        self.assertTrue(all(axes == (0.0, 0.0, 0.0, 0.0) for axes in held), "past the coast: neutral")
+        while self.clock.t - lost_at < 0.7:
+            axes = self.feed(None)
+        self.assertEqual(axes[2], 0.0, "no forward stick while creep-searching")
+        self.assertEqual(self.runner.state, "approaching")
+
+    def test_no_forward_coast_near_the_arrive_width(self):
+        self.start()
+        width = 0.05
+        while width < 0.9 * ARRIVE:
+            self.feed(marker(width=width))
+            width += 0.004
+        self.feed(marker(width=0.9 * ARRIVE + 0.002))
+        self.assertEqual(self.runner.state, "approaching")
+        self.assertEqual(self.feed(None)[2], 0.0, "never forward blind near the wall")
+
+    def test_arrival_counts_survive_dropouts(self):
+        self.start()
+        self.approach(stop=ARRIVE - 0.004)
+        self.assertEqual(self.runner.state, "approaching")
+        for seen in (marker(width=ARRIVE), None, marker(width=ARRIVE), None, marker(width=ARRIVE)):
+            self.feed(seen)
+        self.assertEqual(self.runner.state, "arrived", "3 detections with gaps of one frame count as 3 in a row")
+
+    def test_a_gap_longer_than_the_coast_resets_the_arrival_counts(self):
+        self.start()
+        self.approach(stop=ARRIVE - 0.004)
+        self.feed(marker(width=ARRIVE))
+        self.feed(marker(width=ARRIVE))
+        for _ in range(int(0.55 / DT) + 1):
+            self.feed(None)
+        self.feed(marker(width=ARRIVE))
+        self.assertEqual(self.runner.state, "approaching")
+
+    def test_estop_during_a_coast_aborts(self):
+        self.start()
+        for _ in range(10):
+            self.feed(marker(width=0.06))
+        self.assertGreater(self.feed(None)[2], 0.0)
+        self.mixer.pilot_estop()
+        self.feed(None)
+        self.assert_aborted("estop")
+
+    def test_coasting_can_be_switched_off(self):
+        self.runner = MissionRunner(self.link, self.mixer, self.store, self.settings, clock=self.clock,
+                                    config=RunnerConfig(align_enabled=False, lost_coast_s=0.0),
+                                    wall_clock=lambda: 1_794_000_000.0 + self.clock.t,
+                                    person_status=lambda: self.person, pilot_connected=lambda: self.pilot_window)
+        self.see(marker(width=0.05))
+        self.start()
+        for _ in range(10):
+            self.feed(marker(width=0.06))
+        self.assertEqual(self.feed(None), (0.0, 0.0, 0.0, 0.0))
+
+
+class SearchConfirmTests(RunnerTestCase):
+    """The detections that confirm the sign may have dropout gaps of up to lost_coast_s (0.5 s)."""
+
+    def forget(self):
+        for _ in range(int(0.6 / DT) + 1):             # longer than a dropout: the count starts again
+            self.feed(None)
+
+    def test_hit_miss_hit_hit_confirms(self):
+        self.forget()
+        for seen in (marker(), None, marker(), marker()):
+            self.feed(seen)
+        self.start()
+        self.assertEqual(self.runner.state, "approaching")
+
+    def test_a_gap_longer_than_a_dropout_does_not_confirm(self):
+        self.forget()
+        self.feed(marker())
+        self.forget()
+        self.feed(marker())
+        self.feed(marker())
+        self.start()
+        self.assertEqual(self.runner.state, "searching")
+
+    def test_without_coasting_any_miss_starts_again(self):
+        self.runner = MissionRunner(self.link, self.mixer, self.store, self.settings, clock=self.clock,
+                                    config=RunnerConfig(align_enabled=False, lost_coast_s=0.0),
+                                    wall_clock=lambda: 1_794_000_000.0 + self.clock.t,
+                                    person_status=lambda: self.person, pilot_connected=lambda: self.pilot_window)
+        for seen in (marker(), None, marker(), marker()):
+            self.feed(seen)
+        self.start()
+        self.assertEqual(self.runner.state, "searching")
+
+
+class LandingDistanceSettingsTests(unittest.TestCase):
+    """MEDHOP_LAND_DISTANCE_M sets the arrive width (program's own camera geometry) unless
+    MEDHOP_ARRIVE_WIDTH is given; a stored arrival calibration beats both."""
+
+    def setUp(self):
+        self.dir = make_temp_dir()
+        self.addCleanup(shutil.rmtree, self.dir, True)
+
+    def runner_for(self, settings):
+        clock = FakeClock(500.0)
+        store = CareStore(self.dir, wall_clock=lambda: 1_794_000_000.0 + clock.t)
+        link = RecordingLink()
+        return MissionRunner(link, ControlMixer(link, clock=clock), store, settings, clock=clock), store
+
+    def test_default_is_0_45_m(self):
+        settings = Settings()
+        self.assertEqual(settings.land_distance_m, 0.45)
+        self.assertAlmostEqual(settings.arrive_width, 0.2856, places=4)   # 0.18 m marker, 70 degree lens
+        runner, _store = self.runner_for(Settings(data_dir=self.dir, person_check="off"))
+        self.assertAlmostEqual(runner.snapshot()["arrive_distance_m"], 0.45, places=2)
+
+    def test_the_environment_sets_the_distance(self):
+        settings = Settings.from_env({"MEDHOP_LAND_DISTANCE_M": "0.8"})
+        self.assertEqual(settings.land_distance_m, 0.8)
+        self.assertAlmostEqual(settings.arrive_width, 0.1607, places=4)
+
+    def test_an_explicit_arrive_width_wins(self):
+        settings = Settings.from_env({"MEDHOP_LAND_DISTANCE_M": "0.8", "MEDHOP_ARRIVE_WIDTH": "0.2"})
+        self.assertEqual(settings.arrive_width, 0.2)
+
+    def test_out_of_range_distances_are_refused(self):
+        for raw in ("0.2", "5.0"):
+            with self.subTest(raw=raw):
+                with self.assertRaisesRegex(ValueError, "MEDHOP_LAND_DISTANCE_M"):
+                    Settings.from_env({"MEDHOP_LAND_DISTANCE_M": raw})
+
+    def test_a_stored_calibration_beats_both(self):
+        CareStore(self.dir).save_arrive_width(0.21)
+        for settings in (Settings(data_dir=self.dir, land_distance_m=0.8),
+                         Settings(data_dir=self.dir, arrive_width=0.12)):
+            with self.subTest(settings=settings):
+                runner, _store = self.runner_for(settings)
+                self.assertAlmostEqual(runner.arrive_width, 0.21)
+
+
 class HoverTestTests(RunnerTestCase):
     def run_hover(self, cx_at, width=0.05, visible=lambda i: True):
         ok, problems = self.runner.start_hover_test()
@@ -962,8 +1127,14 @@ class DriftAssistRunnerTests(RunnerTestCase):
     def test_roll_goes_to_zero_on_abort_marker_loss_and_frame_gap(self):
         self.runner.set_drift_assist(True)
         self.start()
-        self.assertLess(self.slide_left(40)[-1][3], -0.03)
-        self.assertEqual(self.feed(None)[3], 0.0, "no roll without the marker in view")
+        last_roll = self.slide_left(40)[-1][3]
+        self.assertLess(last_roll, -0.03)
+        coast = self.feed(None)[3]      # a dropout first: the roll fades out over lost_coast_s
+        self.assertLessEqual(coast, 0.0)
+        self.assertGreaterEqual(coast, last_roll - 1e-9)
+        for _ in range(int(0.5 / DT) + 1):
+            axes = self.feed(None)
+        self.assertEqual(axes[3], 0.0, "no roll once the marker has been gone longer than a dropout")
         self.assertIs(self.runner.snapshot()["drift_assist"]["active"], False)
         self.assertLess(self.slide_left(40, start_cx=0.5)[-1][3], -0.03, "back once it has qualified again")
         self.assertEqual(self.idle(0.3)[3], 0.0, "no roll without fresh frames")

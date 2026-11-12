@@ -215,9 +215,9 @@ restarts, so by default a run ends with the drone hovering at the sign and the p
 | Abort reason | When |
 |---|---|
 | `marker_not_found` | the sign was not found within 12 s of slow turning |
-| `marker_lost` | the sign was lost during the approach (after 0.6 s of neutral and 2.0 s of creep-search), or not seen in the last 0.3 s of the settle |
+| `marker_lost` | the sign was lost during the approach (after 0.6 s of coasting then neutral, and 2.0 s of creep-search), or not seen in the last 0.3 s of the settle |
 | `off_axis` | the sign looked too narrow for its height (under 0.70) on 3 detections in a row |
-| `unexpected_descent` | landing command on arrival switched on, and during the settle 3 detections in a row showed the sign more than 0.08 of the frame height above its reference height |
+| `unexpected_descent` | landing command on arrival switched on, and during the settle 3 detections in a row showed the sign more than 0.08 of the frame height (about 0.14 at the default 0.45 m landing distance) above its reference height |
 | `video_stale` | the newest frame is older than 1.5 s |
 | `timeout` | the run took longer than 45 s |
 | `pilot_took_over` | the pilot sent stick input or the toggle |
@@ -254,7 +254,8 @@ written:
 
 - **Settle descent guard.** The reference is the median height of the sign in the first 3 settle
   detections, taken after the first 0.25 s of neutral. If 3 detections in a row then show the sign more
-  than 0.08 of the frame height ABOVE that reference, the camera is going down, so the drone may be
+  than 0.08 of the frame height ABOVE that reference (scaled up for a landing distance closer than
+  0.8 m: about 0.14 at the default 0.45 m), the camera is going down, so the drone may be
   landing by itself. The run aborts with `unexpected_descent` and does not send the toggle. The guard
   only acts when the landing command on arrival is on: the landing toggle then waits until the guard
   has cleared, and if it has not cleared within 1.0 s after the 1.2 s settle, the toggle is skipped and

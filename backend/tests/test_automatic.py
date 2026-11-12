@@ -149,6 +149,36 @@ class AutomaticRunTests(RunnerTestCase):
         self.assertEqual(self.link.toggles, 1)
         self.assertTrue(self.runner.snapshot()["needs_pilot"])
 
+    def rise_then_stop(self, width, rise):
+        """Approach to `width`, hold there 2.2 s with the marker at cy 0.5, then a person stops the run
+        while the marker sits `rise` higher in the picture."""
+        self.start_auto()
+        self.through_takeoff(marker(width=0.05))
+        w = 0.05
+        while w < width:
+            self.feed(marker(width=w))
+            w += 0.004
+        for _ in range(int(2.2 / DT)):
+            self.feed(marker(width=width))
+        self.assertEqual(self.runner.state, "approaching")
+        self.assertTrue(self.runner.snapshot()["flight_confirmed"])
+        self.person = PersonStatus(enabled=True, detected=True, count=1, ts=self.clock.t)
+        self.feed(marker(width=width, cy=0.5 - rise))
+        self.assertEqual(self.runner.reason, "person_in_view")
+
+    def test_the_rise_allowed_for_a_safe_landing_scales_with_the_current_distance(self):
+        """0.11 of the frame height: more than the 0.08 tuned for 0.8 m, less than 0.08 x 0.8 / 0.45."""
+        self.runner._arrive_width = 0.2856              # landing distance 0.45 m: must not loosen this
+        self.rise_then_stop(width=0.064, rise=0.11)     # about 2 m from the sign: scale 1
+        self.assertEqual(self.link.toggles, 1, "far away a 0.11 rise is a real sink: no toggle")
+        self.assertTrue(self.runner.snapshot()["needs_pilot"])
+
+    def test_the_same_rise_close_to_the_sign_still_lands(self):
+        self.runner._arrive_width = 0.32                # so 0.286 (about 0.45 m) is not yet arrival
+        self.rise_then_stop(width=0.286, rise=0.11)     # scale about 1.78
+        self.assertEqual(self.link.toggles, 2)
+        self.assertEqual(self.runner.snapshot()["last_landing"], "safe_landing")
+
     def test_no_landing_toggle_when_the_marker_is_lost(self):
         self.start_auto()
         self.through_takeoff(marker(width=0.05))
@@ -328,8 +358,8 @@ class AutomaticClosedLoopTests(unittest.TestCase):
                     self.assertEqual((harness.runner.state, harness.runner.reason), ("done", None))
                     self.assertEqual(harness.sim.toggle_count, 2, "takeoff and landing, nothing else")
                     self.assertFalse(pose["airborne"])
-                    self.assertGreater(pose["distance_m"], 0.5)
-                    self.assertLess(pose["distance_m"], 0.95)
+                    self.assertGreater(pose["distance_m"], 0.33)
+                    self.assertLess(pose["distance_m"], 0.6)
                     self.assertLess(abs(pose["x_m"]), 0.08, "on the sign's centre line, not beside it")
                     arrival = harness.runner.snapshot()["last_arrival"]
                     self.assertIs(arrival["aligned"], True)

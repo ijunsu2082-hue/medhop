@@ -352,18 +352,20 @@ describe("aligning: live line", () => {
 });
 
 describe("automatic run: distance line", () => {
-  it("rounds to 0.1 m", () => {
+  it("rounds to 0.01 m below 1 m, else to 0.1 m", () => {
     expect(formatMetres(1.94)).toBe("1.9");
-    expect(formatMetres(0.75)).toBe("0.8");
+    expect(formatMetres(0.75)).toBe("0.75");
+    expect(formatMetres(0.45)).toBe("0.45");
+    expect(formatMetres(0.454)).toBe("0.45");
     expect(formatMetres(null)).toBeNull();
     expect(formatMetres(Number.NaN)).toBeNull();
     expect(formatMetres(-1)).toBeNull();
   });
   it("shows the distance and the landing distance", () => {
-    expect(autoDistanceLine(1.92, 0.8)).toBe("Sign about 1.9 m away. It lands at about 0.8 m.");
+    expect(autoDistanceLine(1.92, 0.45)).toBe("Sign about 1.9 m away. It lands at about 0.45 m by the program's measure.");
   });
   it("leaves out the first half while the sign is not in view", () => {
-    expect(autoDistanceLine(null, 0.8)).toBe("It lands at about 0.8 m.");
+    expect(autoDistanceLine(null, 0.45)).toBe("It lands at about 0.45 m by the program's measure.");
   });
   it("shows nothing from an older backend", () => {
     expect(autoDistanceLine(undefined, undefined)).toBeNull();
@@ -410,9 +412,9 @@ describe("automatic run: result card", () => {
     expect(autoResultView(mission({ state: "searching", automatic: true }))).toBeNull();
   });
   it("done with the landing sent", () => {
-    expect(autoResultView(mission({ state: "done", automatic: true, last_landing: "sent", arrive_distance_m: 0.83 }))).toEqual({
+    expect(autoResultView(mission({ state: "done", automatic: true, last_landing: "sent", arrive_distance_m: 0.453 }))).toEqual({
       tone: "pass",
-      text: "At the station, about 0.8 m in front of the sign. The land command was sent: check that it has landed.",
+      text: "At the station, about 0.45 m in front of the sign by the program's measure. The land command was sent: check that it has landed.",
     });
     expect(autoResultView(mission({ state: "done", automatic: true, last_landing: "sent", arrive_distance_m: undefined }))).toEqual({
       tone: "pass",
@@ -420,22 +422,22 @@ describe("automatic run: result card", () => {
     });
   });
   it("done with the landing sent and where it arrived", () => {
-    const done = { state: "done" as const, automatic: true, last_landing: "sent" as const, arrive_distance_m: 0.8 };
+    const done = { state: "done" as const, automatic: true, last_landing: "sent" as const, arrive_distance_m: 0.45 };
     expect(autoResultView(mission({ ...done, last_arrival: { lateral_offset_m: -0.03, distance_m: 0.82, aligned: true } }))).toEqual({
       tone: "pass",
-      text: "At the station: about 0.82 m from the sign, 3 cm left of the centre line. The land command was sent: check that it has landed.",
+      text: "At the station: about 0.82 m from the sign by the program's measure, 3 cm left of the centre line. The land command was sent: check that it has landed.",
     });
     expect(autoResultView(mission({ ...done, last_arrival: { lateral_offset_m: 0.09, distance_m: 0.8, aligned: false } }))?.text).toBe(
-      "At the station: about 0.80 m from the sign, 9 cm right of the centre line. The land command was sent: check that it has landed. It could not line up exactly.",
+      "At the station: about 0.80 m from the sign by the program's measure, 9 cm right of the centre line. The land command was sent: check that it has landed. It could not line up exactly.",
     );
     expect(autoResultView(mission({ ...done, last_arrival: { lateral_offset_m: null, distance_m: 0.8, aligned: true } }))?.text).toBe(
-      "At the station: about 0.80 m from the sign. The land command was sent: check that it has landed.",
+      "At the station: about 0.80 m from the sign by the program's measure. The land command was sent: check that it has landed.",
     );
     expect(autoResultView(mission({ ...done, last_arrival: { lateral_offset_m: null, distance_m: null, aligned: false } }))?.text).toBe(
       "At the station. The land command was sent: check that it has landed. It could not line up exactly.",
     );
     expect(autoResultView(mission({ ...done, last_arrival: null }))?.text).toBe(
-      "At the station, about 0.8 m in front of the sign. The land command was sent: check that it has landed.",
+      "At the station, about 0.45 m in front of the sign by the program's measure. The land command was sent: check that it has landed.",
     );
   });
   it("done without the landing sent falls back to the land-by-hand message", () => {
@@ -487,8 +489,19 @@ describe("automatic run: ready for the next dose", () => {
 
 describe("automatic run: wording", () => {
   it("uses the backend's landing distance in the explainer", () => {
-    expect(landingExplainerText(0.94)).toContain("about 0.9 m in front of the sign");
-    expect(landingExplainerText(undefined)).toContain("about 0.8 m in front of the sign");
+    expect(landingExplainerText(0.45)).toContain("about 0.45 m in front of the sign by the program's own measure");
+    expect(landingExplainerText(1.24)).toContain("about 1.2 m in front of the sign");
+    for (const text of [landingExplainerText(0.45), landingExplainerText(undefined)]) {
+      expect(text).toContain("ruler");
+      expect(text).toContain("middle of the picture");
+      expect(text).not.toMatch(/[\u2013\u2014]/);
+      expect(text.toLowerCase()).not.toContain("deliver");
+    }
+  });
+  it("leaves the figure out of the explainer when the backend sends none", () => {
+    const text = landingExplainerText(undefined);
+    expect(text).not.toContain("0.8");
+    expect(text).not.toMatch(/\d m in front/);
   });
   it("remembers the run mode, Automatic by default", () => {
     expect(parseRunMode("steps")).toBe("steps");
@@ -502,8 +515,9 @@ describe("automatic run: wording", () => {
       NEEDS_PILOT_TEXT,
       AUTO_BACKEND_REFUSES,
       AUTO_CONTROL_LINK_BLOCKER,
-      landingExplainerText(0.8),
-      autoDistanceLine(1.9, 0.8) ?? "",
+      landingExplainerText(0.45),
+      landingExplainerText(undefined),
+      autoDistanceLine(1.9, 0.45) ?? "",
       autoReadyView(mission({ auto_fly: true, ready_for_dose: true }))?.text ?? "",
       autoReadyView(mission({ auto_fly: true, ready_for_dose: false }))?.text ?? "",
       autoResultView(mission({ state: "done", automatic: true, last_landing: "sent" }))?.text ?? "",

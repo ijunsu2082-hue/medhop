@@ -115,7 +115,8 @@ Only `ControlMixer` may call `set_axes`. Only the mixer (on pilot request) and t
 | MEDHOP_DATA_DIR | ./data | schedule, events, trim, calibration |
 | MEDHOP_MARKER_ID | 7 | ArUco id of the station sign |
 | MEDHOP_MARKER_SIZE_M | 0.18 | printed marker edge, metres (only used for drift estimates) |
-| MEDHOP_ARRIVE_WIDTH | 0.16 | marker width as a fraction of frame width that counts as arrived |
+| MEDHOP_LAND_DISTANCE_M | 0.45 | landing distance from the sign, metres by the program's own measure (camera geometry from MEDHOP_CAMERA_HFOV_DEG and MEDHOP_MARKER_SIZE_M), 0.35..3.0. The real lens differs: measure the real distance with a ruler and put the landing spot there. The sign hangs at the drone's hover height, near the middle of the picture |
+| MEDHOP_ARRIVE_WIDTH | derived from MEDHOP_LAND_DISTANCE_M | marker width as a fraction of frame width that counts as arrived (0.286 with the defaults); an explicit value overrides MEDHOP_LAND_DISTANCE_M, a stored arrival calibration overrides both |
 | MEDHOP_PERSON_CHECK | auto | `auto` (on if ultralytics and weights are available), `on`, `off` |
 | MEDHOP_YOLO_WEIGHTS | (none) | local path to yolo11n.pt (no download at flight time: the laptop has no internet on the drone's Wi-Fi) |
 | MEDHOP_BATTERY_LOW_RAW | -1 | raw battery byte treated as low; -1 disables the check (the byte's meaning is UNVERIFIED; see 10.2) |
@@ -152,9 +153,15 @@ refuse a start: `no_video`, `estop_active`, `already_running`, `person_in_view` 
 - approaching: pursuit guidance. Yaw to centre the marker, with compensation for command-to-video latency
   (default 0.45 s; do not steer on the stale position alone). Fly forward only when the marker is within
   0.15 frame-widths of centre. Forward stick is capped (default 0.22) and tapers as the marker grows
-  (default 0.10 near arrival). Commands rise at most 1.0 per second; reductions are immediate.
-- Marker lost: hold neutral for up to 0.6 s, then creep-search toward the side it was last seen for up to
-  2.0 s, then abort `marker_lost`.
+  (default 0.07 near arrival). Commands rise at most 1.0 per second; reductions are immediate.
+- Marker lost: for up to 0.5 s (`lost_coast_s`) it is treated as a detection dropout: coast on the last
+  forward stick and drift-assist roll, fading to zero over that time, with no yaw, and keep the arrival
+  counts (so "3 consecutive detections" means 3 detections with gaps of at most 0.5 s). No forward coast
+  when the last step was holding or the marker was at 0.9 of the arrive width or more. After that, hold
+  neutral up to 0.6 s in all, then creep-search toward the side it was last seen for up to 2.0 s, then
+  abort `marker_lost`. The final line-up treats a gap of up to 0.5 s the same way: it keeps its
+  "holding still" timer and sends no yaw, its last pitch only if that was backward (never forward), and
+  only the drift-cancelling part of its roll (the integral, clamped to 0.1).
 - arrived: marker width >= arrive width on 3 consecutive detections AND the marker has grown by at
   least 15 % since it was first seen in this run (evidence the drone really moved, so it is airborne).
   Neutral sticks, settle 1.2 s (`settle_s`, see 10.2).
@@ -234,7 +241,7 @@ CORS: allow `http://localhost:5180` and `http://127.0.0.1:5180`.
   "mission": {
     "state": "idle", "reason": null, "run_id": null, "dose_id": null,
     "elapsed_s": 0.0, "command": { "yaw": 0.0, "pitch": 0.0 },
-    "arrive_width": 0.16, "land_on_arrival": false,
+    "arrive_width": 0.286, "land_on_arrival": false,
     "drift_assist": { "enabled": false, "active": false, "roll": 0.0, "disabled_reason": null, "suggested_trim_roll": null },
     "can_start": true, "blockers": []
   },
@@ -339,7 +346,9 @@ The full findings are in the council report; each item below is the accepted fix
 ### 10.2 Station run and vision (runner, marker, config)
 - Settle descent guard: the reference `cy` is the median of the first 3 settle detections after the
   0.25 s neutral. Abort only when 3 consecutive detections show the marker more than 0.08 frame-heights
-  ABOVE the reference (`cy` decreasing means the drone is going down). Abort reason is the new
+  ABOVE the reference (`cy` decreasing means the drone is going down). The 0.08 (and the 0.03 "pending"
+  rise) is for a 0.8 m landing distance: closer, the same sink moves the sign further up the picture, so
+  both are multiplied by clamp(0.8 m / landing distance, 1, 2) (about 1.78 at the default 0.45 m). Abort reason is the new
   `unexpected_descent` (no toggle sent).
 - `land_on_arrival` defaults to False and is persisted like `drift_assist`.
 - `MEDHOP_BATTERY_LOW_RAW` defaults to -1 (check disabled; the byte's meaning is unverified). When set to
@@ -349,8 +358,9 @@ The full findings are in the council report; each item below is the accepted fix
   known sign size), not start versus end. Result gains `peak_excursion_m` and `limit_m`; the limit comes
   from `MEDHOP_HOVER_MAX_EXCURSION_M` (default 0.5).
 - Marker detector: `minMarkerPerimeterRate` 0.07, `polygonalApproxAccuracyRate` 0.03, ignore detections
-  narrower than 0.025 of frame width. SEARCHING moves to APPROACHING only after 3 consecutive id-7
-  detections whose centres agree within 0.1 frame-widths. Log the detect time with the rate log.
+  narrower than 0.025 of frame width. SEARCHING moves to APPROACHING only after 3 id-7
+  detections whose centres agree within 0.1 frame-widths, with gaps of at most 0.5 s (`lost_coast_s`)
+  between them: a detector dropout does not start the count again, a longer gap does. Log the detect time with the rate log.
 
 Orchestrator decisions (added after the Revision 3 fix pass; these win over earlier text):
 - `settle_s` defaults to 1.2 s (was 0.6 s), so a descent that starts late in the settle is still seen by

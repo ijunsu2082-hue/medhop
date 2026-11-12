@@ -41,7 +41,7 @@ class SteeringConfig:
     yaw_deadband: float = 0.015      # frame-widths; no yaw inside this
     forward_window: float = 0.15     # fly forward only when the marker is this close to centre
     forward_max: float = 0.22        # forward stick cap
-    forward_near: float = 0.10       # forward stick close to arrival
+    forward_near: float = 0.07       # forward stick close to arrival
     taper_start: float = 0.5         # taper begins when width reaches this fraction of the arrive width
     rise_per_s: float = 1.0          # commands rise at most this fast; reductions are immediate
     search_yaw: float = 0.12         # slow fixed yaw while searching

@@ -14,7 +14,7 @@ first seen, which only a flying drone can do, it is in view now, and it is not r
 Without that evidence it sends no second toggle and the status says the drone needs a pilot.
 
 Where it lands: a detection counts toward arrival only when the marker is at least the arrive width
-(about 0.8 m from the sign with the defaults), near the middle of the picture and seen from the front,
+(about 0.45 m from the sign by the program's own measure with the defaults), near the middle of the picture and seen from the front,
 on arrive_consecutive frames in a row, after it has grown since first seen. Seeing the sign from far
 away only starts the approach; a sign too far away to be at least MarkerDetector.MIN_WIDTH of the frame
 is not detected at all, and any other marker id is ignored.
@@ -119,6 +119,14 @@ class RunnerConfig:
     search_timeout_s: float = 12.0     # searching longer than this aborts with marker_not_found
     lost_hold_s: float = 0.6           # marker lost: hold neutral this long
     lost_creep_s: float = 2.0          # then creep-search this long, then abort with marker_lost
+    # Within lost_hold_s, a marker missing for at most this long is a detection dropout, not a loss:
+    # the approach coasts (the last forward stick and assist roll, fading to zero over this window, no
+    # yaw) and keeps its arrival counts, so "N detections in a row" means N detections with gaps of at
+    # most lost_coast_s. Never forward when the last step held or was near the arrive width. The line-up
+    # keeps its timer through such gaps, with no yaw, only a backward pitch (its last one, if backward)
+    # and only the clamped drift-cancelling roll. The search's confirming detections may have such gaps
+    # too. 0 disables all of this.
+    lost_coast_s: float = 0.5
     video_stale_s: float = 1.5         # a frame older than this aborts with video_stale
     run_timeout_s: float = 45.0
     # Neutral sticks after arrival before landing. 1.2 s, not SPEC 6's 0.6 s: with about 0.35 s of video
@@ -147,9 +155,15 @@ class RunnerConfig:
     # waits (within settle_guard_wait_s) until it is gone: a slow sink that started late in the settle
     # has not reached the abort threshold yet when the settle ends.
     settle_pending_frac: float = 0.03
+    # Both settle fractions are tuned for this distance from the sign. Closer, the same sink moves the
+    # sign further up the picture, so the settle guard scales them by
+    # clamp(settle_ref_distance_m / landing distance, 1, 2), and the safe-landing evidence check scales
+    # settle_descent_frac by the same clamp of the CURRENT distance (from the newest detection).
+    settle_ref_distance_m: float = 0.8
     # SEARCHING moves to APPROACHING (and a start goes straight to APPROACHING) only after this many
-    # consecutive detections whose centres agree within search_confirm_spread (cx in frame widths, cy
-    # in frame heights); the growth check is seeded from the median size of those detections.
+    # detections whose centres agree within search_confirm_spread (cx in frame widths, cy in frame
+    # heights), with gaps of at most lost_coast_s between them (consecutive when it is 0); the growth
+    # check is seeded from the median size of those detections.
     search_confirm_count: int = 3
     search_confirm_spread: float = 0.1
     frame_gap_hold_s: float = 0.25     # no new frame for this long: command neutral
@@ -200,16 +214,20 @@ class RunnerConfig:
     align_roll_ki: float = 0.35        # roll stick per metre-second (cancels a steady drift)
     align_roll_max: float = 0.15       # the mixer's mission roll limit
     align_roll_i_max: float = 0.15
-    align_pitch_kp: float = 0.4        # pitch stick per metre too far from the wall
+    # Pitch stick per metre too far from the wall. 0.8, not 0.4: at the 0.45 m landing distance the
+    # errors are about half as many metres, and 0.4 let a sideways drift creep the drone onto the wall.
+    align_pitch_kp: float = 0.8
     align_pitch_kd: float = 0.5
     align_pitch_max: float = 0.08
     align_lost_s: float = 1.0          # marker out of view this long while lining up: marker_lost
     # No separate roll-sign check here: a wrong sign would push the drone off the centre line, and
     # align_give_up_m stops the line-up long before it gets far (the approach's drift assist has its
     # own check). Give up early (not_lined_up) instead of chasing the sign: this far off the centre
-    # line, or this much closer to the wall than the landing distance.
+    # line, or closer to the wall than align_too_close_frac of the landing distance or than
+    # align_too_close_floor_m, whichever is farther from the wall.
     align_give_up_m: float = 0.90
-    align_too_close_m: float = 0.25
+    align_too_close_frac: float = 0.70
+    align_too_close_floor_m: float = 0.30
     # A detection only counts toward arrival when the marker is also near the middle of the picture
     # (|cx - 0.5| at most this) and seen from the front (width/height at least arrive_min_aspect, about
     # 37 degrees off the wall's normal). Big enough and centred but seen from the side on
@@ -280,6 +298,7 @@ class MissionRunner:
         self._hold_roll = 0.0                            # roll kept on through settle and landing
         self._last_arrival: Optional[Dict[str, Any]] = None
         self._cy_log: Deque[Tuple[float, float]] = deque()   # (frame time, cy) of recent detections
+        self._last_apparent: Optional[float] = None      # apparent width of the newest of them
         # A person marked the drone as on its start spot; scheduled automatic runs need it. In memory
         # only (a restart clears it) and cleared by any run start or pilot input.
         self._ready_for_dose = False
@@ -309,6 +328,7 @@ class MissionRunner:
         self._size_count = 0
         self._off_axis_count = 0
         self._lost_since: Optional[float] = None
+        self._coast_pitch = 0.0                          # forward stick to coast on through a dropout
         self._last_cx = 0.5
         self._marker_seen_at = 0.0
         self._arrived_width = 0.0
@@ -318,6 +338,7 @@ class MissionRunner:
         self._descent_count = 0                          # of those, consecutive ones above it
         self._last_rise = 0.0                            # the latest detection's rise above it
         self._candidates: Deque[MarkerObs] = deque(maxlen=self.cfg.search_confirm_count)
+        self._candidate_at: Optional[float] = None       # frame time of the newest candidate
         self._toggle_sent = False
         # What the latest run did about landing once it arrived: "sent", "skipped_settle_guard_undecided",
         # "refused_by_mixer" or "off"; None before any run and for a run that has not arrived.
@@ -358,15 +379,22 @@ class MissionRunner:
             return False
         return telemetry.battery_raw <= self._settings.battery_low_raw
 
-    def _update_candidates_locked(self, marker: Optional[MarkerObs]) -> None:
-        """Consecutive detections whose centres agree; a miss or a far-off detection starts again."""
+    def _update_candidates_locked(self, marker: Optional[MarkerObs], ts: float) -> None:
+        """Detections whose centres agree, with gaps of at most lost_coast_s between them (a detector
+        dropout does not start again); a longer gap or a far-off detection starts again. With
+        lost_coast_s 0 any miss starts again."""
         if marker is None:
-            self._candidates.clear()
+            if self.cfg.lost_coast_s <= 0:
+                self._candidates.clear()
             return
         spread = self.cfg.search_confirm_spread
-        if any(abs(marker.cx - m.cx) > spread or abs(marker.cy - m.cy) > spread for m in self._candidates):
+        gap_too_long = (self.cfg.lost_coast_s > 0 and self._candidate_at is not None
+                        and ts - self._candidate_at > self.cfg.lost_coast_s)
+        if gap_too_long or any(
+                abs(marker.cx - m.cx) > spread or abs(marker.cy - m.cy) > spread for m in self._candidates):
             self._candidates.clear()
         self._candidates.append(marker)
+        self._candidate_at = ts
 
     def _marker_confirmed_locked(self) -> bool:
         return len(self._candidates) >= self.cfg.search_confirm_count
@@ -376,6 +404,7 @@ class MissionRunner:
         self._state = APPROACHING
         self._first_width = statistics.median(m.size for m in self._candidates)
         self._last_cx = self._candidates[-1].cx
+        self._coast_pitch = 0.0
 
     def _no_pilot_link(self) -> bool:
         return self._pilot_connected is not None and not self._pilot_connected()
@@ -456,6 +485,7 @@ class MissionRunner:
             self._size_count = 0
             self._off_axis_count = 0
             self._lost_since = None
+            self._coast_pitch = 0.0
             self._last_cx = 0.5
             self._toggle_sent = False
             self._last_landing = None
@@ -467,6 +497,7 @@ class MissionRunner:
             self._timeout_from = now
             self._at_size_since = None
             self._cy_log.clear()
+            self._last_apparent = None
             self._align = {}
             self._hold_roll = 0.0
             self._ready_for_dose = False      # the drone is leaving its start spot
@@ -646,7 +677,7 @@ class MissionRunner:
         with self._lock:
             if obs is not None:
                 self._last_obs = obs
-                self._update_candidates_locked(obs.marker)
+                self._update_candidates_locked(obs.marker, obs.ts)
             self._step_locked(obs, now)
         self.flush()
 
@@ -660,6 +691,7 @@ class MissionRunner:
             self._last_frame_ts = obs.ts
             if obs.marker is not None:
                 self._cy_log.append((obs.ts, obs.marker.cy))     # safe-landing evidence
+                self._last_apparent = apparent_width(obs.marker)  # its distance scales that evidence
                 while self._cy_log and obs.ts - self._cy_log[0][0] > 3.0:
                     self._cy_log.popleft()
 
@@ -737,12 +769,23 @@ class MissionRunner:
     def _step_approach_locked(self, marker: Optional[MarkerObs], obs: Observation, now: float) -> None:
         cfg = self.cfg
         if marker is None:
-            self._arrive_count = 0
-            self._size_count = 0
-            self._off_axis_count = 0
             if self._lost_since is None:
                 self._lost_since = now
             lost_for = now - self._lost_since
+            if cfg.lost_coast_s > 0 and lost_for <= min(cfg.lost_coast_s, cfg.lost_hold_s):
+                # A detection dropout, not (yet) a loss: coast on the last forward stick and assist roll,
+                # fading to zero over lost_coast_s, with no yaw (where the marker is now is unknown). The
+                # arrival counts and the assist's state are kept.
+                fade = 1.0 - lost_for / cfg.lost_coast_s
+                assist_on = (self._assist_run and (self._drift_assist or self._automatic)
+                             and self._assist.disabled_reason is None)
+                roll = self._assist.roll * fade if assist_on else 0.0
+                yaw, pitch = self._steering.shape(0.0, self._coast_pitch * fade, now)
+                self._send(yaw, pitch, now, roll)
+                return
+            self._arrive_count = 0
+            self._size_count = 0
+            self._off_axis_count = 0
             self._assist.pause()               # no roll without the marker in view
             if lost_for <= cfg.lost_hold_s:
                 self._send(*self._steering.neutral(now), now)
@@ -754,8 +797,9 @@ class MissionRunner:
             return
 
         if self._lost_since is not None:
+            if now - self._lost_since > cfg.lost_coast_s:
+                self._history.clear()      # a real loss: start again from the reacquired marker
             self._lost_since = None
-            self._history.clear()          # start again from the reacquired marker
         if self._first_width is None:
             self._first_width = marker.size
         self._last_cx = marker.cx
@@ -813,6 +857,8 @@ class MissionRunner:
         hold = grown and apparent >= self._arrive_width * 1.05
         yaw, pitch = self._steering.update(list(self._history), now, self._arrive_width, no_forward=hold)
         self._send(yaw, pitch, now, self._assist_roll_locked(marker, obs.ts, aspect, pitch, now))
+        # What a dropout right after this step may coast on: never forward blind near the wall.
+        self._coast_pitch = 0.0 if (hold or apparent >= 0.9 * self._arrive_width) else pitch
 
     def _assist_roll_locked(self, marker: MarkerObs, ts: float, aspect: float, pitch: float,
                             now: float) -> float:
@@ -841,7 +887,7 @@ class MissionRunner:
         self._arrived_width = apparent
         self._assist.pause()
         self._align = {
-            "target_m": self._distance_m(self._arrive_width) or 0.8,
+            "target_m": self._distance_m(self._arrive_width) or self._settings.land_distance_m,
             "x": None, "z": None, "vx": 0.0, "vz": 0.0, "ts": None,
             "integral": 0.0, "roll": 0.0, "pitch": 0.0,
             "aligned_since": None, "window": deque(),      # (ts, cy) while aligned
@@ -879,6 +925,12 @@ class MissionRunner:
         if marker is None or not self._measure_locked(marker, obs.ts):
             if a["lost_since"] is None:
                 a["lost_since"] = now
+            if cfg.lost_coast_s > 0 and now - a["lost_since"] <= cfg.lost_coast_s:
+                # A detection dropout: keep the timer, no yaw, keep only a backward pitch (never forward
+                # blind at the wall) and only the drift-cancelling part of the roll (clamped integral).
+                hold_roll = max(-0.1, min(0.1, a["integral"])) if a["roll_ok"] else 0.0
+                self._send(*self._steering.shape(0.0, min(0.0, a["pitch"]), now), now, hold_roll)
+                return
             a["aligned_since"] = None
             a["window"].clear()
             self._send(*self._steering.neutral(now), now, a["roll"] if marker is not None else 0.0)
@@ -896,7 +948,8 @@ class MissionRunner:
         yaw, _ = self._steering.update(list(self._history), now, self._arrive_width, no_forward=True)
         self._send(yaw, pitch, now, roll)
 
-        if abs(x) > cfg.align_give_up_m or err_z < -cfg.align_too_close_m:
+        too_close = z < max(cfg.align_too_close_floor_m, cfg.align_too_close_frac * a["target_m"])
+        if abs(x) > cfg.align_give_up_m or too_close:
             return self._abort_locked("not_lined_up", now, {"lateral_offset_m": round(x, 3),
                                                             "distance_m": round(z, 3)})
         aligned = (abs(x) <= cfg.align_tolerance_m and abs(err_z) <= cfg.align_distance_tol_m
@@ -981,6 +1034,8 @@ class MissionRunner:
             self._send(*self._steering.neutral(now), now)
         # The guard protects the landing toggle only: with land on arrival off it neither holds nor aborts.
         guard = cfg.settle_descent_frac > 0 and self._lands_on_arrival_locked()
+        scale = self._settle_scale_locked()
+        descent_frac, pending_frac = cfg.settle_descent_frac * scale, cfg.settle_pending_frac * scale
         if marker is not None:
             self._marker_seen_at = obs.ts
             if guard and now - self._phase_at >= cfg.settle_reference_after_s:
@@ -993,7 +1048,7 @@ class MissionRunner:
                     rise = self._settle_ref_cy - marker.cy
                     self._last_rise = rise
                     self._settle_checks += 1
-                    self._descent_count = self._descent_count + 1 if rise > cfg.settle_descent_frac else 0
+                    self._descent_count = self._descent_count + 1 if rise > descent_frac else 0
                     if self._descent_count >= cfg.settle_descent_consecutive:
                         # The camera is sinking: the drone is landing by itself. A toggle now could
                         # launch it again.
@@ -1015,7 +1070,7 @@ class MissionRunner:
             return
         skipped: Optional[str] = None
         if guard and (self._settle_ref_cy is None or self._settle_checks < cfg.settle_descent_consecutive
-                      or self._descent_count > 0 or self._last_rise > cfg.settle_pending_frac):
+                      or self._descent_count > 0 or self._last_rise > pending_frac):
             if now - self._phase_at < settle_s + cfg.settle_guard_wait_s:
                 return     # the descent guard has not finished looking: keep settling (still neutral)
             # Still undecided: do not toggle on a doubt. The drone did arrive; the pilot lands by hand.
@@ -1137,7 +1192,20 @@ class MissionRunner:
         if len(reference) < 3:
             return False
         rise = statistics.median(reference) - latest_cy
-        return rise <= self.cfg.settle_descent_frac
+        # Scaled by the current distance (not the landing distance): far from the sign the same sink
+        # moves the sign much less in the picture.
+        distance = None if self._last_apparent is None else self._distance_m(self._last_apparent)
+        scale = max(1.0, min(2.0, self.cfg.settle_ref_distance_m / distance)) if distance else 1.0
+        return rise <= self.cfg.settle_descent_frac * scale
+
+    def _settle_scale_locked(self) -> float:
+        """Factor on the settle guard's rise thresholds (the drone is at the landing distance then): a
+        closer landing distance sees a bigger rise in the picture for the same sink (rise ~ sink /
+        distance)."""
+        distance = self._distance_m(self._arrive_width)
+        if not distance:
+            return 1.0
+        return max(1.0, min(2.0, self.cfg.settle_ref_distance_m / distance))
 
     def _finish_done_locked(self, now: float) -> None:
         self._state = DONE

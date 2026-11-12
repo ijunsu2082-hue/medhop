@@ -1,6 +1,7 @@
 """Settings read from MEDHOP_* environment variables (SPEC section 4)."""
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -25,7 +26,12 @@ class Settings:
     data_dir: Path = field(default_factory=lambda: REPO_ROOT / "data")
     marker_id: int = 7
     marker_size_m: float = 0.18
-    arrive_width: float = 0.16
+    # Marker width (fraction of the frame width) that counts as arrived. None (the default): derived
+    # from land_distance_m, the marker size and camera_hfov_deg. An explicit MEDHOP_ARRIVE_WIDTH wins.
+    arrive_width: Optional[float] = None
+    # Landing distance from the sign, in the program's own metre scale (camera_hfov_deg geometry). The
+    # real lens differs, so the real distance differs: measure it with a ruler.
+    land_distance_m: float = 0.45
     person_check: str = "auto"
     yolo_weights: Optional[str] = None
     # Raw battery byte treated as low. -1 (the default) disables the check: the byte's meaning is
@@ -56,14 +62,26 @@ class Settings:
             raise ValueError("MEDHOP_MARKER_ID must be 0..49 (ArUco DICT_4X4_50)")
         if not 0.02 <= self.marker_size_m <= 1.0:
             raise ValueError("MEDHOP_MARKER_SIZE_M must be between 0.02 and 1.0")
-        if not 0.03 <= self.arrive_width <= 0.8:
-            raise ValueError("MEDHOP_ARRIVE_WIDTH must be between 0.03 and 0.8")
         if self.grace_min < 0:
             raise ValueError("MEDHOP_GRACE_MIN must be >= 0")
         if not 0.05 <= self.hover_max_excursion_m <= 5.0:
             raise ValueError("MEDHOP_HOVER_MAX_EXCURSION_M must be between 0.05 and 5.0")
         if not 30.0 <= self.camera_hfov_deg <= 150.0:
             raise ValueError("MEDHOP_CAMERA_HFOV_DEG must be between 30 and 150")
+        # After the lens check: the derived arrive width uses camera_hfov_deg.
+        if not 0.35 <= self.land_distance_m <= 3.0:
+            raise ValueError("MEDHOP_LAND_DISTANCE_M must be between 0.35 and 3.0")
+        derived = self.arrive_width is None
+        if derived:
+            half = math.radians(self.camera_hfov_deg) / 2.0
+            self.arrive_width = self.marker_size_m / (2.0 * math.tan(half) * self.land_distance_m)
+        if not 0.03 <= self.arrive_width <= 0.8:
+            if derived:
+                raise ValueError(
+                    f"MEDHOP_LAND_DISTANCE_M={self.land_distance_m} gives an arrive width of "
+                    f"{self.arrive_width:.3f}, outside 0.03..0.8 for this marker size and lens"
+                )
+            raise ValueError("MEDHOP_ARRIVE_WIDTH must be between 0.03 and 0.8")
 
     @property
     def battery_check_enabled(self) -> bool:
@@ -89,6 +107,7 @@ class Settings:
             ("MEDHOP_MARKER_ID", "marker_id", int),
             ("MEDHOP_MARKER_SIZE_M", "marker_size_m", float),
             ("MEDHOP_ARRIVE_WIDTH", "arrive_width", float),
+            ("MEDHOP_LAND_DISTANCE_M", "land_distance_m", float),
             ("MEDHOP_PERSON_CHECK", "person_check", str),
             ("MEDHOP_YOLO_WEIGHTS", "yolo_weights", str),
             ("MEDHOP_BATTERY_LOW_RAW", "battery_low_raw", int),

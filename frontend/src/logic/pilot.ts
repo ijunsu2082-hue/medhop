@@ -281,19 +281,19 @@ export function autoSupported(m: MissionStatus): boolean {
   return typeof m.can_start_auto === "boolean" && Array.isArray(m.auto_blockers);
 }
 
-/** Metres to one decimal ("0.8"), or null for a missing, negative or non-finite value. */
+/** Metres to two decimals below 1 m ("0.45"), else one ("1.9"), or null for a missing, negative or non-finite value. */
 export function formatMetres(x: unknown): string | null {
   if (typeof x !== "number" || !Number.isFinite(x) || x < 0) return null;
-  return x.toFixed(1);
+  return x < 1 ? x.toFixed(2) : x.toFixed(1);
 }
 
-/** "Sign about 1.9 m away. It lands at about 0.8 m." The first half is left out while the sign is not in view. */
+/** "Sign about 1.9 m away. It lands at about 0.45 m by the program's measure." The first half is left out while the sign is not in view. */
 export function autoDistanceLine(distance: number | null | undefined, arrive: number | null | undefined): string | null {
   const d = formatMetres(distance);
   const a = formatMetres(arrive);
   const parts: string[] = [];
   if (d !== null) parts.push(`Sign about ${d} m away.`);
-  if (a !== null) parts.push(`It lands at about ${a} m.`);
+  if (a !== null) parts.push(`It lands at about ${a} m by the program's measure.`);
   return parts.length ? parts.join(" ") : null;
 }
 
@@ -386,7 +386,7 @@ export function autoResultView(m: MissionStatus): AutoResultView | null {
     if (arrival) {
       const parts: string[] = [];
       const d = metres2(arrival.distance_m);
-      if (d !== null) parts.push(`about ${d} m from the sign`);
+      if (d !== null) parts.push(`about ${d} m from the sign by the program's measure`);
       const lat = lateralText(arrival.lateral_offset_m);
       if (lat !== null) parts.push(lat);
       const where = parts.length ? `At the station: ${parts.join(", ")}.` : "At the station.";
@@ -397,7 +397,7 @@ export function autoResultView(m: MissionStatus): AutoResultView | null {
     return {
       tone: "pass",
       text: a !== null
-        ? `At the station, about ${a} m in front of the sign. The land command was sent: check that it has landed.`
+        ? `At the station, about ${a} m in front of the sign by the program's measure. The land command was sent: check that it has landed.`
         : "At the station, in front of the sign. The land command was sent: check that it has landed.",
     };
   }
@@ -427,11 +427,17 @@ export function autoReadyView(m: MissionStatus): { ready: boolean; text: string 
 
 /** The "Where does it land?" explainer, with the backend's arrival distance when it sends one. */
 export function landingExplainerText(arrive: number | null | undefined): string {
-  const a = formatMetres(arrive) ?? "0.8";
+  const a = formatMetres(arrive);
+  const where =
+    a !== null
+      ? `That is about ${a} m in front of the sign by the program's own measure. The real camera lens differs, ` +
+        "so measure the real distance with a ruler and put the landing spot there. "
+      : "That is a short distance in front of the sign: measure it with a ruler and put the landing spot there. ";
   return (
     "It only lands when the sign fills enough of the camera view, sits in the middle of the picture and is seen " +
     "from the front, three frames in a row, after the drone has clearly flown toward it. " +
-    `That is about ${a} m in front of the sign (it can settle a little closer): put the landing spot there. ` +
+    where +
+    "Hang the sign at the drone's hover height, so it sits near the middle of the picture. " +
     "A sign farther than about 5 m is too small to count, and signs with another number are ignored."
   );
 }

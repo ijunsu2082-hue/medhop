@@ -39,7 +39,7 @@ HELLO = {"type": "hello", "pilot": True}
 
 
 def make_core(data_dir, **sim):
-    settings = Settings(data_dir=data_dir, person_check="off")
+    settings = Settings(data_dir=data_dir, person_check="off", arrive_width=0.16)
     config = SimConfig(seed=5, lateral_drift=0.0, **sim)
     return MedHopCore(settings, link=SimLink(config))
 

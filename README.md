@@ -52,8 +52,14 @@ drone; no real-drone flight with MedHop has been done yet at the time of writing
   it sends the land command only on current camera evidence that the drone is still flying (the sign
   grew since first seen, is in view now and is not rising in the picture); otherwise the page warns
   that the drone may still be in the air. Tested in the simulator only.
-- Where it lands: when the sign is at least the arrive width (about 0.8 m away with the defaults) on
-  three frames in a row, after it has grown since it was first seen, the run starts a final line-up.
+- Where it lands: when the sign is at least the arrive width (about 0.45 m away by the program's own
+  measure with the defaults, `MEDHOP_LAND_DISTANCE_M`) on three frames in a row, after it has grown since
+  it was first seen, the run starts a final line-up. Missed detections of up to 0.5 s between those
+  frames do not break the row: the approach coasts on through them (the last forward stick fading to
+  zero, no turning, and never forward when it is already close). The real camera lens differs from the
+  program's measure, so the real distance differs: on a test run, measure where it stops with a ruler and
+  put the landing spot there. Hang the sign at the drone's hover height, so it sits near the middle of
+  the picture.
   From the sign's four corners it works out (classical camera geometry, `vision/pose.py`) how many
   centimetres the drone is left or right of the sign's centre line and how far from the wall. It slides
   sideways with roll, holds the distance with pitch and keeps the sign centred with yaw, and only lands
@@ -61,10 +67,11 @@ drone; no real-drone flight with MedHop has been done yet at the time of writing
   for 1 s. Through the 1.2 s settle and the landing it keeps holding that spot sideways with roll.
   Not lined up after 15 s: it lands anyway if within 12 cm (the arrival says "could not line up
   exactly"), otherwise it stops ("not_lined_up"). It also gives up if it gets 90 cm off the line or
-  25 cm closer to the wall than the landing distance. In the simulator (30 automatic runs, sideways drift
-  0 to 0.12 m/s, starts up to 60 cm off the line) every run landed within 6 cm of the centre line and
-  0.73 to 0.88 m from the wall. Seeing the sign from far away only starts the approach: beyond about
-  5 m the 18 cm sign is too small to be detected, and signs with any other ArUco number are ignored.
+  closer to the wall than 70 % of the landing distance (at least 30 cm). In the simulator (30 automatic
+  runs from 2.5 m, sideways drift 0 to 0.12 m/s) every run landed within 6 cm of the centre line and
+  0.35 to 0.55 m from the wall (the program's measure is exact there). Seeing the sign from far away
+  only starts the approach: beyond about 5 m the 18 cm sign is too small to be detected, and signs with
+  any other ArUco number are ignored.
   On the real drone the centimetres are estimates: the camera's field of view is unmeasured, which
   scales the distances (the centre line itself does not depend on it).
 - Hover test (measures the peak sideways excursion while hands-off) and arrival calibration.
@@ -206,13 +213,14 @@ commands are held and repeated. Those changes are uncommitted and unpublished. S
 | `MEDHOP_DATA_DIR` | `data/` in the repo | schedule, events, trim, calibration, run traces |
 | `MEDHOP_MARKER_ID` | `7` | ArUco id of the station sign |
 | `MEDHOP_MARKER_SIZE_M` | `0.18` | measured edge of the printed black square, in metres (used for the hover-test drift estimate) |
-| `MEDHOP_ARRIVE_WIDTH` | `0.16` | sign width, as a fraction of the frame width, that counts as arrived (overridden by arrival calibration) |
+| `MEDHOP_LAND_DISTANCE_M` | `0.45` | landing distance in front of the sign, in metres by the program's own measure (worked out from `MEDHOP_CAMERA_HFOV_DEG` and `MEDHOP_MARKER_SIZE_M`; 0.35 to 3.0). The real lens differs, so the real distance differs: measure it with a ruler and put the landing spot there. Hang the sign at the drone's hover height, so it sits near the middle of the picture |
+| `MEDHOP_ARRIVE_WIDTH` | derived from `MEDHOP_LAND_DISTANCE_M` | sign width, as a fraction of the frame width, that counts as arrived (0.286 with the defaults). Set it to override the landing distance; arrival calibration overrides both |
 | `MEDHOP_PERSON_CHECK` | `auto` | `auto` (on if ultralytics and weights are available), `on` (refuse to start without them), `off` |
 | `MEDHOP_YOLO_WEIGHTS` | none | local path to `yolo11n.pt` |
 | `MEDHOP_BATTERY_LOW_RAW` | `-1` | raw battery byte at or below which the battery counts as low. `-1` switches the check **off** (the default), because the byte's meaning is not verified |
 | `MEDHOP_HOVER_MAX_EXCURSION_M` | `0.5` | hover-test pass limit for the peak sideways excursion, in metres (an estimate) |
 | `MEDHOP_GRACE_MIN` | `15` | minutes after a dose time before it "needs attention" |
-| `MEDHOP_CAMERA_HFOV_DEG` | `70` | camera field of view, only for the "sign about X m away" estimate (unmeasured on the real drone) |
+| `MEDHOP_CAMERA_HFOV_DEG` | `70` | camera field of view, for the "sign about X m away" estimate and for turning `MEDHOP_LAND_DISTANCE_M` into the arrive width (unmeasured on the real drone) |
 | `MEDHOP_HOST` | `127.0.0.1` | address the backend listens on |
 | `MEDHOP_PYTHON` | `python3` | interpreter used by the scripts in `scripts/` |
 

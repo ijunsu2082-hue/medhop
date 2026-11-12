@@ -23,23 +23,25 @@ def tearDownModule():
     logging.disable(logging.NOTSET)
 
 
-def make_harness(seed=0, drift=0.08, distance=2.5, heading=25.0, airborne=True, runner_config=None, **sim):
+def make_harness(seed=0, drift=0.08, distance=2.5, heading=25.0, airborne=True, runner_config=None, dropout=0.0,
+                 **sim):
+    """`dropout`: probability that a frame's detection is thrown away (seeded with `seed`)."""
     config = SimConfig(seed=seed, lateral_drift=drift, start_distance_m=distance,
                        start_heading_deg=heading, start_airborne=airborne, **sim)
-    harness = SimHarness(config, runner_config=runner_config)
+    harness = SimHarness(config, runner_config=runner_config, marker_dropout=dropout, dropout_seed=seed)
     harness.warm_up(1.0)
     return harness
 
 
 def run_station(seed, drift, trim_roll=0.0, distance=2.5, heading=None, limit_s=70.0, assist=False,
-                land=True, runner_config=None, **sim):
+                land=True, runner_config=None, dropout=0.0, **sim):
     """One full station run. Heading starts 25 degrees off, alternating side with the seed.
 
     `land` switches "land on arrival" on explicitly (it is off by default since SPEC 10.2), so these
     runs exercise the settle and the one landing toggle unless a test says otherwise."""
     heading = (25.0 if seed % 2 == 0 else -25.0) if heading is None else heading
     harness = make_harness(seed=seed, drift=drift, distance=distance, heading=heading,
-                           runner_config=runner_config, **sim)
+                           runner_config=runner_config, dropout=dropout, **sim)
     try:
         harness.runner.set_land_on_arrival(land)
         if trim_roll:
@@ -50,9 +52,15 @@ def run_station(seed, drift, trim_roll=0.0, distance=2.5, heading=None, limit_s=
         assert started, blockers
         t0 = harness.clock.t
         min_distance = [harness.sim.pose()["distance_m"]]
+        approach_pitch = []                        # pitch sent on each control tick while approaching
+        ticks = [len(harness.sent)]
 
         def finished(h):
             min_distance[0] = min(min_distance[0], h.sim.pose()["distance_m"])
+            if len(h.sent) > ticks[0]:
+                ticks[0] = len(h.sent)
+                if h.runner.state == "approaching":
+                    approach_pitch.append(h.sent[-1][1][2])
             return h.runner.state in ("done", "aborted")
 
         harness.run(limit_s, until=finished)
@@ -75,6 +83,7 @@ def run_station(seed, drift, trim_roll=0.0, distance=2.5, heading=None, limit_s=
             "wall_distance_m": at_end["distance_m"],
             "lateral_offset_m": at_end["x_m"],
             "min_wall_distance_m": min_distance[0],
+            "approach_pitch_mean": sum(approach_pitch) / len(approach_pitch) if approach_pitch else 0.0,
             "toggles": harness.sim.toggle_count,
             "phase": at_end["phase"],
             "last_sent": harness.last_sent(),
@@ -90,14 +99,25 @@ class StationRunTests(unittest.TestCase):
         """2.5 m away, 25 degrees off, 0.08 m/s sideways drift, 0.45 s latency."""
         results = [run_station(seed, drift=0.08) for seed in SEEDS]
         done = [r for r in results if r["state"] == "done"]
-        self.assertEqual(len(done), 10, [(r["seed"], r["reason"]) for r in results])
+        # At the 0.45 m landing distance the approach (no roll without the assist) flies longer while
+        # drifting sideways: seed 8 ends about 49 degrees off the sign's normal at 0.49 m and stops with
+        # off_axis (with the old 0.8 m distance it started its line-up 43 degrees off and landed).
+        self.assertGreaterEqual(len(done), 9, [(r["seed"], r["reason"]) for r in results])
+        for r in results:
+            if r["state"] != "done":
+                with self.subTest(seed=r["seed"]):
+                    self.assertEqual((r["state"], r["reason"], r["toggles"]), ("aborted", "off_axis", 0))
+                    self.assertGreater(r["min_wall_distance_m"], 0.33)
+                    self.assertEqual(r["last_sent"], NEUTRAL)
         for r in done:
             with self.subTest(seed=r["seed"]):
                 self.assertEqual(r["toggles"], 1, "exactly one toggle on a successful run")
                 self.assertEqual(r["events"], ["run_started", "arrived_at_station"])
-                self.assertGreater(r["wall_distance_m"], 0.60)
-                self.assertLess(r["wall_distance_m"], 0.90)
-                self.assertGreater(r["min_wall_distance_m"], 0.55)
+                self.assertGreater(r["wall_distance_m"], 0.36)
+                self.assertLess(r["wall_distance_m"], 0.56)
+                # 0.32 m observed (seed 0): the approach overshoots the 0.45 m landing distance by up to
+                # about 0.1 m before the line-up pulls it back
+                self.assertGreater(r["min_wall_distance_m"], 0.31)
                 # The final line-up: before it, these seeds ended 0.48 to 0.75 m beside the sign.
                 self.assertLess(abs(r["lateral_offset_m"]), 0.08, "landed on the sign's centre line")
                 self.assertLess(r["duration_s"], 45.0)      # includes the final line-up
@@ -110,8 +130,8 @@ class StationRunTests(unittest.TestCase):
             self.assertEqual(r["state"], "done")
             self.assertEqual(r["toggles"], 1)
             self.assertLess(abs(r["lateral_offset_m"]), 0.15)
-            self.assertGreater(r["wall_distance_m"], 0.55)
-            self.assertLess(r["wall_distance_m"], 0.85)
+            self.assertGreater(r["wall_distance_m"], 0.36)
+            self.assertLess(r["wall_distance_m"], 0.56)
 
     def test_a_trim_that_cancels_the_drift_removes_the_sideways_offset(self):
         for seed in (0, 1):
@@ -119,7 +139,7 @@ class StationRunTests(unittest.TestCase):
             self.assertEqual(r["state"], "done")
             self.assertEqual(r["toggles"], 1)
             self.assertLess(abs(r["lateral_offset_m"]), 0.20)
-            self.assertGreater(r["wall_distance_m"], 0.55)
+            self.assertGreater(r["wall_distance_m"], 0.36)
 
     def test_b_strong_drift_never_ends_at_the_wall_and_never_toggles_on_abort(self):
         """0.20 m/s drift is outside what yaw-and-pitch steering can handle: it must fail safely."""
@@ -135,6 +155,43 @@ class StationRunTests(unittest.TestCase):
                 else:
                     self.assertEqual(r["toggles"], 1)
         self.assertGreaterEqual(sum(1 for r in results if r["reason"] == "off_axis"), 8)
+
+    def test_coasting_through_detection_dropouts_keeps_the_approach_moving(self):
+        """Half the detections thrown away (a real flight saw the sign on 55 % of frames). Without the
+        coast every missed frame sent neutral and the approach stalled."""
+        for seed in range(3):
+            with self.subTest(seed=seed):
+                r = run_station(seed, drift=0.0, heading=0.0, dropout=0.5)
+                self.assertEqual((r["state"], r["reason"]), ("done", None))
+                self.assertEqual(r["toggles"], 1, "the landing toggle was sent")
+                self.assertGreater(r["wall_distance_m"], 0.36)
+                self.assertLess(r["wall_distance_m"], 0.56)
+                self.assertGreater(r["min_wall_distance_m"], 0.33)
+                stalled = run_station(seed, drift=0.0, heading=0.0, dropout=0.5,
+                                      runner_config=RunnerConfig(lost_coast_s=0.0))
+                self.assertGreater(r["approach_pitch_mean"], 0.10)
+                self.assertGreaterEqual(r["approach_pitch_mean"], 1.5 * stalled["approach_pitch_mean"],
+                                        (r["approach_pitch_mean"], stalled["approach_pitch_mean"]))
+
+    def test_a_line_up_dropout_never_pitches_forward(self):
+        dropout_frames, backward = 0, 0
+        for seed in range(2):
+            harness = make_harness(seed=seed, drift=0.0, heading=0.0, dropout=0.5)
+            self.addCleanup(harness.close)
+            harness.runner.set_land_on_arrival(True)
+            harness.runner.start(True, None)
+            end = harness.clock.t + 60.0
+            while harness.clock.t < end and harness.runner.state not in ("done", "aborted"):
+                seen, before = len(harness.observations), harness.runner.state
+                harness.step()
+                if (len(harness.observations) > seen and harness.observations[-1].marker is None
+                        and before == "aligning" and harness.runner.state == "aligning"):
+                    dropout_frames += 1
+                    pitch = harness.runner.snapshot()["command"]["pitch"]
+                    self.assertLessEqual(pitch, 0.0)
+                    backward += pitch < 0.0
+        self.assertGreater(dropout_frames, 5)
+        self.assertGreater(backward, 0, "a backward pitch is kept through a dropout")
 
     def test_run_stays_stable_with_twice_the_yaw_rate_and_more_latency(self):
         fast = run_station(0, drift=0.08, yaw_gain_deg=300.0)
@@ -162,7 +219,7 @@ class DriftAssistSimTests(unittest.TestCase):
                 self.assertEqual((r["state"], r["reason"]), ("done", None))
                 self.assertEqual(r["toggles"], 1)
                 self.assertLess(abs(r["lateral_offset_m"]), 0.30)
-                self.assertGreater(r["min_wall_distance_m"], 0.45)
+                self.assertGreater(r["min_wall_distance_m"], 0.33)
                 self.assertLessEqual(r["max_roll_sent"], 0.15 + 1e-9)
                 self.assertEqual(r["max_throttle_sent"], 0.0)
                 self.assertLessEqual(r["yaw_reversals"], 3)
@@ -194,7 +251,9 @@ class DriftAssistSimTests(unittest.TestCase):
                 self.assertIn(r["state"], ("done", "aborted"))
                 self.assertLessEqual(r["max_roll_sent"], 0.15 + 1e-9)
                 self.assertEqual(r["max_throttle_sent"], 0.0)
-                self.assertGreater(r["min_wall_distance_m"], 0.40)
+                # 0.29 to 0.33 m observed with the 0.45 m landing distance (the line-up starts at about
+                # 0.38 m, then gives up as not_lined_up)
+                self.assertGreater(r["min_wall_distance_m"], 0.27)
                 self.assertEqual(r["toggles"], 1 if r["state"] == "done" else 0)
                 self.assertEqual(r["last_sent"], NEUTRAL)
 
@@ -226,7 +285,9 @@ class LineUpTests(unittest.TestCase):
             with self.subTest(seed=seed):
                 self.assertEqual((r["state"], r["reason"]), ("aborted", "not_lined_up"))
                 self.assertEqual(r["toggles"], 0)
-                self.assertGreater(r["min_wall_distance_m"], 0.40)
+                # 0.22 and 0.25 m observed with the 0.45 m landing distance: the line-up starts at about
+                # 0.37 m and the too-close stop is seen one video delay late
+                self.assertGreater(r["min_wall_distance_m"], 0.20)
                 self.assertLessEqual(r["max_roll_sent"], 0.15 + 1e-9)
                 self.assertEqual(r["last_sent"], NEUTRAL)
 
@@ -252,7 +313,7 @@ class SettleDescentGuardTests(unittest.TestCase):
         return harness, in_settle
 
     def test_e_auto_land_during_the_settle_aborts_with_unexpected_descent_and_does_not_toggle(self):
-        for descent_m_s in (0.4, 0.25, 0.15):
+        for descent_m_s in (0.25, 0.15):
             with self.subTest(descent_m_s=descent_m_s):
                 harness, in_settle = self.settle_then_sink(descent_m_s=descent_m_s)
                 self.assertEqual((harness.runner.state, harness.runner.reason), ("aborted", "unexpected_descent"))
@@ -269,6 +330,19 @@ class SettleDescentGuardTests(unittest.TestCase):
                 self.assertEqual(harness.last_sent(), NEUTRAL)
                 events = [e["type"] for e in reversed(harness.store.events(10))]
                 self.assertEqual(events, ["run_started", "run_aborted"])
+
+    def test_e_fast_auto_land_during_the_settle_never_toggles(self):
+        """0.4 m/s at the 0.45 m landing distance: the scaled guard (0.142 of the frame height) needs its
+        third rising detection about when the sign leaves the top of the 0.36 m tall picture, so the run
+        stops either as unexpected_descent or as marker_lost. Neither sends the toggle."""
+        harness, _in_settle = self.settle_then_sink(descent_m_s=0.4)
+        self.assertEqual(harness.runner.state, "aborted")
+        self.assertIn(harness.runner.reason, ("unexpected_descent", "marker_lost"))
+        self.assertEqual(harness.sim.toggle_count, 0)
+        harness.run(1.0 / 0.4 + 1.0)
+        self.assertEqual(harness.sim.pose()["phase"], "ground", "it finished its own landing")
+        self.assertEqual(harness.sim.toggle_count, 0)
+        self.assertEqual(harness.last_sent(), NEUTRAL)
 
     def test_e_auto_land_starting_late_in_the_settle_still_never_toggles(self):
         """0.35 s of video delay: with a 0.6 s settle, a descent starting 0.3 s in got the toggle."""
@@ -287,7 +361,10 @@ class SettleDescentGuardTests(unittest.TestCase):
 
     def test_e_auto_land_during_the_settle_with_land_on_arrival_off_ends_done_without_a_toggle(self):
         """The guard only protects the toggle: with land on arrival off the arrival stands."""
-        for descent_m_s, start_after_s in ((0.25, 0.0), (0.15, 0.0), (0.4, 0.3)):
+        # Sinks slow enough to keep the sign in view through the settle. At the 0.45 m landing distance
+        # the picture is only about 0.36 m tall: 0.2 m/s and faster take the sign out of its top before
+        # the settle ends, and the marker-fresh check stops the run (marker_lost, no toggle) instead.
+        for descent_m_s, start_after_s in ((0.15, 0.0), (0.1, 0.0), (0.15, 0.3)):
             with self.subTest(descent_m_s=descent_m_s, start_after_s=start_after_s):
                 harness, in_settle = self.settle_then_sink(descent_m_s=descent_m_s, start_after_s=start_after_s,
                                                            land=False)
@@ -303,9 +380,10 @@ class SettleDescentGuardTests(unittest.TestCase):
 
     def test_e_without_the_guard_the_same_scene_would_have_sent_the_toggle(self):
         """The reason for the guard: the marker is still in view and fresh, so nothing else stops it."""
-        # 0.15 m/s keeps the marker in view for the whole 1.2 s settle (faster sinks leave the top of the
-        # picture by its end and are stopped by the marker-fresh check instead)
-        harness, in_settle = self.settle_then_sink(RunnerConfig(settle_descent_frac=0.0), descent_m_s=0.15)
+        # 0.13 m/s keeps the marker in view for the whole 1.2 s settle at the 0.45 m landing distance
+        # (faster sinks leave the top of the picture by its end and are stopped by the marker-fresh check
+        # instead; 0.15 m/s did at 0.8 m)
+        harness, in_settle = self.settle_then_sink(RunnerConfig(settle_descent_frac=0.0), descent_m_s=0.13)
         self.assertEqual(harness.runner.state, "landing")
         self.assertEqual(harness.sim.toggle_count, 1)
         self.assertTrue(all(obs.marker is not None for obs in in_settle))
@@ -407,7 +485,7 @@ class FailsafeTests(unittest.TestCase):
         self.addCleanup(harness.close)
         harness.runner.start(True, None)
         harness.run(30.0, until=lambda h: h.observations[-1].marker is not None
-                    and h.observations[-1].marker.width >= 0.14)
+                    and h.observations[-1].marker.width >= 0.25)      # the arrive width is 0.286
         self.assertEqual(harness.runner.state, "approaching")
         harness.sim.force_auto_land()
         harness.run_until_state(("done", "aborted"), 50.0)
