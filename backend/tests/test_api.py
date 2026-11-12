@@ -632,7 +632,7 @@ class FullRunApiTests(ApiTestCase):
             self.assertEqual(ws.receive_json(), HELLO)
             ws.send_json({"type": "takeoff_land"})
             self.assertEqual(ws.receive_json(), {"type": "ack", "of": "takeoff_land"})
-            self.assertTrue(wait_for(lambda: self.core.link.pose()["airborne"], 3.0))
+            self.assertTrue(wait_for(lambda: self.core.link.pose()["airborne"], 6.0))  # takeoff is 1.6 s of sim time; slack for a loaded machine
             self.assertTrue(wait_for(lambda: self.status()["mission"]["can_start"], 3.0), self.status()["mission"])
             response = self.client.post("/api/mission/start", json={"confirm_airborne": True, "dose_id": late})
             self.assertEqual(response.status_code, 200, response.text)

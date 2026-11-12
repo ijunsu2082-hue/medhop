@@ -69,6 +69,9 @@ class SimConfig:
     start_x_m: float = 0.0
     start_heading_deg: float = 0.0
     start_airborne: bool = False
+    # Put the drone back at the start pose on every takeoff from the ground, like carrying it back to
+    # the takeoff spot. The interactive simulator turns this on so repeated demo runs start the same way.
+    reset_pose_on_takeoff: bool = False
     seed: Optional[int] = None
 
 
@@ -305,6 +308,10 @@ class SimLink:
                 self._axes = payload
             elif kind == "toggle":
                 if self._phase in (GROUND, LANDING):
+                    if self._phase == GROUND and c.reset_pose_on_takeoff:
+                        self._x = c.start_x_m
+                        self._z = -abs(c.start_distance_m)
+                        self._heading = math.radians(c.start_heading_deg)
                     self._phase = TAKING_OFF
                 else:
                     self._phase = LANDING

@@ -52,7 +52,8 @@ def build_link(settings: Settings) -> DroneLink:
         )
     from medhop.drone.sim import SimConfig, SimLink
 
-    return SimLink(SimConfig(marker_id=settings.marker_id, marker_size_m=settings.marker_size_m))
+    return SimLink(SimConfig(marker_id=settings.marker_id, marker_size_m=settings.marker_size_m,
+                             reset_pose_on_takeoff=True))
 
 
 def _round(value: Optional[float], digits: int = 3) -> Optional[float]:
