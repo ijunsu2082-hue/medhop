@@ -32,6 +32,8 @@ interface Props {
   takeoffNote: { ok: boolean | null; text: string } | null;
   /** a takeoff/land toggle was acknowledged by the backend in this page session (presentation only) */
   takeoffAcked: boolean;
+  /** clears a latched emergency stop (same handler as the banner's reset button) */
+  onResetEstop: () => void;
 }
 
 interface Blocker {
@@ -39,7 +41,7 @@ interface Blocker {
   text: string;
 }
 
-export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNote, takeoffAcked }: Props) {
+export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNote, takeoffAcked, onResetEstop }: Props) {
   const m = status.mission;
   const doses = status.care.doses;
   const sim = status.mode === "sim";
@@ -162,6 +164,11 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
             <p className="run-step-live" role="status">
               {liveLine}
             </p>
+            {status.pilot.estop_active && (
+              <button type="button" className="btn btn-primary run-step-reset" onClick={onResetEstop} disabled={!controlOpen}>
+                Reset emergency stop
+              </button>
+            )}
             <p className="hint small">The drone does not report that it is in the air. You confirm that in step 2.</p>
           </>,
         )}

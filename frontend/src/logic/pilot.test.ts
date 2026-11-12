@@ -135,6 +135,10 @@ describe("takeoff/land availability", () => {
     expect(takeoffBlockedReason({ backendReachable: true, controlOpen: true, missionState: null })).toBeNull();
     expect(takeoffBlockedReason({ backendReachable: true, controlOpen: false, missionState: "idle" })).toMatch(/control link/);
     expect(takeoffBlockedReason({ backendReachable: false, controlOpen: true, missionState: "idle" })).toMatch(/backend not reachable/);
+    expect(takeoffBlockedReason({ backendReachable: true, controlOpen: true, missionState: "idle", estopActive: true })).toMatch(
+      /Emergency stop is on/,
+    );
+    expect(takeoffBlockedReason({ backendReachable: true, controlOpen: true, missionState: "idle", estopActive: false })).toBeNull();
   });
 });
 

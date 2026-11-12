@@ -98,6 +98,7 @@ export function PilotPage() {
     backendReachable: !backendDown,
     controlOpen,
     missionState: status?.mission.state ?? null,
+    estopActive,
   });
   const takeoffBlockedRef = useRef(takeoffBlocked);
   takeoffBlockedRef.current = takeoffBlocked;
@@ -253,6 +254,7 @@ export function PilotPage() {
               takeoffBlocked={takeoffBlocked}
               takeoffNote={takeoffNote}
               takeoffAcked={takeoffAcked}
+              onResetEstop={resetEstop}
             />
           ) : (
             <>

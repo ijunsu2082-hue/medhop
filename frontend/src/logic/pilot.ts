@@ -131,9 +131,16 @@ export function estopBanner(i: EstopInput): EstopBannerView | null {
 // ---------------------------------------------------------------- takeoff / land and command notes
 
 /** Why takeoff/land is unavailable right now, or null when it can be used. */
-export function takeoffBlockedReason(i: { backendReachable: boolean; controlOpen: boolean; missionState: string | null }): string | null {
+export function takeoffBlockedReason(i: {
+  backendReachable: boolean;
+  controlOpen: boolean;
+  missionState: string | null;
+  estopActive?: boolean;
+}): string | null {
   if (!i.backendReachable) return "Not available: backend not reachable.";
   if (!i.controlOpen) return "Not available: control link is not connected.";
+  // The backend refuses takeoff while emergency stop is latched; say so before the pilot tries.
+  if (i.estopActive) return 'Emergency stop is on. Press "Reset emergency stop" first.';
   if (i.missionState === "landing") return "Landing in progress";
   return null;
 }
