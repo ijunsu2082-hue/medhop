@@ -7,6 +7,7 @@ import {
   AUTO_STAGES,
   NEEDS_PILOT_TEXT,
   RUN_ACTIVE_STATES,
+  alignmentLine,
   autoBlockerTexts,
   autoDistanceLine,
   autoReadyView,
@@ -151,7 +152,10 @@ export function AutoRun({ status, controlOpen }: Props) {
   }, [countdown, beep]);
 
   const stage = autoStageIndex(m.state);
-  const liveLine = autoDistanceLine(m.distance_m, m.arrive_distance_m);
+  const liveLine =
+    m.state === "aligning"
+      ? alignmentLine(m.alignment) ?? autoDistanceLine(m.distance_m, m.arrive_distance_m)
+      : autoDistanceLine(m.distance_m, m.arrive_distance_m);
   const result = running ? null : autoResultView(m);
   const runDose = m.dose_id ? doses.find((d) => d.id === m.dose_id) : undefined;
   const autoChecked = autoPending ?? m.auto_fly === true;

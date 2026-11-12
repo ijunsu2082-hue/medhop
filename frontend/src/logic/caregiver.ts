@@ -62,6 +62,10 @@ export function eventDetailText(e: CareEvent): string | null {
     const codes = Array.isArray(d.blockers) ? d.blockers.map(String).filter((c) => c.trim()) : [];
     return codes.length ? `Not started: ${codes.map(skipReason).join("; ")}.` : null;
   }
+  if (e.type === "arrived_at_station") {
+    const lat = d.lateral_offset_m;
+    return typeof lat === "number" && Number.isFinite(lat) ? `${Math.round(Math.abs(lat) * 100)} cm from the centre line` : null;
+  }
   if (e.type === "hover_test" && typeof d.pass === "boolean") return d.pass ? "Passed" : "Did not pass";
   if ((e.type === "reminder_due" || e.type === "needs_attention") && typeof d.time === "string" && d.time.trim()) {
     return `due ${d.time.trim()}, logged ${e.time_local}`;

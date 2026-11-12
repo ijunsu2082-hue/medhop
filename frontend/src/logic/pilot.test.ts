@@ -7,6 +7,8 @@ import {
   AUTO_STAGES,
   ESTOP_CONFIRM_MS,
   NEEDS_PILOT_TEXT,
+  RUN_ACTIVE_STATES,
+  alignmentLine,
   autoBlockerTexts,
   autoDistanceLine,
   autoReadyView,
@@ -17,6 +19,7 @@ import {
   doneMessage,
   formatMetres,
   landingExplainerText,
+  lateralText,
   parseRunMode,
   droneLinkView,
   estopBanner,
@@ -291,17 +294,18 @@ function mission(over: Partial<MissionStatus> = {}): MissionStatus {
 }
 
 describe("automatic run: stages", () => {
-  it("has the five stages in order", () => {
-    expect([...AUTO_STAGES]).toEqual(["Take off", "Find the sign", "Fly to the sign", "Land", "At the station"]);
+  it("has the six stages in order", () => {
+    expect([...AUTO_STAGES]).toEqual(["Take off", "Find the sign", "Fly to the sign", "Line up", "Land", "At the station"]);
   });
   it("maps mission states to a stage", () => {
     expect(autoStageIndex("countdown")).toBe(0);
     expect(autoStageIndex("taking_off")).toBe(0);
     expect(autoStageIndex("searching")).toBe(1);
     expect(autoStageIndex("approaching")).toBe(2);
-    expect(autoStageIndex("arrived")).toBe(3);
-    expect(autoStageIndex("landing")).toBe(3);
-    expect(autoStageIndex("done")).toBe(4);
+    expect(autoStageIndex("aligning")).toBe(3);
+    expect(autoStageIndex("arrived")).toBe(4);
+    expect(autoStageIndex("landing")).toBe(4);
+    expect(autoStageIndex("done")).toBe(5);
     for (const s of ["idle", "aborted", "hover_test", "brand_new"]) expect(autoStageIndex(s)).toBe(-1);
   });
   it("counts down in whole seconds, rounded up, only during the countdown", () => {
@@ -312,6 +316,38 @@ describe("automatic run: stages", () => {
     expect(countdownText("countdown", null)).toBe("Taking off in a few seconds");
     expect(countdownText("countdown", undefined)).toBe("Taking off in a few seconds");
     expect(countdownText("taking_off", 3)).toBeNull();
+  });
+});
+
+describe("aligning: live line", () => {
+  it("counts aligning as a run in progress", () => {
+    expect(RUN_ACTIVE_STATES.has("aligning")).toBe(true);
+  });
+  it("reads the full line", () => {
+    expect(alignmentLine({ lateral_m: -0.04, distance_m: 0.81, target_distance_m: 0.8, tolerance_m: 0.05, aligned_for_s: 0.6, need_s: 1.0 })).toBe(
+      "4 cm left of the centre line, 0.81 m from the sign. Holding still 0.6 of 1.0 s.",
+    );
+    expect(alignmentLine({ lateral_m: 0.123, distance_m: 0.8, aligned_for_s: 0, need_s: 1 })).toBe(
+      "12 cm right of the centre line, 0.80 m from the sign. Holding still 0.0 of 1.0 s.",
+    );
+  });
+  it("says on the centre line under 0.5 cm, either side", () => {
+    expect(lateralText(0.004)).toBe("on the centre line");
+    expect(lateralText(-0.0049)).toBe("on the centre line");
+    expect(lateralText(0)).toBe("on the centre line");
+    expect(lateralText(0.006)).toBe("1 cm right of the centre line");
+    expect(lateralText(-0.006)).toBe("1 cm left of the centre line");
+    expect(alignmentLine({ lateral_m: 0.002, distance_m: 0.79 })).toBe("On the centre line, 0.79 m from the sign.");
+  });
+  it("leaves out parts that are missing", () => {
+    expect(alignmentLine({ lateral_m: null, distance_m: 0.81, aligned_for_s: 0.6, need_s: 1 })).toBe("0.81 m from the sign. Holding still 0.6 of 1.0 s.");
+    expect(alignmentLine({ lateral_m: 0.05, distance_m: null })).toBe("5 cm right of the centre line.");
+    expect(alignmentLine({ lateral_m: null, distance_m: null, aligned_for_s: 0.3, need_s: 1 })).toBe("Holding still 0.3 of 1.0 s.");
+    expect(alignmentLine({ aligned_for_s: 0.3 })).toBeNull();
+    expect(alignmentLine({ lateral_m: Number.NaN, distance_m: -1 })).toBeNull();
+    expect(alignmentLine({})).toBeNull();
+    expect(alignmentLine(null)).toBeNull();
+    expect(alignmentLine(undefined)).toBeNull();
   });
 });
 
@@ -382,6 +418,25 @@ describe("automatic run: result card", () => {
       tone: "pass",
       text: "At the station, in front of the sign. The land command was sent: check that it has landed.",
     });
+  });
+  it("done with the landing sent and where it arrived", () => {
+    const done = { state: "done" as const, automatic: true, last_landing: "sent" as const, arrive_distance_m: 0.8 };
+    expect(autoResultView(mission({ ...done, last_arrival: { lateral_offset_m: -0.03, distance_m: 0.82, aligned: true } }))).toEqual({
+      tone: "pass",
+      text: "At the station: about 0.82 m from the sign, 3 cm left of the centre line. The land command was sent: check that it has landed.",
+    });
+    expect(autoResultView(mission({ ...done, last_arrival: { lateral_offset_m: 0.09, distance_m: 0.8, aligned: false } }))?.text).toBe(
+      "At the station: about 0.80 m from the sign, 9 cm right of the centre line. The land command was sent: check that it has landed. It could not line up exactly.",
+    );
+    expect(autoResultView(mission({ ...done, last_arrival: { lateral_offset_m: null, distance_m: 0.8, aligned: true } }))?.text).toBe(
+      "At the station: about 0.80 m from the sign. The land command was sent: check that it has landed.",
+    );
+    expect(autoResultView(mission({ ...done, last_arrival: { lateral_offset_m: null, distance_m: null, aligned: false } }))?.text).toBe(
+      "At the station. The land command was sent: check that it has landed. It could not line up exactly.",
+    );
+    expect(autoResultView(mission({ ...done, last_arrival: null }))?.text).toBe(
+      "At the station, about 0.8 m in front of the sign. The land command was sent: check that it has landed.",
+    );
   });
   it("done without the landing sent falls back to the land-by-hand message", () => {
     expect(autoResultView(mission({ state: "done", automatic: true, last_landing: "refused_by_mixer" }))).toEqual({

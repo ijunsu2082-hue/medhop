@@ -320,6 +320,13 @@ describe("caregiver helpers (SPEC 10.5)", () => {
     expect(eventDetailText(ev({ type: "needs_attention", detail: null }))).toBeNull();
     expect(eventDetailText(ev({ type: "run_aborted", detail: { reason: "pilot_link_lost" } }))).toMatch(/lost its control link/);
   });
+  it("shows how far from the centre line an arrival ended", () => {
+    expect(eventDetailText(ev({ detail: { lateral_offset_m: -0.034, distance_m: 0.8, aligned: true } }))).toBe("3 cm from the centre line");
+    expect(eventDetailText(ev({ detail: { lateral_offset_m: 0.12, aligned: false } }))).toBe("12 cm from the centre line");
+    expect(eventDetailText(ev({ detail: { lateral_offset_m: null } }))).toBeNull();
+    expect(eventDetailText(ev({ detail: { mode: "sim" } }))).toBeNull();
+    expect(eventDetailText(ev({ detail: null }))).toBeNull();
+  });
   it("marks automatic runs and explains skipped automatic flights", () => {
     expect(eventText("auto_run_skipped")).toBe("Automatic flight skipped");
     expect(eventDetailText(ev({ type: "run_started", detail: { automatic: true, mode: "sim" } }))).toBe("Automatic");

@@ -42,6 +42,7 @@ export const MISSION_STATE_TEXT: Record<MissionState, string> = {
   taking_off: "Taking off",
   searching: "Searching: turning slowly to find the station sign",
   approaching: "Approaching the station sign",
+  aligning: "Lining up over the landing spot",
   arrived: "Arrived at station, holding still",
   landing: "Landing at the station",
   done: "Done",

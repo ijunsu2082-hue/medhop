@@ -1,7 +1,7 @@
 // Pure Pilot-page decisions (SPEC 10.5): the emergency-stop banner state, takeoff/land availability, matching
 // server acks/errors to the command they answer, and the drone-link line. Unit-tested in pilot.test.ts.
 
-import type { ControlServerMessage, MissionStatus, Status } from "../api/types";
+import type { ControlServerMessage, MissionAlignment, MissionStatus, Status } from "../api/types";
 import { LAST_LANDING_TEXT, abortText, blockerText, controlErrorText } from "../text/wording";
 
 // ---------------------------------------------------------------- emergency stop banner
@@ -240,8 +240,8 @@ export function doneMessage(lastLanding: string | null | undefined): string {
 
 // ---------------------------------------------------------------- automatic station run
 
-/** The five stages of an automatic run, in order. */
-export const AUTO_STAGES = ["Take off", "Find the sign", "Fly to the sign", "Land", "At the station"] as const;
+/** The six stages of an automatic run, in order. */
+export const AUTO_STAGES = ["Take off", "Find the sign", "Fly to the sign", "Line up", "Land", "At the station"] as const;
 
 /** Mission states during which a station run is in progress (automatic or step by step). */
 export const RUN_ACTIVE_STATES: ReadonlySet<string> = new Set([
@@ -249,6 +249,7 @@ export const RUN_ACTIVE_STATES: ReadonlySet<string> = new Set([
   "taking_off",
   "searching",
   "approaching",
+  "aligning",
   "arrived",
   "landing",
 ]);
@@ -263,11 +264,13 @@ export function autoStageIndex(state: string): number {
       return 1;
     case "approaching":
       return 2;
+    case "aligning":
+      return 3;
     case "arrived":
     case "landing":
-      return 3;
-    case "done":
       return 4;
+    case "done":
+      return 5;
     default:
       return -1;
   }
@@ -292,6 +295,51 @@ export function autoDistanceLine(distance: number | null | undefined, arrive: nu
   if (d !== null) parts.push(`Sign about ${d} m away.`);
   if (a !== null) parts.push(`It lands at about ${a} m.`);
   return parts.length ? parts.join(" ") : null;
+}
+
+function finiteNumber(x: unknown): number | null {
+  return typeof x === "number" && Number.isFinite(x) ? x : null;
+}
+
+/**
+ * "4 cm left of the centre line" from an offset in metres (+ = right of the sign's centre line, as seen facing
+ * the sign), "on the centre line" under 0.5 cm, or null for a missing or non-finite value.
+ */
+export function lateralText(lateral: unknown): string | null {
+  const x = finiteNumber(lateral);
+  if (x === null) return null;
+  const cm = Math.round(Math.abs(x) * 100);
+  if (Math.abs(x) < 0.005 || cm === 0) return "on the centre line";
+  return `${cm} cm ${x > 0 ? "right" : "left"} of the centre line`;
+}
+
+/** Metres to two decimals ("0.81"), or null for a missing, negative or non-finite value. */
+function metres2(x: unknown): string | null {
+  const v = finiteNumber(x);
+  return v === null || v < 0 ? null : v.toFixed(2);
+}
+
+function capitalise(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * The live line while "aligning": "4 cm left of the centre line, 0.81 m from the sign. Holding still 0.6 of 1.0 s."
+ * Parts whose value is missing are left out; null when nothing is left.
+ */
+export function alignmentLine(a: MissionAlignment | null | undefined): string | null {
+  if (!a) return null;
+  const first: string[] = [];
+  const lat = lateralText(a.lateral_m);
+  if (lat !== null) first.push(lat);
+  const d = metres2(a.distance_m);
+  if (d !== null) first.push(`${d} m from the sign`);
+  const sentences: string[] = [];
+  if (first.length) sentences.push(`${capitalise(first.join(", "))}.`);
+  const held = finiteNumber(a.aligned_for_s);
+  const need = finiteNumber(a.need_s);
+  if (held !== null && need !== null) sentences.push(`Holding still ${Math.max(0, held).toFixed(1)} of ${need.toFixed(1)} s.`);
+  return sentences.length ? sentences.join(" ") : null;
 }
 
 /** "Taking off in 3" during the countdown (whole seconds, rounded up), else null. */
@@ -334,6 +382,17 @@ export function autoResultView(m: MissionStatus): AutoResultView | null {
   if (m.automatic !== true) return null;
   if (m.state === "done") {
     if (m.last_landing !== "sent") return { tone: "warn", text: doneMessage(m.last_landing) };
+    const arrival = m.last_arrival;
+    if (arrival) {
+      const parts: string[] = [];
+      const d = metres2(arrival.distance_m);
+      if (d !== null) parts.push(`about ${d} m from the sign`);
+      const lat = lateralText(arrival.lateral_offset_m);
+      if (lat !== null) parts.push(lat);
+      const where = parts.length ? `At the station: ${parts.join(", ")}.` : "At the station.";
+      const notAligned = arrival.aligned === false ? " It could not line up exactly." : "";
+      return { tone: "pass", text: `${where} The land command was sent: check that it has landed.${notAligned}` };
+    }
     const a = formatMetres(m.arrive_distance_m);
     return {
       tone: "pass",

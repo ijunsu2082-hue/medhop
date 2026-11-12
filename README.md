@@ -52,12 +52,21 @@ drone; no real-drone flight with MedHop has been done yet at the time of writing
   it sends the land command only on current camera evidence that the drone is still flying (the sign
   grew since first seen, is in view now and is not rising in the picture); otherwise the page warns
   that the drone may still be in the air. Tested in the simulator only.
-- Where it lands: a frame only counts toward arrival when the sign is at least the arrive width (about
-  0.8 m away with the defaults), near the middle of the picture and seen from the front (at most about
-  37 degrees off), three frames in a row, after the sign has grown since it was first seen. At that
-  distance it flies no further forward; if it cannot line up within 2.5 s it stops ("not_lined_up")
-  instead of landing beside the station. Seeing the sign from far away only starts the approach: beyond
-  about 5 m the 18 cm sign is too small to be detected, and signs with any other ArUco number are ignored.
+- Where it lands: when the sign is at least the arrive width (about 0.8 m away with the defaults) on
+  three frames in a row, after it has grown since it was first seen, the run starts a final line-up.
+  From the sign's four corners it works out (classical camera geometry, `vision/pose.py`) how many
+  centimetres the drone is left or right of the sign's centre line and how far from the wall. It slides
+  sideways with roll, holds the distance with pitch and keeps the sign centred with yaw, and only lands
+  once it has been within 4 cm of the centre line, within 8 cm of the landing distance and nearly still
+  for 1 s. Through the 1.2 s settle and the landing it keeps holding that spot sideways with roll.
+  Not lined up after 15 s: it lands anyway if within 12 cm (the arrival says "could not line up
+  exactly"), otherwise it stops ("not_lined_up"). It also gives up if it gets 90 cm off the line or
+  25 cm closer to the wall than the landing distance. In the simulator (30 automatic runs, sideways drift
+  0 to 0.12 m/s, starts up to 60 cm off the line) every run landed within 6 cm of the centre line and
+  0.73 to 0.88 m from the wall. Seeing the sign from far away only starts the approach: beyond about
+  5 m the 18 cm sign is too small to be detected, and signs with any other ArUco number are ignored.
+  On the real drone the centimetres are estimates: the camera's field of view is unmeasured, which
+  scales the distances (the centre line itself does not depend on it).
 - Hover test (measures the peak sideways excursion while hands-off) and arrival calibration.
 - Drift assist (off by default): a small, bounded roll command during the approach that counters
   sideways drift seen by the camera, and switches itself off if it makes things worse. It was added

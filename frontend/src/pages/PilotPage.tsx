@@ -24,7 +24,7 @@ import {
   type PendingCommand,
 } from "../logic/pilot";
 
-const RUN_OR_HOVER = new Set(["countdown", "taking_off", "searching", "approaching", "arrived", "landing", "hover_test"]);
+const RUN_OR_HOVER = new Set(["countdown", "taking_off", "searching", "approaching", "aligning", "arrived", "landing", "hover_test"]);
 const NOT_CONNECTED = "Backend not reachable: controls are not connected.";
 
 export function PilotPage() {

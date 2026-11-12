@@ -36,6 +36,8 @@ class MarkerObs:
     corners: Tuple[Tuple[float, float], ...]  # pixel coordinates: TL, TR, BR, BL
     ts: float = 0.0
     height: float = 0.0
+    frame_w: int = 640      # size of the frame the corners are in, pixels
+    frame_h: int = 360
 
     @property
     def size(self) -> float:
@@ -123,6 +125,8 @@ class MarkerDetector:
                 corners=tuple((float(x), float(y)) for x, y in pts),
                 ts=ts,
                 height=0.5 * (left + right) / width,
+                frame_w=int(width),
+                frame_h=int(height),
             )
             if obs.width < self.MIN_WIDTH:
                 continue

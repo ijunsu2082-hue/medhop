@@ -67,6 +67,7 @@ export type MissionState =
   | "taking_off"
   | "searching"
   | "approaching"
+  | "aligning"
   | "arrived"
   | "landing"
   | "done"
@@ -147,6 +148,32 @@ export interface MissionStatus {
   needs_pilot?: boolean;
   /** the pilot marked the drone ready on its start spot; scheduled automatic flights need it */
   ready_for_dose?: boolean;
+  /** while "aligning": how far the drone is from the sign's centre line; null or missing otherwise */
+  alignment?: MissionAlignment | null;
+  /** the latest run that arrived: where it ended up; null before one arrives, missing from an older backend */
+  last_arrival?: MissionLastArrival | null;
+}
+
+/** Live line-up numbers while the mission is "aligning". Every field may be missing from a partial backend. */
+export interface MissionAlignment {
+  /** ESTIMATED metres from the sign's centre line; + = the drone is right of it, as seen facing the sign */
+  lateral_m?: number | null;
+  /** ESTIMATED metres from the sign */
+  distance_m?: number | null;
+  target_distance_m?: number;
+  tolerance_m?: number;
+  /** seconds it has held inside the tolerance so far */
+  aligned_for_s?: number;
+  /** seconds it has to hold inside the tolerance before landing */
+  need_s?: number;
+}
+
+/** Where the latest run that arrived ended up. */
+export interface MissionLastArrival {
+  /** ESTIMATED metres from the sign's centre line; + = right of it, as seen facing the sign */
+  lateral_offset_m?: number | null;
+  distance_m?: number | null;
+  aligned?: boolean;
 }
 
 export interface HoverTestResult {

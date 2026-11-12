@@ -24,7 +24,8 @@ PERSON_KEYS = {"enabled", "detected", "count", "age_s"}
 MISSION_KEYS = {"state", "reason", "run_id", "dose_id", "elapsed_s", "command", "arrive_width",
                 "land_on_arrival", "drift_assist", "can_start", "blockers", "last_landing",
                 "automatic", "auto_fly", "auto_blockers", "can_start_auto", "countdown_remaining_s",
-                "distance_m", "arrive_distance_m", "flight_confirmed", "needs_pilot", "ready_for_dose"}
+                "distance_m", "arrive_distance_m", "flight_confirmed", "needs_pilot", "ready_for_dose",
+                "alignment", "last_arrival"}
 COMMAND_KEYS = {"yaw", "pitch"}
 DRIFT_ASSIST_KEYS = {"enabled", "active", "roll", "disabled_reason", "suggested_trim_roll"}
 HH_MM = r"^([01]\d|2[0-3]):[0-5]\d$"

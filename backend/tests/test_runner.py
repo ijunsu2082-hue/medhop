@@ -6,7 +6,7 @@ import unittest
 from medhop.config import Settings
 from medhop.care.store import CareStore
 from medhop.drone.base import Telemetry
-from medhop.mission.runner import ABORT_REASONS, MissionRunner, apparent_width
+from medhop.mission.runner import ABORT_REASONS, MissionRunner, RunnerConfig, apparent_width
 from medhop.mixer import ControlMixer
 from medhop.vision.marker import MarkerObs, Observation
 from medhop.vision.person import PersonStatus
@@ -42,7 +42,10 @@ class RunnerTestCase(unittest.TestCase):
         shutil.rmtree(self.dir, ignore_errors=True)
 
     def make_runner(self):
+        # Synthetic detections carry placeholder corners, so the camera-geometry line-up is off here
+        # (tests/test_alignment.py covers it with real rendered frames).
         return MissionRunner(self.link, self.mixer, self.store, self.settings, clock=self.clock,
+                             config=RunnerConfig(align_enabled=False),
                              wall_clock=lambda: 1_794_000_000.0 + self.clock.t,
                              person_status=lambda: self.person,
                              pilot_connected=lambda: self.pilot_window)

@@ -2,19 +2,20 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { api, blockersFrom, errorText } from "../../api/client";
 import type { MissionState, Status } from "../../api/types";
-import { doneMessage } from "../../logic/pilot";
+import { alignmentLine, doneMessage } from "../../logic/pilot";
 import { abortText, blockerText, missionStateText } from "../../text/wording";
 import { IconCheck, IconCross, IconWarn } from "../Icons";
 import { DriftAssistControl } from "./DriftAssist";
 import { HoldButton, type Hold } from "./HoldButton";
 import { IconChevron } from "./PilotIcons";
 
-const RUN_ACTIVE = new Set(["countdown", "taking_off", "searching", "approaching", "arrived", "landing"]);
+const RUN_ACTIVE = new Set(["countdown", "taking_off", "searching", "approaching", "aligning", "arrived", "landing"]);
 
 // The live track while a run is active. "Done" is shown as the outcome card once the run ends.
 const TRACK: { state: MissionState; label: string }[] = [
   { state: "searching", label: "Searching" },
   { state: "approaching", label: "Approaching" },
+  { state: "aligning", label: "Lining up" },
   { state: "arrived", label: "Arrived" },
   { state: "landing", label: "Landing" },
   { state: "done", label: "Done" },
@@ -126,6 +127,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
   const current = active || confirmed ? 3 : takeoffAcked ? 2 : 1;
   const liveLine = takeoffBlocked ?? takeoffNote?.text ?? "";
   const trackIndex = TRACK.findIndex((t) => t.state === m.state);
+  const alignLine = m.state === "aligning" ? alignmentLine(m.alignment) : null;
 
   const step = (n: number, title: string, body: ReactNode) => (
     <li className={`run-step${current === n ? " run-step-current" : ""}`} aria-current={current === n ? "step" : undefined}>
@@ -210,6 +212,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                 </ol>
                 <div className="run-state" aria-live="polite" aria-atomic="true">
                   <strong>{missionStateText(m.state)}</strong>
+                  {alignLine && <span>{alignLine}</span>}
                   <span className="mono">Elapsed {m.elapsed_s.toFixed(1)} s</span>
                   <span className="mono">
                     Command yaw {m.command.yaw.toFixed(2)}, pitch {m.command.pitch.toFixed(2)}

@@ -32,13 +32,14 @@ def make_harness(seed=0, drift=0.08, distance=2.5, heading=25.0, airborne=True, 
 
 
 def run_station(seed, drift, trim_roll=0.0, distance=2.5, heading=None, limit_s=70.0, assist=False,
-                land=True, **sim):
+                land=True, runner_config=None, **sim):
     """One full station run. Heading starts 25 degrees off, alternating side with the seed.
 
     `land` switches "land on arrival" on explicitly (it is off by default since SPEC 10.2), so these
     runs exercise the settle and the one landing toggle unless a test says otherwise."""
     heading = (25.0 if seed % 2 == 0 else -25.0) if heading is None else heading
-    harness = make_harness(seed=seed, drift=drift, distance=distance, heading=heading, **sim)
+    harness = make_harness(seed=seed, drift=drift, distance=distance, heading=heading,
+                           runner_config=runner_config, **sim)
     try:
         harness.runner.set_land_on_arrival(land)
         if trim_roll:
@@ -89,23 +90,17 @@ class StationRunTests(unittest.TestCase):
         """2.5 m away, 25 degrees off, 0.08 m/s sideways drift, 0.45 s latency."""
         results = [run_station(seed, drift=0.08) for seed in SEEDS]
         done = [r for r in results if r["state"] == "done"]
-        self.assertGreaterEqual(len(done), 8, [(r["seed"], r["reason"]) for r in results])
-        for r in results:
-            if r["state"] != "done":
-                # Drifted beside the station: it must stop without landing there as "arrived".
-                with self.subTest(seed=r["seed"], stopped=True):
-                    self.assertIn(r["reason"], ("off_axis", "not_lined_up"))
-                    self.assertEqual(r["toggles"], 0, "a manual run never toggles on an abort")
-                    self.assertEqual(r["events"], ["run_started", "run_aborted"])
+        self.assertEqual(len(done), 10, [(r["seed"], r["reason"]) for r in results])
         for r in done:
             with self.subTest(seed=r["seed"]):
                 self.assertEqual(r["toggles"], 1, "exactly one toggle on a successful run")
                 self.assertEqual(r["events"], ["run_started", "arrived_at_station"])
-                self.assertGreater(r["wall_distance_m"], 0.45)
-                self.assertLess(r["wall_distance_m"], 0.85)
-                self.assertGreater(r["min_wall_distance_m"], 0.45)
-                self.assertLess(abs(r["lateral_offset_m"]), 0.95)
-                self.assertLess(r["duration_s"], 30.0)
+                self.assertGreater(r["wall_distance_m"], 0.60)
+                self.assertLess(r["wall_distance_m"], 0.90)
+                self.assertGreater(r["min_wall_distance_m"], 0.55)
+                # The final line-up: before it, these seeds ended 0.48 to 0.75 m beside the sign.
+                self.assertLess(abs(r["lateral_offset_m"]), 0.08, "landed on the sign's centre line")
+                self.assertLess(r["duration_s"], 45.0)      # includes the final line-up
                 self.assertLessEqual(r["yaw_reversals"], 3, "the yaw loop must not oscillate")
                 self.assertEqual(r["last_sent"], NEUTRAL)
 
@@ -153,7 +148,8 @@ class DriftAssistSimTests(unittest.TestCase):
     """Drift assist in the closed loop: noisy rendered camera, 0.45 s latency, 25 degrees off at the start."""
 
     def test_h_off_sends_no_roll_at_all(self):
-        r = run_station(0, drift=0.08)
+        """The switch alone: without the final line-up (which uses roll by design) nothing sends roll."""
+        r = run_station(0, drift=0.08, runner_config=RunnerConfig(align_enabled=False))
         self.assertEqual(r["max_roll_sent"], 0.0)
         self.assertEqual(r["assist"], {"enabled": False, "active": False, "roll": 0.0, "disabled_reason": None,
                                        "suggested_trim_roll": None})
@@ -218,6 +214,20 @@ class DriftAssistSimTests(unittest.TestCase):
                 self.assertIn(r["state"], ("done", "aborted"))
                 if r["state"] == "aborted":
                     self.assertEqual(r["toggles"], 0, "an abort never sends the toggle")
+                self.assertEqual(r["last_sent"], NEUTRAL)
+
+
+class LineUpTests(unittest.TestCase):
+    def test_reversed_roll_without_the_assist_stops_safely(self):
+        """A drone whose roll works the other way round, with nothing to have noticed it: the line-up
+        pushes it off the centre line, gives up (not_lined_up), never toggles and keeps off the wall."""
+        for seed in (0, 1):
+            r = run_station(seed, drift=0.08, lateral_gain=-1.0)
+            with self.subTest(seed=seed):
+                self.assertEqual((r["state"], r["reason"]), ("aborted", "not_lined_up"))
+                self.assertEqual(r["toggles"], 0)
+                self.assertGreater(r["min_wall_distance_m"], 0.40)
+                self.assertLessEqual(r["max_roll_sent"], 0.15 + 1e-9)
                 self.assertEqual(r["last_sent"], NEUTRAL)
 
 

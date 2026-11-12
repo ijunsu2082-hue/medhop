@@ -330,7 +330,9 @@ class AutomaticClosedLoopTests(unittest.TestCase):
                     self.assertFalse(pose["airborne"])
                     self.assertGreater(pose["distance_m"], 0.5)
                     self.assertLess(pose["distance_m"], 0.95)
-                    self.assertLess(abs(pose["x_m"]), 0.4, "in front of the sign, not beside it")
+                    self.assertLess(abs(pose["x_m"]), 0.08, "on the sign's centre line, not beside it")
+                    arrival = harness.runner.snapshot()["last_arrival"]
+                    self.assertIs(arrival["aligned"], True)
                 finally:
                     harness.close()
 
