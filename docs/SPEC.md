@@ -653,6 +653,10 @@ States `clear`, `slow`, `hold`, `blocked`.
 - Abort reasons add `path_blocked` and `obstacle_in_view`; start blockers add `obstacle_in_view`.
 
 ### 11.7 Measured in the simulator
+(The README's results table adds an empty-corridor row from the same test file with avoidance on: that row
+starts 2.5 m from the sign, as `tests/test_avoid_sim.py` does for the `empty` corridor, so its times are
+shorter than the 4.2 m baseline row below, which has avoidance off.)
+
 Automatic runs from the ground in the drone-like camera profile, start 4.2 m from the sign, sideways
 drift +-0.08 m/s and a 5 degree heading error alternating with the seed (`tests/test_avoid_sim.py` with
 `MEDHOP_LONG_TESTS=1`; the default suite runs the first 3 seeds). Clearance is the smallest horizontal

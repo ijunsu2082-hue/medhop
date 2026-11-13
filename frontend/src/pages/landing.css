@@ -475,3 +475,14 @@
     margin-left: auto;
   }
 }
+
+/* The narrowest screens (and a wide one zoomed to 400%): the button goes under the name instead of off the edge. */
+@media (max-width: 359px) {
+  .landing .masthead-inner {
+    flex-wrap: wrap;
+  }
+
+  .landing .nav {
+    margin-left: 0;
+  }
+}

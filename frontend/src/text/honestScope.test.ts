@@ -124,6 +124,9 @@ describe("the landing page", () => {
     // No simulator figure is repeated under the real drone's heading.
     expect(RESULTS.real.join(" ")).not.toMatch(/\d+ of \d+/);
     for (const figure of HOSPITAL.figures) expect(figure.value).toMatch(/^\d/);
+    // The boxes in the simulator are the simulator's own: the page must not read as if a detector found them.
+    expect(HOSPITAL.points[0]?.body).toMatch(/perfect detector, which no real one is/);
+    expect(HOSPITAL.lead).toMatch(/simulator only/);
   });
 
   it("says what waiting for people cannot do", () => {

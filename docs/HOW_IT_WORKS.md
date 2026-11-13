@@ -346,7 +346,7 @@ been clear for 1 s. After 25 s blocked in all, the runner ends the run with `pat
 automatic run lands where it is. A run is refused before takeoff when something stands in the lane
 (`obstacle_in_view`). The Pilot page's switch is "Wait for people and obstacles" (setting `avoid`, `hold`
 or `off`; `MEDHOP_AVOID`): `hold` by default in the simulator, `off` by default on the real drone. With
-it off, a person in view still stops the run (`person_in_view`), as before.
+it off, a person the optional person check sees still stops the run (`person_in_view`), as before.
 
 What it sees: in the simulator, the simulated people and objects of `drone/sim_actors.py` (the Pilot
 page's "Corridor" list: "Empty corridor", "A person walks across", "A person stands in the way", "A

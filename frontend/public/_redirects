@@ -1,0 +1,3 @@
+# Every path is the one-page app: /pilot, /care and /caregiver must load when opened directly or reloaded.
+# netlify.toml says the same for builds Netlify runs; this file covers a folder uploaded by hand.
+/*    /index.html   200

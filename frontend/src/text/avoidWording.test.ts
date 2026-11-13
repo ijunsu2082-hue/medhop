@@ -88,7 +88,7 @@ describe("the switch", () => {
       "It slows and waits when something is in its way, and stops the run if the way stays blocked. Tested in the simulator only.",
     );
     expect(AVOID_HINT_REAL).toBe(
-      "On this drone only people are detected, and only while the optional person check is running. With this off, a person in view stops the run.",
+      "On this drone only people are detected, and only while the optional person check is running. With this off, a person that check sees stops the run.",
     );
     expect(AVOID_HINT_PERSON_CHECK_OFF).toBe("The person check is off now.");
   });

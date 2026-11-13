@@ -7,7 +7,7 @@ export const HERO = {
   lead: "A student prototype. The simulator below runs in your browser: nothing to install, and no real drone moves. Choose what is in the corridor and run it.",
   /** The build that talks to the Python backend on this computer shows no in-page simulator. */
   leadLocal:
-    "A student prototype. This copy of the site is connected to the MedHop backend on this computer, so there is no simulator on this page: the drone, real or simulated, is flown from the Pilot page.",
+    "A student prototype. This copy of the site talks to the MedHop backend on this computer, so there is no simulator on this page: the drone, real or simulated, is flown from the Pilot page.",
   run: "Run the demo",
   runAgain: "Run it again",
   stop: "Stop",
@@ -17,7 +17,7 @@ export const HERO = {
 export const DEMO = {
   cameraLabel: "The simulated drone's camera view of the room and the station sign",
   cameraCaption:
-    "The drone's camera, as the control loop sees it: 15 frames a second, about half a second late, like the real one.",
+    "What the simulated drone's camera faces, drawn 15 times a second and about half a second late, like the real camera's picture.",
   planCaption: "From above. The dashed circle is where it lands.",
   honest:
     "On the real drone the sign is found in the camera picture with OpenCV. In this browser simulator its position comes from the simulator's own geometry, with noise and dropped frames added. The flight logic that uses it is a TypeScript port of the Python that flies the real drone, checked against it step by step.",
@@ -33,6 +33,8 @@ export const DEMO = {
   caregiverIdle: "No dose yet.",
   caregiverNote: "Acknowledged is the person's own report. It does not confirm that medicine was taken.",
   linkWait: "Connecting to the simulator.",
+  recovering: "The simulated drone was still in the air. Landing it before the next run.",
+  settling: "The drone has just landed. Ready again in a few seconds.",
 } as const;
 
 export interface LoopStep {
@@ -57,11 +59,11 @@ export const LOOP: readonly LoopStep[] = [
 
 /** The hospital scenario: what the drone does about people and objects in its way. Figures are simulator results. */
 export const HOSPITAL = {
-  lead: "The same hop could take a dose from a nurses' station to a station by a patient's bed. Corridors have people in them, so the drone now looks for them and waits.",
+  lead: "The same hop could take a dose from a nurses' station to a station by a patient's bed. Corridors have people in them, so the flight logic now waits for whatever is in its way. So far this works in the simulator only.",
   points: [
     {
-      title: "It sees what is ahead",
-      body: "Each camera frame gives a box around every person or object in view. The drone judges how far away each one is from where it meets the floor in the picture.",
+      title: "It judges how far away things are",
+      body: "In the simulator every camera frame comes with a box around each simulated person or object: a perfect detector, which no real one is. The flight logic judges how far away each one is from where its box meets the floor in the picture.",
     },
     {
       title: "It slows, then waits",
@@ -76,16 +78,16 @@ export const HOSPITAL = {
       body: "If something is already standing in its lane, the run is refused before the motors start.",
     },
   ],
-  figuresNote: "In the simulator, 20 runs of each kind:",
+  figuresNote: "In the Python simulator, 20 runs of each kind of corridor:",
   figures: [
     { value: "20 of 20", label: "reached the station after waiting for a person to cross" },
-    { value: "20 of 20", label: "landed and reported when the corridor stayed blocked" },
+    { value: "40 of 40", label: "landed and reported when one person or three stayed in the way" },
     { value: "1.1 m", label: "the closest the drone came to anyone" },
   ],
   cannotTitle: "What it cannot do",
   cannot: [
     "It cannot go around an obstacle. Its one small forward camera cannot judge distance to anything nearer than about 2.5 m, so stepping around a trolley was built, tested and removed: it reached the station in 1 of 20 simulated runs.",
-    "On the real drone this is switched off unless the pilot turns it on. Only people can be detected there, and only with an optional detector running. With it off, a person in view stops the run.",
+    "On the real drone this is switched off unless the pilot turns it on. Only people can be detected there, and only with an optional detector running: with waiting off, a person that detector sees stops the run, and without the detector nothing on the drone notices people.",
     "All of it is tested in the simulator only. It is not a safety system, and the real drone has never been flown near people and must not be.",
   ],
 } as const;
@@ -97,14 +99,14 @@ export interface Figure {
 
 export const HOP_FIGURES: readonly Figure[] = [
   { value: "0.45 m", label: "where it lands, measured from the sign" },
-  { value: "4 cm", label: "how close to the sign's centre line it must be" },
-  { value: "1 s", label: "how long it must hold that before landing" },
-  { value: "45 s", label: "limit for the whole run, after which it stops" },
+  { value: "4 cm", label: "how close to the sign's centre line it tries to be before landing" },
+  { value: "1 s", label: "how long it holds that before landing" },
+  { value: "45 s", label: "limit for the flight, not counting time spent waiting, after which it stops" },
 ];
 
 export const HOP_POINTS: readonly string[] = [
   "The sign is an ArUco marker, 180 mm square, printed on a sheet of A4. Finding it is classical computer vision, not machine learning.",
-  "The pilot always wins. Any touch of the controls hands the drone back, and the space bar is an emergency stop that cuts the motors.",
+  "The pilot always wins. Any touch of the controls hands the drone back, and the space bar sends the emergency stop, a command to cut the motors.",
   "The camera picture arrives about half a second after each command, so the steering allows for turns it has ordered but cannot see yet.",
   "If the sign drops out of view for a moment, the drone coasts on its last course for up to half a second instead of stopping.",
 ];

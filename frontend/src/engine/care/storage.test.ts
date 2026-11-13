@@ -69,6 +69,22 @@ describe("persistence through a KeyValueStorage", () => {
     expect(storage.keys().every((key) => key.startsWith("medhop.v1."))).toBe(true);
   });
 
+  it("two tabs on one storage never hand out the same dose id", () => {
+    // Each tab is a store of its own, loaded before the other one wrote anything.
+    const storage = new MemoryStorage();
+    const tabA = new CareStore(storage, options());
+    const tabB = new CareStore(storage, options());
+    const fromA = tabA.addDose("09:30", "Demo dose", "");
+    tabA.addEvent("arrived_at_station", { doseId: fromA.id, ts: NOW - 30, detail: { mode: "sim" } });
+    const fromB = tabB.addDose("09:31", "Demo dose", "");
+    expect(fromB.id).not.toBe(fromA.id);
+    // ... also after the other tab's dose is gone from the schedule: its events are still in the log.
+    tabA.deleteDose(fromA.id);
+    const laterB = tabB.addDose("09:32", "Demo dose", "");
+    const laterA = tabA.addDose("09:33", "Demo dose", "");
+    expect(new Set([fromA.id, fromB.id, laterB.id, laterA.id]).size).toBe(4);
+  });
+
   it("stores the formats of the Python files", () => {
     const storage = new MemoryStorage();
     const store = new CareStore(storage, options());

@@ -70,7 +70,7 @@ export const AVOID_HINT_STEPS =
   "It slows and waits when something is in its way, and stops the run if the way stays blocked. Tested in the simulator only.";
 
 export const AVOID_HINT_REAL =
-  "On this drone only people are detected, and only while the optional person check is running. With this off, a person in view stops the run.";
+  "On this drone only people are detected, and only while the optional person check is running. With this off, a person that check sees stops the run.";
 
 export const AVOID_HINT_PERSON_CHECK_OFF = "The person check is off now.";
 

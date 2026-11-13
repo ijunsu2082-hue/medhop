@@ -182,7 +182,7 @@ What it does (from the code, tested in the simulator):
 - A run is refused before takeoff when something stands in the lane (`obstacle_in_view`), or when a
   person is in view (`person_in_view`).
 - The setting is `hold` or `off`. It is `hold` by default in the simulator and **`off` by default on the
-  real drone**. With it off, a person in view still stops the run (`person_in_view`).
+  real drone**. With it off, a person the optional person check sees still stops the run (`person_in_view`); without that check running, nothing on the drone notices people.
 
 What it does NOT do:
 

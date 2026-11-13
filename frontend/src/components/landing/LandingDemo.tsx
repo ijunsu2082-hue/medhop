@@ -10,6 +10,7 @@ import { useControlSocket } from "../../hooks/useControlSocket";
 import { useStatus } from "../../hooks/useStatus";
 import { arrivalLine } from "../../logic/care";
 import {
+  LAND_GRACE_MS,
   RUN_ACTIVE,
   demoDose,
   demoLine,
@@ -56,13 +57,15 @@ export function LandingDemo() {
   const [run, setRun] = useState<{ runId: string; doseId: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  /** Stop was pressed on this page, and the drone may still have to be landed. */
-  const [stopping, setStopping] = useState(false);
+  /** This page has sent the landing command and the drone is not down yet. */
+  const [landing, setLanding] = useState(false);
+  /** Stop was pressed on this page for the run that last ended. */
   const [stoppedHere, setStoppedHere] = useState(false);
   const [fast, setFast] = useState(false);
   const [sending, setSending] = useState(false);
   const landSentAt = useRef<number | null>(null);
   const groundedSince = useRef<number | null>(null);
+  const flyingSince = useRef<number | null>(null);
   const furthest = useRef<number | null>(null);
   const track = useRef<{ x: number; distance: number }[]>([]);
   const ids = useId();
@@ -89,37 +92,54 @@ export function LandingDemo() {
     }
   }, [status, running]);
 
-  // After Stop: land a drone that is still up (logic/demo.ts landAction says when the toggle may be sent).
+  // With no run in progress the drone belongs on the ground: after Stop, after a run that ended without landing,
+  // or when the visitor left this page mid-run and came back to a drone still hovering. logic/demo.ts landAction
+  // says when the landing toggle may be sent.
   const { lastServerMessage, send } = control;
   useEffect(() => {
-    if (!stopping || !status || status.mission.state !== "aborted") return;
+    if (!status) return;
+    const state = status.mission.state;
+    if (RUN_ACTIVE.has(state) || state === "hover_test") {
+      landSentAt.current = null;
+      groundedSince.current = null;
+      flyingSince.current = null;
+      setLanding(false);
+      return;
+    }
     const now = Date.now();
     const at = status.sim?.pose;
     const grounded = onGround(at);
+    const flying = at?.airborne === true;
     groundedSince.current = grounded ? (groundedSince.current ?? now) : null;
+    flyingSince.current = flying ? (flyingSince.current ?? now) : null;
     const action = landAction({
-      flying: at?.airborne === true,
+      flying,
       grounded,
       groundedFor: grounded ? now - groundedSince.current! : 0,
+      flyingFor: flying ? now - flyingSince.current! : 0,
+      graceMs: stoppedHere ? 0 : LAND_GRACE_MS,
       sentAt: landSentAt.current,
       reply: landReply(lastServerMessage),
       now,
     });
-    if (action === "landed") setStopping(false);
-    else if (action === "send" && send({ type: "takeoff_land" })) landSentAt.current = now;
-  }, [stopping, status, lastServerMessage, send]);
+    if (action === "landed") {
+      landSentAt.current = null;
+      setLanding(false);
+      return;
+    }
+    if (action === "send" && send({ type: "takeoff_land" })) landSentAt.current = now;
+    if (landSentAt.current !== null) setLanding(true);
+  }, [status, lastServerMessage, send, stoppedHere]);
 
   const start = async () => {
     if (!status) return;
     setBusy(true);
     setProblem(null);
     setStoppedHere(false);
-    setStopping(false);
     furthest.current = null;
     track.current = [];
-    landSentAt.current = null;
     try {
-      setRun(await startDemoRun(call, status.sim?.scenario ?? "empty", status.care.now_local, DEMO.doseLabel));
+      setRun(await startDemoRun(call, DEMO.doseLabel));
     } catch (e) {
       setRun(null);
       const blockers = blockersFrom(e);
@@ -131,15 +151,10 @@ export function LandingDemo() {
 
   const stop = async () => {
     setProblem(null);
-    landSentAt.current = null;
-    groundedSince.current = null;
     try {
       const answer = await call<{ state?: string }>("POST", "/api/mission/abort");
-      // A run that was already landing simply finishes: the landing command has been sent, and a second
-      // press of the same toggle would take off again.
-      const finished = answer.state === "done";
-      setStoppedHere(!finished);
-      setStopping(!finished);
+      // A run that was already landing simply finishes; it was not stopped.
+      setStoppedHere(answer.state !== "done");
     } catch (e) {
       setProblem(errorText(e));
     }
@@ -159,13 +174,22 @@ export function LandingDemo() {
   };
 
   const linkOpen = control.state === "open";
-  const canRun = status !== null && linkOpen && !busy && !stopping && !running && readyToRun(status);
+  const canRun = status !== null && linkOpen && !busy && !landing && !running && readyToRun(status);
   // No Stop once the landing command has gone out: the run is seconds from its end.
   const canStop = running && mission !== null && RUN_ACTIVE.has(mission.state) && mission.state !== "landing";
-  const line = status ? demoLine(status, phase, dose, stoppedHere ? (stopping ? "landing" : "landed") : "no") : null;
+  const up = !onGround(pose);
+  const told = status ? demoLine(status, phase, dose, stoppedHere ? (up ? "landing" : "landed") : "no") : null;
+  // A drone this page is bringing down without Stop having been pressed: say so, whatever the last run was.
+  const recovering = landing && !running && !stoppedHere;
+  // Nothing else to say, and Run is off only for the moment after a landing in which a takeoff is refused.
+  const settling = status !== null && told === null && !running && !landing && !busy && !readyToRun(status);
+  const note = recovering ? DEMO.recovering : settling ? DEMO.settling : null;
+  const line = note !== null ? { tone: "info" as const, text: note, announce: note } : told;
+  const shown = problem ?? line?.text ?? (linkOpen ? "" : DEMO.linkWait);
+  const announced = problem ?? line?.announce ?? (linkOpen ? "" : DEMO.linkWait);
   const steps = stepStates(DEMO.steps.length, phase, mission?.state ?? "idle", furthest.current);
   const arrival = dose ? arrivalLine(dose) : null;
-  const drawn = onGround(pose) ? track.current : [...track.current, { x: pose.x_m, distance: pose.distance_m }];
+  const drawn = up ? [...track.current, { x: pose.x_m, distance: pose.distance_m }] : track.current;
 
   return (
     <div className="demo" id="demo">
@@ -179,7 +203,7 @@ export function LandingDemo() {
             {phase === "idle" ? HERO.run : HERO.runAgain}
           </button>
         )}
-        {status && <CorridorSelect status={status} runActive={running || busy || stopping} id={`${ids}corridor`} />}
+        {status && <CorridorSelect status={status} runActive={running || busy || landing} id={`${ids}corridor`} />}
         {simulator && (
           <label className="check-field">
             <input
@@ -198,9 +222,14 @@ export function LandingDemo() {
         </Link>
       </div>
 
-      <p className={`demo-line state tone-${problem ? "warn" : (line?.tone ?? "info")}`} role="status">
+      {/* What is shown changes several times a second (a distance, the countdown). What is read out changes only
+          when something happens. */}
+      <p className={`demo-line state tone-${problem ? "warn" : (line?.tone ?? "info")}`}>
         {(problem ?? line) && <span className="dot" aria-hidden="true" />}
-        <span>{problem ?? line?.text ?? (linkOpen ? "" : DEMO.linkWait)}</span>
+        <span aria-hidden="true">{shown}</span>
+        <span className="sr-only" role="status">
+          {announced}
+        </span>
       </p>
 
       <div className="demo-grid">
@@ -215,6 +244,7 @@ export function LandingDemo() {
             {DEMO.steps.map((step, i) => (
               <li key={step} data-state={steps[i] === "todo" ? undefined : steps[i]} aria-current={steps[i] === "now" ? "step" : undefined}>
                 {step}
+                {steps[i] === "done" && <span className="sr-only">, done</span>}
               </li>
             ))}
           </ol>

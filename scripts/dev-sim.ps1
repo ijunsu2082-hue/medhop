@@ -77,6 +77,10 @@ if (Test-PortBusy $FrontendPort) { Fail "port $FrontendPort is already in use (a
 # ---------------------------------------------------------------- start
 $Backend = $null
 $Frontend = $null
+# The two processes are told what to be through environment variables. They are put back afterwards: left set in
+# this PowerShell window, VITE_BACKEND would decide every later "npm run dev" or build in it, whatever was asked.
+$SavedDrone = $env:MEDHOP_DRONE
+$SavedBackend = $env:VITE_BACKEND
 try {
     if (-not $Browser) {
         Write-Host "dev-sim: starting backend (simulator) on http://127.0.0.1:$BackendPort"
@@ -131,5 +135,7 @@ try {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
         }
     }
+    if ($null -eq $SavedDrone) { Remove-Item Env:MEDHOP_DRONE -ErrorAction SilentlyContinue } else { $env:MEDHOP_DRONE = $SavedDrone }
+    if ($null -eq $SavedBackend) { Remove-Item Env:VITE_BACKEND -ErrorAction SilentlyContinue } else { $env:VITE_BACKEND = $SavedBackend }
     Write-Host "dev-sim: stopped."
 }

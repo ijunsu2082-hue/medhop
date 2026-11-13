@@ -205,7 +205,9 @@ export class EngineCore {
     try {
       const now = this.nowLocal();
       const day = formatDate(now);
-      if (day !== this._seededDay) {
+      // Not while a run is in progress: reseeding replaces the schedule, and the run's dose with it. It waits
+      // for the first tick after the run.
+      if (day !== this._seededDay && !RUN_STATES.includes(this.runner.state)) {
         this._seededDay = day;
         reseedSchedule(this.store, now);
         markSeeded(this._demoStorage, now);

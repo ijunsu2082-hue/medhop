@@ -10,6 +10,7 @@ import { createTransport } from "../transport/browser";
 import {
   GROUND_SETTLE_MS,
   LAND_AGAIN_MS,
+  LAND_GRACE_MS,
   LAND_RETRY_MS,
   demoDose,
   demoLine,
@@ -56,7 +57,8 @@ describe("steps", () => {
 });
 
 describe("landing after Stop", () => {
-  const up = { flying: true, grounded: false, groundedFor: 0 };
+  // In steady flight after Stop: no waiting before the first press.
+  const up = { flying: true, grounded: false, groundedFor: 0, flyingFor: 0, graceMs: 0 };
 
   it("sends the toggle once, and again only after a refusal", () => {
     expect(landAction({ ...up, sentAt: null, reply: null, now: 0 })).toBe("send");
@@ -69,7 +71,7 @@ describe("landing after Stop", () => {
   });
 
   it("never sends it while the drone is climbing or coming down", () => {
-    const moving = { flying: false, grounded: false, groundedFor: 0 };
+    const moving = { flying: false, grounded: false, groundedFor: 0, flyingFor: 0, graceMs: 0 };
     expect(landAction({ ...moving, sentAt: null, reply: null, now: 0 })).toBe("wait");
     // accepted and coming down: never again, however long the descent takes
     expect(landAction({ ...moving, sentAt: 100, reply: { at: 101, ok: true }, now: 60_000 })).toBe("wait");
@@ -83,9 +85,18 @@ describe("landing after Stop", () => {
 
   it("is landed only after the drone has stayed on the ground a moment", () => {
     // Right after a takeoff press the drone has not left the ground yet.
-    expect(landAction({ flying: false, grounded: true, groundedFor: 0, sentAt: null, reply: null, now: 0 })).toBe("wait");
-    expect(landAction({ flying: false, grounded: true, groundedFor: GROUND_SETTLE_MS - 1, sentAt: null, reply: null, now: 0 })).toBe("wait");
-    expect(landAction({ flying: false, grounded: true, groundedFor: GROUND_SETTLE_MS, sentAt: null, reply: null, now: 0 })).toBe("landed");
+    const down = { flying: false, grounded: true, flyingFor: 0, graceMs: 0, sentAt: null, reply: null, now: 0 };
+    expect(landAction({ ...down, groundedFor: 0 })).toBe("wait");
+    expect(landAction({ ...down, groundedFor: GROUND_SETTLE_MS - 1 })).toBe("wait");
+    expect(landAction({ ...down, groundedFor: GROUND_SETTLE_MS })).toBe("landed");
+  });
+
+  it("without Stop, waits a moment before landing a drone it finds in the air", () => {
+    // A run that ends at the station sends its own landing command: that must show first.
+    const found = { ...up, graceMs: LAND_GRACE_MS, sentAt: null, reply: null, now: 0 };
+    expect(landAction({ ...found, flyingFor: 0 })).toBe("wait");
+    expect(landAction({ ...found, flyingFor: LAND_GRACE_MS - 1 })).toBe("wait");
+    expect(landAction({ ...found, flyingFor: LAND_GRACE_MS })).toBe("send");
   });
 
   it("counts a drone as up while it climbs or comes down", () => {
@@ -116,13 +127,15 @@ describe("the demo flow on the in-page backend", () => {
     expect(demoPhase(statusOf(engine), null, null)).toBe("idle");
     expect(demoLine(statusOf(engine), "idle", null)).toBeNull();
 
-    const run = await startDemoRun(call, "empty", statusOf(engine).care.now_local, DEMO.doseLabel);
+    const run = await startDemoRun(call, DEMO.doseLabel);
     let status = statusOf(engine);
     let dose = demoDose(status, run.doseId);
     expect(dose).toMatchObject({ label: DEMO.doseLabel, status: "due", arrived_at: null });
     expect(status.mission).toMatchObject({ state: "countdown", run_id: run.runId, dose_id: run.doseId, automatic: true });
     expect(demoPhase(status, run.runId, dose)).toBe("running");
     expect(demoLine(status, "running", dose)?.text).toMatch(/^Taking off in \d/);
+    // What is read out does not count the seconds.
+    expect(demoLine(status, "running", dose)?.announce).toBe("Counting down to takeoff");
 
     const seen = new Set<string>();
     const ended = engine.advanceUntil(() => {
@@ -137,10 +150,8 @@ describe("the demo flow on the in-page backend", () => {
     expect(status.mission.state).toBe("done");
     expect(dose?.status).toBe("arrived");
     expect(demoPhase(status, run.runId, dose)).toBe("arrived");
-    expect(demoLine(status, "arrived", dose)).toEqual({
-      tone: "pass",
-      text: `(simulator) The drone reached the station at ${dose!.arrived_at}.`,
-    });
+    const arrivedText = `(simulator) The drone reached the station at ${dose!.arrived_at}.`;
+    expect(demoLine(status, "arrived", dose)).toEqual({ tone: "pass", text: arrivedText, announce: arrivedText });
 
     await call("POST", `/api/doses/${run.doseId}/acknowledge`);
     status = statusOf(engine);
@@ -158,7 +169,7 @@ describe("the demo flow on the in-page backend", () => {
     expect(landed.distance_m).toBeLessThan(0.61);
 
     // Run it again: the drone is back on its start spot, and there is still one demo dose, a new one.
-    const again = await startDemoRun(call, "empty", statusOf(engine).care.now_local, DEMO.doseLabel);
+    const again = await startDemoRun(call, DEMO.doseLabel);
     status = statusOf(engine);
     expect(again.doseId).not.toBe(run.doseId);
     expect(again.runId).not.toBe(run.runId);
@@ -173,17 +184,24 @@ describe("the demo flow on the in-page backend", () => {
     const call = callOn(engine);
     const pilot = engine.connectPilot();
     engine.advance(1);
-    const run = await startDemoRun(call, "crossing", statusOf(engine).care.now_local, DEMO.doseLabel);
+    await call("POST", "/api/sim/scenario", { name: "crossing" });
+    const run = await startDemoRun(call, DEMO.doseLabel);
     const lines = new Set<string>();
+    const announced = new Set<string>();
     engine.advanceUntil(() => {
       const status = statusOf(engine);
       const line = demoLine(status, demoPhase(status, run.runId, demoDose(status, run.doseId)), null);
+      if (line) announced.add(line.announce);
       if (line?.tone === "warn") lines.add(line.text.replace(/[\d.]+ m ahead|closer than about 2.5 m/, "…"));
       return ["done", "aborted"].includes(status.mission.state);
     }, 120);
     const status = statusOf(engine);
     expect(status.mission.state).toBe("done");
     expect([...lines].some((text) => text.startsWith("Waiting: person"))).toBe(true);
+    // Read out once per change: no distances, no seconds, and only a handful of different sentences in a whole run.
+    expect(announced).toContain("Waiting: person in the way");
+    expect([...announced].filter((text) => /\d/.test(text))).toEqual([]);
+    expect(announced.size).toBeLessThanOrEqual(12);
     expect(status.mission.avoid?.held_s).toBeGreaterThanOrEqual(1);
     pilot!.close();
   }, 30_000);
@@ -194,7 +212,7 @@ describe("the demo flow on the in-page backend", () => {
     const pilot = engine.connectPilot();
     await call("POST", "/api/sim/scenario", { name: "cart" }); // the visitor picks the corridor first
     engine.advance(2);
-    const refusal = await startDemoRun(call, "cart", statusOf(engine).care.now_local, DEMO.doseLabel).catch((e: unknown) => e);
+    const refusal = await startDemoRun(call, DEMO.doseLabel).catch((e: unknown) => e);
     expect(refusal).toBeInstanceOf(ApiError);
     expect(blockersFrom(refusal)).toEqual(["obstacle_in_view"]);
     const status = statusOf(engine);
@@ -207,25 +225,29 @@ describe("the demo flow on the in-page backend", () => {
   it("is refused without the control link, and says so", async () => {
     const engine = engineFor();
     engine.advance(1);
-    const refusal = await startDemoRun(callOn(engine), "empty", statusOf(engine).care.now_local, DEMO.doseLabel).catch((e: unknown) => e);
+    const refusal = await startDemoRun(callOn(engine), DEMO.doseLabel).catch((e: unknown) => e);
     expect(blockersFrom(refusal)).toContain("no_pilot_link");
   });
 
   // What the page's effect does on each status: ask landAction, send the toggle when it says so.
-  function landFrom(engine: Engine, pilot: NonNullable<ReturnType<Engine["connectPilot"]>>) {
+  function landFrom(engine: Engine, pilot: NonNullable<ReturnType<Engine["connectPilot"]>>, graceMs = 0) {
     let sentAt: number | null = null;
     let reply: { at: number; ok: boolean } | null = null;
     let groundedSince: number | null = null;
+    let flyingSince: number | null = null;
     let sends = 0;
     const landed = engine.advanceUntil(() => {
       const now = engine.now * 1000;
       const pose = statusOf(engine).sim!.pose!;
       const grounded = onGround(pose);
       groundedSince = grounded ? (groundedSince ?? now) : null;
+      flyingSince = pose.airborne ? (flyingSince ?? now) : null;
       const action = landAction({
         flying: pose.airborne,
         grounded,
         groundedFor: grounded ? now - groundedSince! : 0,
+        flyingFor: pose.airborne ? now - flyingSince! : 0,
+        graceMs,
         sentAt,
         reply,
         now,
@@ -246,7 +268,7 @@ describe("the demo flow on the in-page backend", () => {
     const call = callOn(engine);
     const pilot = engine.connectPilot()!;
     engine.advance(1);
-    const run = await startDemoRun(call, "empty", statusOf(engine).care.now_local, DEMO.doseLabel);
+    const run = await startDemoRun(call, DEMO.doseLabel);
     expect(engine.advanceUntil(() => engine.status().mission.state === "approaching", 40)).toBe(true);
 
     const answer = await call<{ state: string }>("POST", "/api/mission/abort");
@@ -254,7 +276,7 @@ describe("the demo flow on the in-page backend", () => {
     let status = statusOf(engine);
     const dose = demoDose(status, run.doseId);
     expect(demoPhase(status, run.runId, dose)).toBe("stopped");
-    expect(demoLine(status, "stopped", dose, "landing")).toEqual({ tone: "info", text: "Stopped. The simulated drone is landing." });
+    expect(demoLine(status, "stopped", dose, "landing")).toMatchObject({ tone: "info", text: "Stopped. The simulated drone is landing." });
     expect(status.sim!.pose!.airborne).toBe(true);
 
     expect(landFrom(engine, pilot)).toEqual({ landed: true, sends: 1 });
@@ -271,7 +293,7 @@ describe("the demo flow on the in-page backend", () => {
     const call = callOn(engine);
     const pilot = engine.connectPilot()!;
     engine.advance(1);
-    await startDemoRun(call, "empty", statusOf(engine).care.now_local, DEMO.doseLabel);
+    await startDemoRun(call, DEMO.doseLabel);
     expect(engine.advanceUntil(() => engine.status().mission.state === "taking_off", 20)).toBe(true);
     engine.advance(0.3);
     await call("POST", "/api/mission/abort");
@@ -290,11 +312,58 @@ describe("the demo flow on the in-page backend", () => {
     const call = callOn(engine);
     const pilot = engine.connectPilot()!;
     engine.advance(1);
-    await startDemoRun(call, "empty", statusOf(engine).care.now_local, DEMO.doseLabel);
+    await startDemoRun(call, DEMO.doseLabel);
     engine.advance(2);
     expect(engine.status().mission.state).toBe("countdown");
     await call("POST", "/api/mission/abort");
     expect(landFrom(engine, pilot)).toEqual({ landed: true, sends: 0 });
+    pilot.close();
+  });
+
+  it("lands a drone left hovering when the visitor walked away mid-run, so Run works again", async () => {
+    for (const leaveAt of ["taking_off", "searching", "approaching"]) {
+      const engine = engineFor(4);
+      const call = callOn(engine);
+      const first = engine.connectPilot()!;
+      engine.advance(1);
+      await startDemoRun(call, DEMO.doseLabel);
+      expect(engine.advanceUntil(() => engine.status().mission.state === leaveAt, 40), leaveAt).toBe(true);
+      engine.advance(0.4);
+      first.close(); // the page is left: its control link closes and the run stops
+      engine.advance(6);
+      expect(engine.status().mission.state, leaveAt).toBe("aborted");
+
+      // Back on the page: a new link. Whatever state the drone was left in, it ends on the ground.
+      const second = engine.connectPilot()!;
+      const { landed } = landFrom(engine, second, LAND_GRACE_MS);
+      expect(landed, leaveAt).toBe(true);
+      expect(onGround(statusOf(engine).sim!.pose), leaveAt).toBe(true);
+      expect(engine.advanceUntil(() => readyToRun(statusOf(engine)), 20), leaveAt).toBe(true);
+      const again = await startDemoRun(call, DEMO.doseLabel);
+      expect(statusOf(engine).mission).toMatchObject({ state: "countdown", run_id: again.runId });
+      second.close();
+    }
+  }, 60_000);
+
+  it("leaves a run that lands by itself alone: no second press of the toggle", async () => {
+    const engine = engineFor(5);
+    const call = callOn(engine);
+    const pilot = engine.connectPilot()!;
+    engine.advance(1);
+    await startDemoRun(call, DEMO.doseLabel);
+    expect(engine.advanceUntil(() => engine.status().mission.state === "done", 90)).toBe(true);
+    expect(landFrom(engine, pilot, LAND_GRACE_MS)).toEqual({ landed: true, sends: 0 });
+    pilot.close();
+  }, 30_000);
+
+  it("uses the corridor the backend has now, not one from an older status", async () => {
+    const engine = engineFor();
+    const call = callOn(engine);
+    const pilot = engine.connectPilot()!;
+    engine.advance(1);
+    await call("POST", "/api/sim/scenario", { name: "standing" });
+    await startDemoRun(call, DEMO.doseLabel);
+    expect(statusOf(engine).sim!.scenario).toBe("standing");
     pilot.close();
   });
 });

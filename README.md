@@ -94,9 +94,9 @@ what the real drone has done so far is under "Results"):**
   makes it back off a little. It carries on once the lane has been clear for 1 s. After 25 s blocked in
   all, it ends the run as `path_blocked` and lands where it is. A run is refused before takeoff when
   something stands in the lane (`obstacle_in_view`). The setting is `hold` or `off` (`MEDHOP_AVOID`):
-  `hold` by default in the simulator, `off` by default on the real drone. With it off, a person in view
-  still stops the run (`person_in_view`). On the real drone only people can be detected, and only with
-  the optional person check running. Going around an obstacle was built, reached the station in 1 of 20
+  `hold` by default in the simulator, `off` by default on the real drone. With it off, a person the
+  optional person check sees still stops the run (`person_in_view`). On the real drone only people can
+  be detected, and only with that check running; without it, nothing on the drone notices people. Going around an obstacle was built, reached the station in 1 of 20
   simulated runs, and was removed (SPEC 11.8). Tested in the simulator only. It is not a safety system,
   and the real drone has never been flown near people and must not be.
 
@@ -458,7 +458,7 @@ $env:MEDHOP_LONG_TESTS = "1"; ..\.venv\Scripts\python.exe -m unittest tests.test
 
 Without `MEDHOP_LONG_TESTS=1` the test runs only the first 3 seeds. With a trolley standing in the lane,
 every start is refused before takeoff (`obstacle_in_view`). In Chrome, the start page's demo of an
-empty-corridor run in the browser simulator takes about 37 s from the press to landed at normal speed.
+empty-corridor run in the browser simulator takes about 35 s from the press to landed at normal speed (33 to 38 s over four runs).
 
 Known limits: the simulator reports every simulated person exactly, which no real detector does, and
 none of this has been tried on the real drone. An earlier simulator table of the drift assist (Revision 3

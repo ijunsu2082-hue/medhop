@@ -330,9 +330,45 @@ export class CareStore {
     this.writeText("schedule", STORAGE_KEYS.schedule, text);
   }
 
-  /** Ids are never reused, so a new dose can not inherit the events of a deleted one. */
+  /**
+   * The highest dose number the persistent storage knows, in the schedule, its next_id and the event log. Another
+   * tab of the same site shares that storage but not this store's memory, and may have made doses since this one
+   * loaded. 0 when there is none, or the data lives in memory only.
+   */
+  private storedHighest(): bigint {
+    let highest = 0n;
+    const raise = (digits: string | undefined, less = 0n) => {
+      if (!digits) return;
+      const n = BigInt(digits) - less;
+      if (n > highest) highest = n;
+    };
+    for (const [kind, key] of [
+      ["schedule", STORAGE_KEYS.schedule],
+      ["events", STORAGE_KEYS.events],
+    ] as const) {
+      if (this.sessionOnly[kind]) continue;
+      let text: string | null;
+      try {
+        text = this.storageFor(kind).getItem(key);
+      } catch {
+        text = null;
+      }
+      if (!text) continue;
+      for (const found of text.matchAll(/"(?:id|dose_id)"\s*:\s*"d([0-9]+)"/g)) raise(found[1]);
+      raise(/"next_id"\s*:\s*([0-9]+)/.exec(text)?.[1], 1n);
+    }
+    return highest;
+  }
+
+  /**
+   * Ids are never reused, so a new dose can not inherit the events of a deleted one. That holds across tabs too:
+   * what another tab has stored counts (storedHighest), or two tabs would both make "d4" and each one's arrival
+   * and acknowledgement would show on the other's dose.
+   */
   private nextId(): string {
     let highest = this.nextNumber - 1n;
+    const stored = this.storedHighest();
+    if (stored > highest) highest = stored;
     for (const dose of this.doses) {
       const match = DOSE_ID_RE.exec(dose.id);
       if (match) {
