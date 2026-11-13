@@ -5,7 +5,7 @@
 import type { ModeChange } from "../logic/modeGuard";
 import type { VideoHealth } from "../logic/videoHealth";
 import type { StreamState } from "../logic/streamController";
-import type { BackendKind } from "../transport/kind";
+import { BACKEND_KIND, type BackendKind } from "../transport/kind";
 
 export type PilotMode = "sim" | "real";
 export type FrameSize = { width: number; height: number };
@@ -83,10 +83,11 @@ export function videoRailValue(
   health: VideoHealth,
   streamState: StreamState | null | undefined,
   frameAgeS: number | null | undefined,
+  backend: BackendKind = BACKEND_KIND,
 ): string {
   switch (health) {
     case "unreachable":
-      return "Backend not reachable";
+      return backend === "browser" ? "Simulator not answering" : "Backend not reachable";
     case "waiting":
       return "Waiting for status";
     case "no_video":

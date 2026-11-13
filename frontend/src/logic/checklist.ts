@@ -1,5 +1,6 @@
 import type { Obstacle, Status, Telemetry } from "../api/types";
 import { obstacleNoun } from "../text/avoidWording";
+import { BACKEND_KIND, type BackendKind } from "../transport/kind";
 
 /** "info": shown without a pass/fail judgement (e.g. the battery check is off on the backend). */
 export type Verdict = "pass" | "warn" | "fail" | "info";
@@ -17,12 +18,21 @@ const f2 = (n: number) => n.toFixed(2);
 export const TELEMETRY_STALE_S = 3;
 
 export const BATTERY_CHECK_OFF_TEXT = "Battery check is off (the meaning of this number has not been verified on this drone)";
+/** A browser build: there is no drone to verify the number on; it comes from the simulator. */
+export const BATTERY_CHECK_OFF_BROWSER_TEXT = "Battery check is off (this number is simulated)";
+
+/**
+ * The person check analyses camera pictures: a browser build has neither, so the row says so instead of "Off".
+ * (The simulated people are known to the simulator and handled as they are with the Python simulator.)
+ */
+export const PERSON_CHECK_BROWSER_TEXT = "Not part of the browser simulator.";
 
 /**
  * The battery line: the raw byte and its age. "No recent reading" when older than 3 s (or of unknown age).
  * When the backend's battery check is off there is no pass/fail, only the number.
  */
-export function batteryLine(t: Telemetry | null): { verdict: Verdict; text: string } {
+export function batteryLine(t: Telemetry | null, kind: BackendKind = BACKEND_KIND): { verdict: Verdict; text: string } {
+  const offText = kind === "browser" ? BATTERY_CHECK_OFF_BROWSER_TEXT : BATTERY_CHECK_OFF_TEXT;
   if (!t || t.battery_raw === null) return { verdict: "warn", text: "No reading yet (raw, unverified units)" };
   const sim = t.simulated ? ", simulated" : "";
   const age = t.age_s !== null && Number.isFinite(t.age_s) ? `${t.age_s.toFixed(1)} s ago` : "age unknown";
@@ -32,17 +42,17 @@ export function batteryLine(t: Telemetry | null): { verdict: Verdict; text: stri
   if (stale) {
     return {
       verdict: checkOff ? "info" : "warn",
-      text: `No recent reading. Last: ${raw}${checkOff ? `. ${BATTERY_CHECK_OFF_TEXT}` : ""}`,
+      text: `No recent reading. Last: ${raw}${checkOff ? `. ${offText}` : ""}`,
     };
   }
-  if (checkOff) return { verdict: "info", text: `${raw}. ${BATTERY_CHECK_OFF_TEXT}` };
+  if (checkOff) return { verdict: "info", text: `${raw}. ${offText}` };
   return { verdict: t.battery_low ? "fail" : "pass", text: `${t.battery_low ? "Low: " : ""}${raw}` };
 }
 
 /**
- * The backend estimates obstacle distances for a camera at hover height. A camera sitting on the floor sees a base
- * just under the horizon, which reads as very far (SPEC 11.4 uses the same 8 m limit), so a longer estimate is
- * not shown as a distance.
+ * The backend estimates obstacle distances for a camera at hover height (in the simulator with the drone on the
+ * ground, for the camera's ground height). A base just under the horizon reads as very far (SPEC 11.4 uses the same
+ * 8 m limit), so a longer estimate is not shown as a distance.
  */
 export const PATH_DISTANCE_MAX_M = 8;
 
@@ -85,8 +95,8 @@ export function pathAheadLine(s: Pick<Status, "mode" | "link" | "vision">): { ve
   return { verdict: "warn", text: `In the way: ${pathItem(inLane[0]!)}${more > 0 ? `, and ${more} more` : ""}` };
 }
 
-/** Pre-flight checklist, derived only from the status snapshot. */
-export function preflightChecklist(s: Status): CheckRow[] {
+/** Pre-flight checklist, derived only from the status snapshot (and this build's backend kind). */
+export function preflightChecklist(s: Status, kind: BackendKind = BACKEND_KIND): CheckRow[] {
   const rows: CheckRow[] = [];
 
   rows.push(
@@ -121,7 +131,9 @@ export function preflightChecklist(s: Status): CheckRow[] {
   }
 
   const p = s.vision.person;
-  if (!p.enabled) {
+  if (!p.enabled && kind === "browser") {
+    rows.push({ id: "person", label: "Advisory person check", verdict: "info", text: PERSON_CHECK_BROWSER_TEXT });
+  } else if (!p.enabled) {
     rows.push({ id: "person", label: "Advisory person check", verdict: "warn", text: "Off. Check the corridor by eye." });
   } else if (p.detected) {
     rows.push({
@@ -148,7 +160,7 @@ export function preflightChecklist(s: Status): CheckRow[] {
       : { id: "light", label: "Light", verdict: "pass", text: `Brightness ok${b !== null ? ` (${b.toFixed(0)})` : ""}` },
   );
 
-  rows.push({ id: "battery", label: "Battery", ...batteryLine(s.telemetry) });
+  rows.push({ id: "battery", label: "Battery", ...batteryLine(s.telemetry, kind) });
 
   rows.push(
     s.pilot.estop_active

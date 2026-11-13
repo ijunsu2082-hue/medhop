@@ -1,8 +1,29 @@
 // Wording for the app shell: the mode label beside the site name and the backend banner.
 
-import type { BackendKind } from "../transport/kind";
+import { BACKEND_KIND, type BackendKind } from "../transport/kind";
 
 export const BACKEND_DOWN = "Backend not reachable. Retrying every 2 seconds.";
+
+/**
+ * What a sentence calls the program the page talks to. A browser build has no backend process: the simulator runs
+ * in this page. `kind` defaults to this build's.
+ */
+export function backendName(kind: BackendKind = BACKEND_KIND): string {
+  return kind === "browser" ? "the simulator in this page" : "the backend";
+}
+
+/** backendName() at the start of a sentence. */
+export function backendNameCapital(kind: BackendKind = BACKEND_KIND): string {
+  const name = backendName(kind);
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/** "Not available: backend not reachable." and its browser-build counterpart. */
+export function notReachableReason(kind: BackendKind = BACKEND_KIND): string {
+  return kind === "browser"
+    ? "Not available: the simulator in this page is not answering."
+    : "Not available: backend not reachable.";
+}
 
 export interface ModeLabel {
   text: string;

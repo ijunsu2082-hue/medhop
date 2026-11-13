@@ -23,6 +23,8 @@ import {
   videoRailTone,
   videoRailValue,
 } from "../text/pilotWording";
+import { pilotAboutText } from "../text/panelsWording";
+import { backendName, notReachableReason } from "../text/shellWording";
 import "./pilot.css";
 import {
   ACK_NOTE_MS,
@@ -85,7 +87,7 @@ export function PilotPage() {
     const sent = control.send({ type: "takeoff_land" });
     if (sent) {
       awaiting.current.takeoff_land = at;
-      setTakeoffNote({ ok: null, text: "Toggle sent. Waiting for the backend to acknowledge." });
+      setTakeoffNote({ ok: null, text: `Toggle sent. Waiting for ${backendName()} to acknowledge.` });
     } else {
       awaiting.current.takeoff_land = null;
       setTakeoffNote({ ok: false, text: "Not sent: control link is not connected." });
@@ -99,7 +101,7 @@ export function PilotPage() {
     const sent = control.send({ type: "calibrate" });
     if (sent) {
       awaiting.current.calibrate = at;
-      setCalNote({ ok: null, text: "Calibrate sent. Waiting for the backend to acknowledge." });
+      setCalNote({ ok: null, text: `Calibrate sent. Waiting for ${backendName()} to acknowledge.` });
     } else {
       awaiting.current.calibrate = null;
       setCalNote({ ok: false, text: "Not sent: control link is not connected." });
@@ -206,7 +208,7 @@ export function PilotPage() {
   const calBlocked = modeChange
     ? CONTROLS_LOCKED_REASON
     : backendDown
-      ? "Not available: backend not reachable."
+      ? notReachableReason()
       : !status
         ? "Waiting for status."
         : !controlOpen
@@ -286,10 +288,7 @@ export function PilotPage() {
             What a station run does
           </button>
           <div className="pilot-about" id="pilot-about" hidden={!aboutOpen}>
-            <p>
-              Fly a small toy drone from this laptop. A station run turns the drone until its camera sees the printed
-              station sign, flies toward it and stops. The Care page then shows that it arrived at the station.
-            </p>
+            <p>{pilotAboutText()}</p>
             {status?.mode === "sim" && <p>No real drone moves.</p>}
           </div>
         </header>
@@ -362,7 +361,7 @@ export function PilotPage() {
               <AxisIndicators axes={axes} maxStick={status?.pilot.max_stick ?? null} />
               {status && (
                 <p className="hint manual-note">
-                  Manual input reaching the backend: <strong>{status.pilot.manual_active ? "yes" : "no"}</strong>
+                  Manual input reaching {backendName()}: <strong>{status.pilot.manual_active ? "yes" : "no"}</strong>
                 </p>
               )}
             </div>

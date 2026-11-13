@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ApiError, api, blockersFrom, errorText } from "../../api/client";
 import type { Status } from "../../api/types";
+import { arrivalCalibrationHint } from "../../text/panelsWording";
+import { backendName } from "../../text/shellWording";
 import { blockerText } from "../../text/wording";
 import { VerdictTag } from "../Verdict";
 
@@ -42,7 +44,7 @@ export function HoverTestPanel({ status }: { status: Status }) {
   return (
     <div className="hover-test">
       <p className="hint">
-        Hover facing the station sign. For 10 s the backend holds the sticks neutral (trim still applies) and measures drift.
+        Hover facing the station sign. For 10 s {backendName()} holds the sticks neutral (trim still applies) and measures drift.
       </p>
       <div className="setup-action">
         <button type="button" className="btn" onClick={() => void start()} disabled={busy || running || blocked !== null}>
@@ -119,7 +121,7 @@ export function ArrivalCalibration({ status }: { status: Status }) {
 
   return (
     <div className="calibration">
-      <p className="hint">Hold the drone by hand at the stopping distance, facing the sign, then press.</p>
+      <p className="hint">{arrivalCalibrationHint()}</p>
       <div className="setup-action">
         <button type="button" className="btn" onClick={() => void calibrate()} disabled={busy || marker === null}>
           Set arrival distance from current view

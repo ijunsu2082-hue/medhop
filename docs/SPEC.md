@@ -626,7 +626,7 @@ States `clear`, `slow`, `hold`, `blocked`.
   close); `held_s` the time held in that run.
 - Status `vision.obstacles`: `[{"kind", "box": [x1, y1, x2, y2], "distance_m", "lateral_m", "in_lane"}]`
   for the newest frame (empty when that is older than 1 s); `distance_m` and `lateral_m` null when very
-  close (hover-height estimates). On the real drone, people from the person check only.
+  close (hover-height estimates; in the simulator with the drone on the ground, estimates with ground_camera_height_m). On the real drone, people from the person check only.
 - Status `sim`: `{"scenario", "actors": [{"kind", "x_m", "distance_m", "width_m", "depth_m",
   "height_m"}], "pose": {"x_m", "distance_m", "heading_deg", "altitude_m", "airborne"}}` in simulator
   mode (where the actors and the simulated drone are now: simulator truth), null on the real drone.

@@ -3,7 +3,9 @@
 
 import type { ControlServerMessage, MissionAlignment, MissionStatus, Status } from "../api/types";
 import { abortReasonOnly } from "../text/avoidWording";
+import { backendName, notReachableReason } from "../text/shellWording";
 import { LAST_LANDING_TEXT, abortText, blockerText, controlErrorText } from "../text/wording";
+import { BACKEND_KIND, type BackendKind } from "../transport/kind";
 
 // ---------------------------------------------------------------- emergency stop banner
 
@@ -64,7 +66,10 @@ export function estopBanner(i: EstopInput): EstopBannerView | null {
     if (!p && !i.estopActive) return null;
     return {
       kind: "unknown",
-      headline: "Emergency stop state unknown: the backend is not reachable.",
+      headline:
+        BACKEND_KIND === "browser"
+          ? "Emergency stop state unknown: the simulator in this page is not answering."
+          : "Emergency stop state unknown: the backend is not reachable.",
       detail: `This page cannot tell whether the stop reached the drone. ${ESTOP_ADVICE}`,
       retry: true,
       reset: false,
@@ -113,7 +118,7 @@ export function estopBanner(i: EstopInput): EstopBannerView | null {
     return {
       kind: "sent",
       headline: "Emergency stop SENT, not confirmed",
-      detail: "Waiting for the backend to confirm.",
+      detail: `Waiting for ${backendName()} to confirm.`,
       retry: false,
       reset: true,
       dismiss: false,
@@ -121,7 +126,7 @@ export function estopBanner(i: EstopInput): EstopBannerView | null {
   }
   return {
     kind: "not_confirmed",
-    headline: "Emergency stop NOT confirmed: the backend did not answer within half a second.",
+    headline: `Emergency stop NOT confirmed: ${backendName()} did not answer within half a second.`,
     detail: `Send it again. ${ESTOP_ADVICE}`,
     retry: true,
     reset: true,
@@ -138,7 +143,7 @@ export function takeoffBlockedReason(i: {
   missionState: string | null;
   estopActive?: boolean;
 }): string | null {
-  if (!i.backendReachable) return "Not available: backend not reachable.";
+  if (!i.backendReachable) return notReachableReason();
   if (!i.controlOpen) return "Not available: control link is not connected.";
   // The backend refuses takeoff while emergency stop is latched; say so before the pilot tries.
   if (i.estopActive) return 'Emergency stop is on. Press "Reset emergency stop" first.';
@@ -352,12 +357,18 @@ export function countdownText(state: string, remaining: number | null | undefine
 
 export const AUTO_CONTROL_LINK_BLOCKER = "Your control link is not connected, so you could not take over or stop.";
 export const AUTO_BACKEND_REFUSES = "The backend reports it cannot start a run right now.";
+export const AUTO_BACKEND_REFUSES_BROWSER = "The simulator in this page reports it cannot start a run right now.";
+
+/** AUTO_BACKEND_REFUSES in this build's words. */
+export function autoBackendRefuses(kind: BackendKind = BACKEND_KIND): string {
+  return kind === "browser" ? AUTO_BACKEND_REFUSES_BROWSER : AUTO_BACKEND_REFUSES;
+}
 
 /** The "Before it can fly:" list for an automatic start. Empty while a run is in progress. */
 export function autoBlockerTexts(m: MissionStatus, controlOpen: boolean): string[] {
   if (RUN_ACTIVE_STATES.has(m.state)) return [];
   const out = (m.auto_blockers ?? []).map((c) => blockerText(String(c)));
-  if (m.can_start_auto === false && out.length === 0) out.push(AUTO_BACKEND_REFUSES);
+  if (m.can_start_auto === false && out.length === 0) out.push(autoBackendRefuses());
   if (!controlOpen) out.push(AUTO_CONTROL_LINK_BLOCKER);
   return out;
 }
@@ -422,16 +433,36 @@ export function autoResultView(m: MissionStatus): AutoResultView | null {
 export const NEEDS_PILOT_TEXT = "The drone may still be in the air. Land it with T or press the emergency stop.";
 
 /** Under the "Fly automatically" switch: whether the drone is marked ready for the next scheduled flight. */
-export function autoReadyView(m: MissionStatus): { ready: boolean; text: string } | null {
+export function autoReadyView(m: MissionStatus, kind: BackendKind = BACKEND_KIND): { ready: boolean; text: string } | null {
   if (m.auto_fly !== true || typeof m.ready_for_dose !== "boolean") return null;
-  return m.ready_for_dose
-    ? { ready: true, text: "Ready. It will take off by itself when the next dose is due." }
+  if (m.ready_for_dose) return { ready: true, text: "Ready. It will take off by itself when the next dose is due." };
+  return kind === "browser"
+    ? { ready: false, text: `${START_SPOT_BROWSER_TEXT} Before the next dose, press` }
     : { ready: false, text: "Before the next dose: put the drone on its start spot facing the sign, then press" };
 }
 
-/** The "Where does it land?" explainer, with the backend's arrival distance when it sends one. */
-export function landingExplainerText(arrive: number | null | undefined): string {
+/** Under the start button. In a browser build nobody can carry the drone: the simulator puts it back itself. */
+export const START_SPOT_TEXT = "Put the drone on its start spot, facing the sign.";
+export const START_SPOT_BROWSER_TEXT = "The simulator puts the drone back on its start spot, facing the sign, when it takes off.";
+
+export function startSpotText(kind: BackendKind = BACKEND_KIND): string {
+  return kind === "browser" ? START_SPOT_BROWSER_TEXT : START_SPOT_TEXT;
+}
+
+/**
+ * The "Where does it land?" explainer, with the backend's arrival distance when it sends one. A browser build has
+ * no real lens, ruler or sign to hang: it leaves those sentences out.
+ */
+export function landingExplainerText(arrive: number | null | undefined, kind: BackendKind = BACKEND_KIND): string {
   const a = formatMetres(arrive);
+  if (kind === "browser") {
+    return (
+      "It only lands when the sign fills enough of the simulated camera view, sits in the middle of the picture and " +
+      "is seen from the front, three frames in a row, after the drone has clearly flown toward it. " +
+      (a !== null ? `That is about ${a} m in front of the sign. ` : "That is a short distance in front of the sign. ") +
+      "A sign farther than about 5 m is too small to count."
+    );
+  }
   const where =
     a !== null
       ? `That is about ${a} m in front of the sign by the program's own measure. The real camera lens differs, ` +

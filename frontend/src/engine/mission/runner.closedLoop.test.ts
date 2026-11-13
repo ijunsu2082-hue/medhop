@@ -548,3 +548,32 @@ describe("avoidance with nothing in the corridor, and avoidance off", () => {
     expect(NEUTRAL).toEqual([0, 0, 0, 0]);
   });
 });
+
+describe("status vision.obstacles on the ground (test_avoid_runner.py StatusTests)", () => {
+  it("cart: on the ground the estimates use the ground camera height; airborne the hover-height estimate, as before", () => {
+    const sc = scenarioByName("cart");
+    const h = new MissionHarness({
+      simConfig: makeSimConfig({ seed: 0, start_airborne: false, start_distance_m: sc.start_distance_m ?? 2.5, actors: sc.actors }),
+      detector: detectorFor("drone", 0),
+    });
+    h.warmUp(1.0);
+    const distance = (): number | null => {
+      const seen = h.runner.obstaclesSnapshot();
+      expect(seen.map((o) => o.kind)).toEqual(["object"]);
+      return seen[0]!.distance_m;
+    };
+    // The cart's centre is 2.7 m from the drone (4.2 m from the wall, cart 1.5 m); its near side 2.5 m.
+    expect(h.sim.telemetry()?.fly_state_raw).toBe(0);
+    const ground = distance();
+    expect(Math.abs(ground! - 2.5)).toBeLessThan(0.1);
+    const real = h.sim.telemetry.bind(h.sim);
+    h.sim.telemetry = () => ({ ...real()!, fly_state_raw: 1 });
+    const hover = distance();
+    expect(hover, "airborne: the hover-height estimate").toBeGreaterThan(50.0);
+    h.sim.telemetry = () => ({ ...real()!, timestamp: h.clock.now() - 60.0 });
+    expect(distance(), "stale telemetry: no evidence").toBe(hover);
+    h.sim.telemetry = real;
+    expect(distance()).toBe(ground);
+    expect(h.runner.blockers(), "the start blocker is unchanged").toContain("obstacle_in_view");
+  });
+});

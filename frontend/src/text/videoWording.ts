@@ -24,9 +24,13 @@ export function videoOverlayText(
 ): VideoOverlayText {
   switch (kind) {
     case "unreachable":
-      return { title: "No video", detail: "Backend not reachable.", age: null };
+      return { title: "No video", detail: feed === "canvas" ? CANVAS_UNREACHABLE_DETAIL : "Backend not reachable.", age: null };
     case "waiting":
-      return { title: "No video", detail: "Waiting for status from the backend.", age: null };
+      return {
+        title: "No video",
+        detail: feed === "canvas" ? CANVAS_WAITING_DETAIL : "Waiting for status from the backend.",
+        age: null,
+      };
     case "connecting":
       return feed === "canvas"
         ? { title: "Connecting", detail: CANVAS_CONNECTING_DETAIL, age: null }
@@ -50,6 +54,9 @@ export function videoOverlayText(
 
 /** The "connecting" detail for the drawing made in this page: there is no stream, only a first frame to wait for. */
 export const CANVAS_CONNECTING_DETAIL = "Waiting for the first picture from the simulator in this page.";
+/** A browser build has no backend process: the status comes from the simulator in this page. */
+export const CANVAS_UNREACHABLE_DETAIL = "The simulator in this page is not answering.";
+export const CANVAS_WAITING_DETAIL = "Waiting for status from the simulator in this page.";
 
 /** What the drawing made in this page shows, for people who cannot see it. It is never called a camera view. */
 export const CANVAS_VIEW_LABEL =

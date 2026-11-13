@@ -57,7 +57,10 @@ export interface PersonCheck {
 /** Revision 4 (SPEC 11.1, 11.6). Simulator: simulated people and objects. Real drone: people from the person check only. */
 export type ObstacleKind = "person" | "object";
 
-/** One thing seen in the newest frame, with the backend's ESTIMATES (hover-height camera). */
+/**
+ * One thing seen in the newest frame, with the backend's ESTIMATES: from the hover-height camera, or in
+ * the simulator with the drone on the ground, from the ground camera height (a few centimetres up).
+ */
 export interface Obstacle {
   kind: ObstacleKind | string;
   /** [x1, y1, x2, y2] as fractions of the frame */

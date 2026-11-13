@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as RPointerEvent, type K
 import type { Axis, AxisInput, Axes, FlightInput } from "../../control/flightInput";
 import type { ControlMessage } from "../../api/types";
 import { PadPointers } from "../../control/release";
-import { STICKPAD_LOCKED_REASON } from "../../text/panelsWording";
+import { STICKPAD_LOCKED_REASON, backendValueLabel } from "../../text/panelsWording";
 import "./manual.css";
 
 const AXES: { axis: Axis; label: string }[] = [
@@ -259,7 +259,7 @@ export function MaxStickSlider({
         {shown.toFixed(2)}
       </output>
       <span id="max-stick-desc" className="hint">
-        Backend value: {serverValue !== null ? serverValue.toFixed(2) : "unknown"}.
+        {backendValueLabel()}: {serverValue !== null ? serverValue.toFixed(2) : "unknown"}.
       </span>
     </div>
   );

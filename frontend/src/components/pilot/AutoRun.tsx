@@ -16,7 +16,9 @@ import {
   autoSupported,
   countdownText,
   landingExplainerText,
+  startSpotText,
 } from "../../logic/pilot";
+import { backendNameCapital } from "../../text/shellWording";
 import { blockerText, missionStateText } from "../../text/wording";
 import { IconChevron } from "../Icons";
 import { AvoidLine, AvoidSwitch, CorridorSelect } from "./Avoidance";
@@ -289,13 +291,13 @@ export function AutoRun({ status, controlOpen }: Props) {
             subId="auto-start-desc"
             className="takeoff-primary"
           />
-          <p className="hint auto-help">Put the drone on its start spot, facing the sign.</p>
+          <p className="hint auto-help">{startSpotText()}</p>
         </>
       )}
 
       {refused && (
         <div className="msg msg-fail" role="alert">
-          <p>The backend refused the start:</p>
+          <p>{backendNameCapital()} refused the start:</p>
           <ul>
             {refused.map((b) => (
               <li key={b}>{blockerText(b)}</li>

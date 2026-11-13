@@ -3,6 +3,7 @@
 // never "deliver", never "AI". Tested in avoidWording.test.ts.
 
 import type { Mode, MissionAvoid, SimScenarioName } from "../api/types";
+import { backendNameCapital } from "./shellWording";
 import { ABORT_TEXT, abortText, blockerText } from "./wording";
 
 // ---------------------------------------------------------------- what it is reacting to
@@ -110,7 +111,7 @@ export function scenarioRefusalText(codes: readonly string[]): string {
   const known = (c: string) =>
     Object.prototype.hasOwnProperty.call(SCENARIO_REFUSAL_TEXT, c) ? SCENARIO_REFUSAL_TEXT[c]! : blockerText(c);
   const texts = codes.map((c) => known(String(c)));
-  return texts.length ? texts.join(" ") : "The backend refused to change the corridor.";
+  return texts.length ? texts.join(" ") : `${backendNameCapital()} refused to change the corridor.`;
 }
 
 // ---------------------------------------------------------------- how a blocked run ended

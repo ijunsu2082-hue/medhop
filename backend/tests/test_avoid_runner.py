@@ -11,6 +11,7 @@ import numpy as np
 
 from medhop.care.store import CareStore
 from medhop.config import Settings
+from medhop.drone.base import Telemetry
 from medhop.drone.sim import SimConfig, SimLink
 from medhop.drone.sim_actors import SCENARIO_NAMES, SCENARIOS, Actor, actor_box, footprint_distance
 from medhop.mission.avoid import focal_fh, focal_fw, AvoidConfig
@@ -333,6 +334,32 @@ class StatusTests(AvoidRunnerTestCase):
         self.assertIsNone(obstacles[1]["distance_m"], "base out of the picture: very close")
         self.assertIs(obstacles[1]["in_lane"], True)
         self.assertEqual(set(self.runner.snapshot()["avoid"]), {"mode", "state", "kind", "distance_m", "held_s"})
+
+    def test_on_the_ground_the_estimates_use_the_ground_camera_height(self):
+        clock = FakeClock(0.0)
+        sim = SimLink(SimConfig(seed=0), clock=clock, realtime=False)
+        sim.advance_to(clock.advance(0.1))
+        sim.set_scenario("cart")
+        for _ in range(30):
+            sim.advance_to(clock.advance(1 / 30))
+        cart = sim.latest_frame().obstacles[0]
+        self.assertEqual(cart[0], "object")
+
+        def reported(fly_state_raw, mode="sim"):
+            self.link.mode = mode
+            self.feed_obs(None, boxes=[cart])
+            self.link.tel = Telemetry(timestamp=self.clock.t, fly_state_raw=fly_state_raw, battery_raw=42, flags_raw=0)
+            return self.runner.obstacles_snapshot()[0]["distance_m"]
+
+        # The cart's centre is 2.7 m from the drone (4.2 m from the wall, cart 1.5 m); its near side 2.5 m.
+        self.assertAlmostEqual(reported(0), 2.5, delta=0.1)
+        hover = reported(1)
+        self.assertGreater(hover, 50.0, "airborne: the hover-height estimate, as before")
+        self.assertEqual(reported(0, mode="real"), hover, "the real drone's fly-state byte is not used")
+        self.link.mode = "sim"
+        self.link.tel = Telemetry(timestamp=self.clock.t - 60.0, fly_state_raw=0, battery_raw=42, flags_raw=0)
+        self.assertEqual(self.runner.obstacles_snapshot()[0]["distance_m"], hover, "stale telemetry: no evidence")
+        self.assertEqual(self.runner.blockers(), ["obstacle_in_view"], "the start blocker is unchanged")
 
 
 class SimActorTests(unittest.TestCase):

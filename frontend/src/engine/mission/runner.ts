@@ -859,6 +859,17 @@ export class MissionRunner {
     return telemetry.fly_state_raw !== 0;
   }
 
+  /**
+   * Simulator only: fresh simulated telemetry says the drone is on the ground (the same evidence as
+   * _droneFlying). Without that evidence (the real drone, or stale telemetry) it is false.
+   */
+  private _droneOnGround(now: number): boolean {
+    if (this._link.mode !== "sim") return false;
+    const telemetry = this._link.telemetry();
+    if (telemetry === null || now - telemetry.timestamp >= this._settings.telemetry_fresh_s) return false;
+    return telemetry.fly_state_raw === 0;
+  }
+
   private _blockersLocked(now: number, automatic = false): string[] {
     const out: string[] = [];
     if (automatic && this._droneFlying(now)) out.push(DRONE_FLYING); // the takeoff toggle would land it instead
@@ -1295,11 +1306,20 @@ export class MissionRunner {
     this._send(y, p, now);
   }
 
-  /** Status `vision.obstacles`: what the newest frame showed, with the estimates. */
+  /**
+   * Status `vision.obstacles`: what the newest frame showed, with the estimates. In the simulator, with
+   * the drone on the ground, the estimates use the ground camera height (as the start blocker does); the
+   * run's own decisions keep the hover-height estimates in this._seen.
+   */
   obstaclesSnapshot(now?: number | null): ObstacleSnapshot[] {
     const t = now ?? this._clock();
     if (this._seenAt === null || t - this._seenAt > 1.0) return [];
-    return this._seen.map((s) => ({
+    let seen = this._seen;
+    if (this._droneOnGround(t)) {
+      const ground = makeAvoidConfig({ camera_height_m: this._avoidCfg.ground_camera_height_m }, this._avoidCfg);
+      seen = this._seen.map((s) => estimate(s.kind, s.box, s.ts, ground));
+    }
+    return seen.map((s) => ({
       kind: s.kind,
       box: s.box.map((v) => pyRound(v, 3)),
       distance_m: roundOrNone(s.distance_m),

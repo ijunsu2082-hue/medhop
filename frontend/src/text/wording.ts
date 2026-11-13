@@ -3,6 +3,8 @@
 
 import type { AbortReason, BlockerCode, ControlErrorCode, DoseStatus, EventType, MissionState } from "../api/types";
 import { formatClock } from "../logic/time";
+import { BACKEND_KIND, type BackendKind } from "../transport/kind";
+import { backendNameCapital } from "./shellWording";
 
 export const BLOCKER_TEXT: Record<BlockerCode, string> = {
   no_video: "There is no live video from the drone.",
@@ -125,13 +127,22 @@ export const CONTROL_ERROR_TEXT: Record<ControlErrorCode, string> = {
   toggle_guard: "Not sent: the backend is holding off takeoff/land toggles for a moment. Wait a few seconds, then try again.",
 };
 
+/** toggle_guard in a browser build, where the simulator in this page holds the toggles off. */
+export const TOGGLE_GUARD_BROWSER_TEXT =
+  "Not sent: the simulator in this page is holding off takeoff/land toggles for a moment. Wait a few seconds, then try again.";
+
 /** Text for a control-socket error: the code's sentence when known, otherwise the server's own message. */
-export function controlErrorText(code: string | undefined, message: string | undefined): string {
+export function controlErrorText(
+  code: string | undefined,
+  message: string | undefined,
+  kind: BackendKind = BACKEND_KIND,
+): string {
+  if (kind === "browser" && code === "toggle_guard") return TOGGLE_GUARD_BROWSER_TEXT;
   const known = code ? lookup(CONTROL_ERROR_TEXT, code) : undefined;
   if (known) return known;
   const m = (message ?? "").trim();
-  if (m) return `Backend: ${m}`;
-  return unknownCode("The backend refused the command, for a reason this page does not describe yet", code ?? "");
+  if (m) return `${kind === "browser" ? "Simulator" : "Backend"}: ${m}`;
+  return unknownCode(`${backendNameCapital(kind)} refused the command, for a reason this page does not describe yet`, code ?? "");
 }
 
 /** "arrived at station 08:12", "acknowledged 08:20 (self-reported)" etc. Times may be "HH:MM" or (older backend) numbers. */

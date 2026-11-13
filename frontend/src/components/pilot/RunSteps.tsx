@@ -2,8 +2,9 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { api, blockersFrom, errorText } from "../../api/client";
 import type { MissionState, Status } from "../../api/types";
-import { alignmentLine, autoResultView, doneMessage } from "../../logic/pilot";
+import { alignmentLine, autoBackendRefuses, autoResultView, doneMessage } from "../../logic/pilot";
 import { abortReasonOnly } from "../../text/avoidWording";
+import { backendNameCapital } from "../../text/shellWording";
 import { blockerText, missionStateText } from "../../text/wording";
 import { IconChevron } from "../Icons";
 import { AvoidLine, AvoidSwitch, CorridorSelect } from "./Avoidance";
@@ -75,7 +76,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
   if (!controlOpen) clientBlockers.push({ step: null, text: "Your control link is not connected, so you could not take over or stop." });
   const serverBlockers: Blocker[] = m.blockers.map((code) => ({ step: BLOCKER_STEP[code] ?? null, text: blockerText(code) }));
   if (!m.can_start && serverBlockers.length === 0 && !active)
-    serverBlockers.push({ step: null, text: "The backend reports it cannot start a run right now." });
+    serverBlockers.push({ step: null, text: autoBackendRefuses() });
   const allBlockers = [...serverBlockers, ...clientBlockers];
   const canStart = m.can_start && allBlockers.length === 0 && busy === null && !active;
 
@@ -321,7 +322,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
 
             {refused && (
               <div className="msg msg-fail" role="alert">
-                <p>The backend refused the start:</p>
+                <p>{backendNameCapital()} refused the start:</p>
                 <ul>
                   {refused.map((b) => (
                     <li key={b}>{blockerText(b)}</li>

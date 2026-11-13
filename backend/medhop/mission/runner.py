@@ -494,6 +494,16 @@ class MissionRunner:
             return False
         return telemetry.fly_state_raw != 0
 
+    def _drone_on_ground(self, now: float) -> bool:
+        """Simulator only: fresh simulated telemetry says the drone is on the ground (the same evidence
+        as _drone_flying). Without that evidence (the real drone, or stale telemetry) it is False."""
+        if self._link.mode != "sim":
+            return False
+        telemetry = self._link.telemetry()
+        if telemetry is None or now - telemetry.timestamp >= self._settings.telemetry_fresh_s:
+            return False
+        return telemetry.fly_state_raw == 0
+
     def _blockers_locked(self, now: float, automatic: bool = False) -> List[str]:
         out: List[str] = []
         if automatic and self._drone_flying(now):
@@ -900,18 +910,24 @@ class MissionRunner:
         self._send(*self._steering.search(now, direction=self._search_direction), now)
 
     def obstacles_snapshot(self, now: Optional[float] = None) -> List[Dict[str, Any]]:
-        """Status `vision.obstacles`: what the newest frame showed, with the estimates."""
+        """Status `vision.obstacles`: what the newest frame showed, with the estimates. In the simulator,
+        with the drone on the ground, the estimates use the ground camera height (as the start blocker
+        does); the run's own decisions keep the hover-height estimates in self._seen."""
         now = self._clock() if now is None else now
         with self._lock:
             if self._seen_at is None or now - self._seen_at > 1.0:
                 return []
+            seen = self._seen
+            if self._drone_on_ground(now):
+                ground = replace(self._avoid_cfg, camera_height_m=self._avoid_cfg.ground_camera_height_m)
+                seen = [estimate(s.kind, s.box, s.ts, ground) for s in self._seen]
             return [{
                 "kind": s.kind,
                 "box": [round(v, 3) for v in s.box],
                 "distance_m": _round_or_none(s.distance_m),
                 "lateral_m": _round_or_none(s.lateral_m),
                 "in_lane": bool(s.in_lane),
-            } for s in self._seen]
+            } for s in seen]
 
     def _step_locked(self, obs: Optional[Observation], now: float) -> None:
         if self._state == HOVER_TEST:
