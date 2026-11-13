@@ -1,34 +1,34 @@
 // WS /ws/control as a React hook. The connection logic (backoff, 4001 refusal, hello) lives in
 // control/controlConnection.ts; the socket itself comes from this build's transport (transport/index.ts).
+//
+// Every message the page sends passes the mode guard first (logic/modeGuard.ts, guardedControlSend): once the
+// backend's mode has changed under this page, only the emergency stop is sent. The link itself stays connected,
+// so the emergency stop always has a way out.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ControlMessage } from "../api/types";
 import { ControlConnection, type ControlState, type ServerMessageAt } from "../control/controlConnection";
+import { guardedControlSend, pageModeChange } from "../logic/modeGuard";
 import { getTransport } from "../transport";
 
 export type { ControlState } from "../control/controlConnection";
 
 export interface ControlSocket {
   state: ControlState;
-  /** Returns false when the message was NOT sent. */
+  /** Returns false when the message was NOT sent (link not open, or refused by the mode guard). */
   send: (msg: ControlMessage) => boolean;
   lastServerMessage: ServerMessageAt | null;
+  /** Why the mode guard last refused a message, or null while it has refused none. */
+  refused: string | null;
 }
 
-/**
- * `enabled` false keeps the link closed: an open link is closed (the usual stop, which sends zero sticks first)
- * and nothing is sent. The Pilot page passes false once the mode guard has tripped (logic/modeGuard.ts).
- */
-export function useControlSocket(enabled = true): ControlSocket {
+export function useControlSocket(): ControlSocket {
   const [state, setState] = useState<ControlState>("connecting");
   const [lastServerMessage, setLast] = useState<ServerMessageAt | null>(null);
+  const [refused, setRefused] = useState<string | null>(null);
   const connRef = useRef<ControlConnection | null>(null);
 
   useEffect(() => {
-    if (!enabled) {
-      setState("closed");
-      return;
-    }
     const transport = getTransport();
     const conn = new ControlConnection(
       {
@@ -47,9 +47,11 @@ export function useControlSocket(enabled = true): ControlSocket {
       conn.stop();
       if (connRef.current === conn) connRef.current = null;
     };
-  }, [enabled]);
+  }, []);
 
-  const send = useCallback((msg: ControlMessage) => connRef.current?.send(msg) ?? false, []);
+  const rawSend = useCallback((msg: ControlMessage) => connRef.current?.send(msg) ?? false, []);
+  // The one choke point: the guard's latch is read on every message, not captured at render.
+  const send = useMemo(() => guardedControlSend(rawSend, pageModeChange, setRefused), [rawSend]);
 
-  return { state, send, lastServerMessage };
+  return { state, send, lastServerMessage, refused };
 }

@@ -8,7 +8,10 @@ import {
   CAPTION_DETECTION,
   CAPTION_REAL,
   CAPTION_SIM,
+  CONTROLS_LOCKED_REASON,
+  REQUEST_LOCKED_TEXT,
   cameraCaption,
+  controlLockedText,
   modeChangedText,
 } from "./pilotWording";
 import { CANVAS_CONNECTING_DETAIL, CANVAS_VIEW_LABEL, videoOverlayText, type VideoOverlayKind } from "./videoWording";
@@ -84,14 +87,40 @@ describe("mode guard banner", () => {
   it("says in plain words that the real drone became the simulator, and what to do", () => {
     expect(modeChangedText({ from: "real", to: "sim" })).toBe(
       "The backend has switched from the real drone to the simulator while this page was open. Flight controls " +
-        "on this page are off and its control link is closed. Reload the page to use the simulator.",
+        "on this page are locked. The emergency stop still works. Reloading the page clears this.",
     );
   });
 
   it("says the same for the simulator becoming the real drone", () => {
     expect(modeChangedText({ from: "sim", to: "real" })).toBe(
       "The backend has switched from the simulator to the real drone while this page was open. Flight controls " +
-        "on this page are off and its control link is closed. Reload the page before you fly the real drone.",
+        "on this page are locked. The emergency stop still works. Reloading the page clears this.",
+    );
+  });
+
+  it("never says the emergency stop is off, or that the control link is closed", () => {
+    for (const change of [{ from: "real", to: "sim" }, { from: "sim", to: "real" }] as const) {
+      const text = modeChangedText(change);
+      expect(text).toContain("locked");
+      expect(text).toContain("The emergency stop still works.");
+      expect(text).toContain("Reloading the page clears this.");
+      expect(text).not.toMatch(/closed|disconnected/);
+    }
+  });
+});
+
+describe("mode guard reasons", () => {
+  it("pins the reasons shown for locked controls and refused requests", () => {
+    expect(CONTROLS_LOCKED_REASON).toBe("Not available: controls are locked because the backend switched mode.");
+    expect(controlLockedText("takeoff_land")).toBe(
+      "Not sent: takeoff / land. Controls are locked because the backend switched mode; only the emergency stop is sent.",
+    );
+    expect(controlLockedText("axes")).toBe(
+      "Not sent: stick input. Controls are locked because the backend switched mode; only the emergency stop is sent.",
+    );
+    expect(controlLockedText("something_new")).toContain("Not sent: that command.");
+    expect(REQUEST_LOCKED_TEXT).toBe(
+      "Controls are locked because the backend switched mode while this page was open. Reload the page to clear this.",
     );
   });
 });

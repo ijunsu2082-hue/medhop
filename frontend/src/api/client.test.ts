@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { REQUEST_LOCKED_TEXT } from "../text/pilotWording";
 import type { Transport, TransportResponse } from "../transport";
-import { ApiError, blockersFrom, errorText, requestVia } from "./client";
+import { ApiError, LOCKED_STATUS, blockersFrom, errorText, requestVia } from "./client";
 
 /** A transport whose request answers with `answer`, and records what it was asked. */
 function fake(answer: () => Promise<TransportResponse>) {
@@ -82,5 +83,39 @@ describe("requestVia: the client's error mapping over a transport", () => {
     };
     const err = await failure(requestVia(throwing, "GET", "/api/status"));
     expect(err.status).toBe(0);
+  });
+});
+
+describe("requestVia: the mode guard's REST choke point", () => {
+  const tripped = { from: "sim", to: "real" } as const;
+
+  it("refuses a mutating request locally, with a detail every panel shows, and never asks the transport", async () => {
+    for (const [method, path] of [
+      ["POST", "/api/mission/start"],
+      ["PUT", "/api/mission/settings"],
+      ["POST", "/api/hover-test/start"],
+      ["DELETE", "/api/schedule/a"],
+    ] as const) {
+      const { transport, calls } = answering(200, {});
+      const err = await failure(requestVia(transport, method, path, {}, 4000, tripped));
+      expect(calls).toEqual([]);
+      expect(err.status).toBe(LOCKED_STATUS);
+      expect(err.body).toEqual({ detail: REQUEST_LOCKED_TEXT });
+      expect(errorText(err)).toBe(REQUEST_LOCKED_TEXT);
+      expect(blockersFrom(err)).toBeNull();
+    }
+  });
+
+  it("uses a status no panel reads specially: not 0 (unreachable) and not 409 (refused by the backend)", () => {
+    expect(LOCKED_STATUS).not.toBe(0);
+    expect(LOCKED_STATUS).not.toBe(409);
+  });
+
+  it("still sends GET requests and the run abort", async () => {
+    const get = answering(200, { mode: "real" });
+    await expect(requestVia(get.transport, "GET", "/api/status", undefined, 1500, tripped)).resolves.toEqual({ mode: "real" });
+    const abort = answering(200, null);
+    await expect(requestVia(abort.transport, "POST", "/api/mission/abort", undefined, 4000, tripped)).resolves.toBeNull();
+    expect([...get.calls, ...abort.calls].map((c) => `${c.method} ${c.path}`)).toEqual(["GET /api/status", "POST /api/mission/abort"]);
   });
 });

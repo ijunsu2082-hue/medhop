@@ -5,12 +5,14 @@
 // socket that goes silent for STALE_AFTER_MS (logic/staleStatus.ts) is closed so the usual close path takes over.
 //
 // The socket and the poll go through this build's transport (transport/index.ts). The provider also feeds every
-// status to the mode guard (logic/modeGuard.ts) for the whole life of the page, on every route.
+// status to this page's mode guard (logic/modeGuard.ts) for the whole life of the page, on every route. The
+// guard's latch is updated before React hears of the status, so the choke points that read it (control sends,
+// REST requests) are locked from that moment, not from the next render.
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "../api/client";
 import type { Status } from "../api/types";
-import { MODE_GUARD_START, observeMode, type ModeChange, type ModeGuardState } from "../logic/modeGuard";
+import { observePageMode, pageModeChange, type ModeChange } from "../logic/modeGuard";
 import { StatusLink, statusMessageValue } from "../logic/statusLink";
 import { getTransport } from "../transport";
 import { reconnectDelayMs } from "./backoff";
@@ -39,7 +41,7 @@ export function StatusProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<SocketState>("connecting");
   const [reachable, setReachable] = useState<boolean | null>(null);
   const [lastUpdate, setLastUpdate] = useState<number | null>(null);
-  const [modeGuard, setModeGuard] = useState<ModeGuardState>(MODE_GUARD_START);
+  const [modeChange, setModeChange] = useState<ModeChange | null>(pageModeChange);
 
   useEffect(() => {
     const transport = getTransport();
@@ -52,10 +54,11 @@ export function StatusProvider({ children }: { children: ReactNode }) {
       now: () => performance.now(),
       reconnectDelayMs,
       onStatus: (s) => {
+        // The latch first: from here on the choke points refuse, whatever React does next.
+        setModeChange(observePageMode(s?.mode));
         setStatus(s);
         setReachable(true);
         setLastUpdate(performance.now());
-        setModeGuard((g) => observeMode(g, s?.mode));
       },
       onUnreachable: () => setReachable(false),
       onSocketState: setSocket,
@@ -64,7 +67,6 @@ export function StatusProvider({ children }: { children: ReactNode }) {
     return () => link.dispose();
   }, []);
 
-  const modeChange = modeGuard.change;
   const value = useMemo(
     () => ({ status, socket, reachable, lastUpdate, modeChange }),
     [status, socket, reachable, lastUpdate, modeChange],

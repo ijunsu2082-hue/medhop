@@ -15,7 +15,14 @@ import { releaseOnLinkChange } from "../control/release";
 import { preflightChecklist } from "../logic/checklist";
 import type { StreamState } from "../logic/streamController";
 import { videoHealth } from "../logic/videoHealth";
-import { checklistSummary, modeChangedText, videoRailTone, videoRailValue } from "../text/pilotWording";
+import {
+  CONTROLS_LOCKED_REASON,
+  checklistSummary,
+  controlLockedText,
+  modeChangedText,
+  videoRailTone,
+  videoRailValue,
+} from "../text/pilotWording";
 import "./pilot.css";
 import {
   ACK_NOTE_MS,
@@ -33,10 +40,11 @@ export function PilotPage() {
   const { status: rawStatus, reachable, modeChange } = useStatus();
   // Never show stale numbers as live: with the backend down, the instrument panel shows nothing.
   const status = reachable === false ? null : rawStatus;
-  // Mode guard (logic/modeGuard.ts): once the backend's mode has changed under this page, the control link is
-  // closed for good, which disables every flight control, until the page is reloaded.
-  const control = useControlSocket(modeChange === null);
+  const control = useControlSocket();
   const controlOpen = control.state === "open";
+  // Mode guard (logic/modeGuard.ts): once the backend's mode has changed under this page, the link stays connected
+  // but only the emergency stop is sent (the choke point is in useControlSocket), until the page is reloaded.
+  const flightOpen = controlOpen && modeChange === null;
 
   // sentAt null: pressed while the control link was down, nothing went out.
   const [estopPending, setEstopPending] = useState<{ sentAt: number | null } | null>(null);
@@ -101,12 +109,14 @@ export function PilotPage() {
   const calHold = useHoldGuard(calibrateFire);
 
   const backendDown = reachable === false;
-  const takeoffBlocked = takeoffBlockedReason({
-    backendReachable: !backendDown,
-    controlOpen,
-    missionState: status?.mission.state ?? null,
-    estopActive,
-  });
+  const takeoffBlocked = modeChange
+    ? CONTROLS_LOCKED_REASON
+    : takeoffBlockedReason({
+        backendReachable: !backendDown,
+        controlOpen,
+        missionState: status?.mission.state ?? null,
+        estopActive,
+      });
   const takeoffBlockedRef = useRef(takeoffBlocked);
   takeoffBlockedRef.current = takeoffBlocked;
 
@@ -120,12 +130,13 @@ export function PilotPage() {
     onTakeoffHoldCancel: hold.cancel,
   });
 
-  // When the control link leaves "open", nothing may stay held across the reconnect (SPEC 10.5).
+  // When the control link leaves "open", nothing may stay held across the reconnect (SPEC 10.5). The same release
+  // happens when the mode guard locks the controls.
   const holdCancel = hold.cancel;
   const calHoldCancel = calHold.cancel;
   useEffect(() => {
-    releaseOnLinkChange(controlOpen, flight, [{ cancel: holdCancel }, { cancel: calHoldCancel }]);
-  }, [controlOpen, flight, holdCancel, calHoldCancel]);
+    releaseOnLinkChange(flightOpen, flight, [{ cancel: holdCancel }, { cancel: calHoldCancel }]);
+  }, [flightOpen, flight, holdCancel, calHoldCancel]);
 
   // Release a takeoff hold in progress if the button becomes unavailable mid-hold (e.g. landing starts).
   useEffect(() => {
@@ -192,15 +203,17 @@ export function PilotPage() {
   const waiting = <p className="muted">Waiting for status.</p>;
 
   const runOrHover = status ? RUN_OR_HOVER.has(status.mission.state) || (status.hover_test?.running ?? false) : false;
-  const calBlocked = backendDown
-    ? "Not available: backend not reachable."
-    : !status
-      ? "Waiting for status."
-      : !controlOpen
-        ? "Not available: control link is not connected."
-        : runOrHover
-          ? "Not available while a station run or hover test is active."
-          : null;
+  const calBlocked = modeChange
+    ? CONTROLS_LOCKED_REASON
+    : backendDown
+      ? "Not available: backend not reachable."
+      : !status
+        ? "Waiting for status."
+        : !controlOpen
+          ? "Not available: control link is not connected."
+          : runOrHover
+            ? "Not available while a station run or hover test is active."
+            : null;
 
   // Release a hold in progress if the button becomes unavailable mid-hold.
   const calCancel = calHold.cancel;
@@ -247,6 +260,7 @@ export function PilotPage() {
         {modeChange && (
           <div className="banner banner-fail" role="alert">
             {modeChangedText(modeChange)}
+            {control.refused && ` ${control.refused}`}
           </div>
         )}
         {control.state === "refused" && (
@@ -338,6 +352,11 @@ export function PilotPage() {
               {!controlOpen && (
                 <p className="msg msg-warn" role="status">
                   Control link not connected: stick input is not being sent.
+                </p>
+              )}
+              {controlOpen && modeChange && (
+                <p className="msg msg-warn" role="status">
+                  {controlLockedText("axes")}
                 </p>
               )}
               <AxisIndicators axes={axes} maxStick={status?.pilot.max_stick ?? null} />

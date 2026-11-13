@@ -108,16 +108,40 @@ export function videoRailTone(health: VideoHealth, streamState: StreamState | nu
 
 /**
  * The blocking banner on the Pilot page once the backend's mode changed while the page was open
- * (logic/modeGuard.ts). The flight controls stay off until the page is reloaded.
+ * (logic/modeGuard.ts). The flight controls stay locked until the page is reloaded; the emergency stop never is.
  */
 export function modeChangedText(change: ModeChange): string {
   const name = (m: PilotMode) => (m === "real" ? "the real drone" : "the simulator");
-  const next = change.to === "real" ? "Reload the page before you fly the real drone." : "Reload the page to use the simulator.";
   return (
     `The backend has switched from ${name(change.from)} to ${name(change.to)} while this page was open. ` +
-    `Flight controls on this page are off and its control link is closed. ${next}`
+    "Flight controls on this page are locked. The emergency stop still works. Reloading the page clears this."
   );
 }
+
+/** Why takeoff/land and level calibration are unavailable while the mode guard has tripped. */
+export const CONTROLS_LOCKED_REASON = "Not available: controls are locked because the backend switched mode.";
+
+/** The control messages a tripped mode guard refuses, by type, in the words the Pilot page uses for them. */
+const LOCKED_CONTROL_NAMES: Record<string, string> = {
+  axes: "stick input",
+  takeoff_land: "takeoff / land",
+  calibrate: "level calibration",
+  max_stick: "max stick",
+  estop_reset: "emergency stop reset",
+};
+
+/** The reason a control message was not sent while the mode guard has tripped (logic/modeGuard.ts). */
+export function controlLockedText(type: string): string {
+  const name = LOCKED_CONTROL_NAMES[type] ?? "that command";
+  return `Not sent: ${name}. Controls are locked because the backend switched mode; only the emergency stop is sent.`;
+}
+
+/**
+ * The detail of a request refused on this page while the mode guard has tripped. Panels show it after their own
+ * prefix ("Start failed: ...", "Not saved: ...").
+ */
+export const REQUEST_LOCKED_TEXT =
+  "Controls are locked because the backend switched mode while this page was open. Reload the page to clear this.";
 
 /** The checklist heading summary: counts in the order fail, warn, pass, info, zero counts left out. */
 export function checklistSummary(rows: ReadonlyArray<{ verdict: "pass" | "warn" | "fail" | "info" }>): string {
