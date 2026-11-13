@@ -22,6 +22,11 @@ paths are relative to the repo root. Numbers are the defaults in the code.
 The drone link is either the simulator (`drone/sim.py`, the default) or the real drone through the
 third-party turbodrone library (`drone/turbodrone.py`). Everything else is the same in both modes.
 
+That picture is the **Python build** of the site (`npm run dev`), the only one that can fly the real
+drone. The **browser build** (`npm run dev:browser`, and the hosted site) has no laptop backend: the
+simulator and a TypeScript port of the backend's code run inside the page (`frontend/src/engine/`,
+described under "Frontend" below). Which one a site talks to is fixed when it is built.
+
 Five threads do the work: the control thread (mixer, 20 times a second), the vision thread (every new
 frame, which also steps the station run), an optional person-check thread (about 5 times a second), a
 once-a-second "care" thread that writes reminder events, and whatever the drone link runs.
@@ -74,6 +79,10 @@ with a 70-degree field of view and the sign drawn in perspective:
   rendered care-home room at 1280x720 and 15 fps, so the Pilot page has a clear picture to watch. It is
   not the drone's stream, and sign detection in the interactive simulator therefore runs on a cleaner
   picture than the real camera gives. The interactive simulator starts 3.2 m from the sign.
+
+Simulated people and objects (`drone/sim_actors.py`) can stand in or walk across the corridor: upright
+boxes drawn as dark silhouettes, which also hide the sign when they are in front of it. They are what
+waiting for people reacts to in the simulator (`mission/avoid.py` below).
 
 **The one idea.** The simulator is deliberately unkind (drift, latency, noise, and in the tests a
 low-quality picture) so the station-run code is tested against the problems the real drone is expected
@@ -169,7 +178,8 @@ corridor.
 **Answer:** No. It is an advisory check. It only sees what the forward camera sees, it can miss people,
 and its accuracy on this camera has not been measured. The flights are only ever done in an empty,
 closed-off corridor with nobody inside, whatever the check says. When it does see a person, the run
-stops steering; it does not land the drone.
+stops steering; it does not land the drone. (That is with waiting for people `off`, the real drone's
+default. With it on, the run holds and waits instead; see `mission/avoid.py`.)
 
 ### `backend/medhop/vision/worker.py`: the vision thread
 
@@ -232,7 +242,9 @@ restarts, so by default a run ends with the drone hovering at the sign and the p
 | `timeout` | the run took longer than 45 s |
 | `pilot_took_over` | the pilot sent stick input or the toggle |
 | `pilot_link_lost` | the Pilot page's control link closed during the run or hover test |
-| `person_in_view` | the advisory person check saw a person in the last 2 s |
+| `person_in_view` | the advisory person check saw a person in the last 2 s (with waiting for people `off`; with it on, the run waits instead) |
+| `path_blocked` | waiting for people and obstacles was on and the lane stayed blocked for 25 s in all (see `mission/avoid.py` below) |
+| `obstacle_in_view` | during an automatic run's countdown on the ground, something stood in the lane |
 | `battery_low` | the battery check is on and a reading younger than 3 s is at or below `MEDHOP_BATTERY_LOW_RAW` |
 | `estop` | emergency stop was pressed |
 
@@ -243,7 +255,8 @@ restarts, so by default a run ends with the drone hovering at the sign and the p
 | `no_video` | no live video |
 | `estop_active` | emergency stop is latched |
 | `already_running` | a run or hover test is already going |
-| `person_in_view` | the advisory person check sees a person |
+| `person_in_view` | the advisory person check sees a person (or, in the simulator, a simulated person is in the picture) |
+| `obstacle_in_view` | something stands in the lane (only the simulator reports objects, so on the real drone this never fires) |
 | `battery_low` | as for the abort reason (never, while the check is off) |
 | `marker_too_close` | the sign already looks arrival-sized |
 | `marker_not_visible` | no sign in view (hover test and arrival calibration) |
@@ -298,7 +311,7 @@ written:
   tried on the real drone.
 
   What the simulator showed (simulator, Revision 3 build, 2026-11-11: 10 seeds, start 2.5 m from the
-  sign, 0.45 s latency; not flight results; see the simulator table in the README):
+  sign, 0.45 s latency; not flight results; not repeated on the current build):
   - With +0.08 m/s of simulated sideways drift, runs ended 0.53 to 0.79 m (mean 0.64 m) off the sign's
     axis with the assist off, and 0.13 to 0.26 m (mean 0.17 m) with it on.
   - With +0.20 m/s of drift, runs ended 0.75 to 0.99 m (mean 0.84 m) off axis even with the assist on:
@@ -321,6 +334,39 @@ command on arrival switched on it also waits for the descent guard (the sign mus
 picture) before it sends the landing toggle. It does not measure metres, and it does not know whether anything was
 picked up. The event records the mode (`"sim"` or `"real"`), and the Care and Caregiver pages label
 simulator arrivals as simulator.
+
+### `backend/medhop/mission/avoid.py`: waiting for people and obstacles
+
+**What it does.** Pure functions and a small state machine (`Avoider`), stepped once per frame while the
+run is searching, approaching or lining up. From each box in the picture it estimates how far away the
+thing is and how far to the side, and whether it is in the drone's lane (0.55 m either side of its line
+of flight). Then: something in the lane closer than 3.0 m, slow down (forward stick at most 0.10);
+closer than 1.8 m, hold still; closer than 0.9 m, back off a little. It carries on once the lane has
+been clear for 1 s. After 25 s blocked in all, the runner ends the run with `path_blocked`, and an
+automatic run lands where it is. A run is refused before takeoff when something stands in the lane
+(`obstacle_in_view`). The Pilot page's switch is "Wait for people and obstacles" (setting `avoid`, `hold`
+or `off`; `MEDHOP_AVOID`): `hold` by default in the simulator, `off` by default on the real drone. With
+it off, a person in view still stops the run (`person_in_view`), as before.
+
+What it sees: in the simulator, the simulated people and objects of `drone/sim_actors.py` (the Pilot
+page's "Corridor" list: "Empty corridor", "A person walks across", "A person stands in the way", "A
+trolley is in the way", "The corridor is blocked"), reported exactly. On the real drone, only people,
+and only while the optional person check is running.
+
+**The one idea.** It only ever waits. It never steers round anything. Going around was built, reached
+the station in 1 of 20 simulated runs, and was removed (SPEC 11.8): the camera cannot judge distance to
+anything nearer than about 2.5 m, where the floor leaves the bottom of the picture.
+
+What the simulator showed (simulator, this build, 2026-11-13, 20 seeds each; not flight results; the
+README has the full table): a person walking across, all 20 waited and then landed at the station,
+never closer than 1.17 m; a person standing in the way, all 20 ended `path_blocked` and landed where
+they were, never closer than 1.77 m; three people blocking the corridor, the same, never closer than
+1.10 m.
+
+**Judge:** "So the drone avoids people?"
+**Answer:** It waits for them in the simulator, where it sees every simulated person perfectly. It is
+not a safety system. On the real drone it is off by default and can only know about people the
+optional person check sees. The real drone has never been flown near people and must not be.
 
 ### `backend/medhop/care/store.py`: the data files
 
@@ -408,9 +454,13 @@ real drone.
 
 ## Frontend (`frontend/`)
 
-**What it does.** A Vite + React + TypeScript single-page app on `http://localhost:5180` with three pages:
+**What it does.** A Vite + React + TypeScript single-page app on `http://localhost:5180` with a start
+page and three app pages:
 
-- **Pilot** (`/`): the "Camera" video, a "Pre-flight checklist" built from the status (video, station
+- **Start** (`/`): what MedHop is, the hospital corridor case and the results. In the browser build it
+  also runs a live demo of the whole loop: one automatic station run in the simulator inside the page,
+  with the Care and Caregiver side of it beside the flight.
+- **Pilot** (`/pilot`): the "Camera" video, a "Pre-flight checklist" built from the status (video, station
   sign, advisory person check, light, battery raw value, emergency stop), "Manual flying" (keyboard and
   on-screen hold buttons, "Max stick" slider), "Trim", "Station run", "Hover test", "Arrival
   calibration" and "Calibrate level" panels, and a large, always visible "EMERGENCY STOP" button
@@ -445,11 +495,49 @@ pickup is "acknowledged (self-reported)"; the footer says "Prototype. Demo data 
 device. Does not confirm that medicine was taken." Open the Care and Caregiver pages in a separate
 window from the Pilot page: leaving the Pilot page closes its control link and stops a run.
 
-**The one idea.** The browser is only a remote control and a display. All decisions and failsafes are in
-the backend, so a frozen or closed tab cannot keep the drone flying on a held key.
+On every page the mode is written next to the site name: "Browser simulator",
+"Python simulator" or "Real drone".
+
+**The one idea.** In the Python build the browser is only a remote control and a display. All decisions
+and failsafes are in the backend, so a frozen or closed tab cannot keep the drone flying on a held key.
 
 **Judge:** "Is the spoken reminder AI?"
 **Answer:** No. It is the browser's built-in text-to-speech (the Web Speech API) reading a fixed sentence.
+
+### `frontend/src/transport/` and `frontend/src/engine/`: the two builds
+
+**What it does.** `VITE_BACKEND` decides, when the site is built, which backend every page talks to
+(`frontend/vite.config.ts`). `python` (the default; `npm run dev`, `npm run build`): the MedHop backend
+on `http://localhost:8010`, simulator or real drone. `browser` (`npm run dev:browser`,
+`npm run build:browser`): `frontend/src/engine/`, a TypeScript port of the backend's mixer, station run,
+waiting for people, care store and REST routes, with the simulator, all running inside the page. A
+visitor installs nothing. The hosted site on Netlify is the browser build (`frontend/netlify.toml`), and
+`vite.config.ts` stops any other build there.
+
+**The one idea.** There is no switching between the two while the site runs, on purpose: a page that was
+controlling a real drone must never quietly become a simulator. The other transport is not even in the
+bundle.
+
+How the port is checked: `backend/tools/parity_traces.py` runs the Python code and records what it did
+(steering, the mixer, the station run, waiting for people, the simulator, the API's answers) as fixture
+files, and `backend/tests/test_parity_fixtures.py` and the frontend's Vitest suite replay them.
+
+What is different in the browser simulator:
+- The sign is not found in a picture. On the real drone and in the Python simulator, OpenCV finds it in
+  the camera pixels. In the browser simulator its corners come from the simulator's own geometry, with
+  noise and dropped frames added (`engine/vision/detector.ts`). The noise and the cut-offs were measured
+  by running the OpenCV detector on Python simulator pictures.
+- There is no advisory person check: it always reports itself off, as the Python backend does without
+  local weights. Simulated people are still seen, as in the Python simulator.
+- There is no real-drone link and no `/video.mjpg`: the camera picture is drawn in the page.
+- The data stays in the browser's own storage, not in `data/` (see [data/README.md](../data/README.md)).
+
+The hover test and arrival calibration are there, as in the Python simulator.
+
+**Judge:** "Is the website flying a drone?"
+**Answer:** No. The hosted site is the browser build: a simulator in the page. Only the Python build,
+started on the laptop that is on the drone's Wi-Fi, can fly the real drone, and the page then says
+"Real drone".
 
 ---
 
@@ -459,8 +547,9 @@ the backend, so a frozen or closed tab cannot keep the drone flying on a held ke
 For most people a pill dispenser or a phone reminder would be simpler, cheaper and more reliable, and
 MedHop's main part, the care loop, works with no drone at all. The drone leg is an experiment: can a
 cheap camera drone make a short, supervised hop to a fixed spot, for someone who has trouble reaching
-where their medicine is kept? It has not been flown on the real drone yet, so the honest answer today is
-that it is unproven.
+where their medicine is kept? The drone has flown station runs for real, but the project's notes do not
+record a real run that went cleanly from takeoff to landing, so the honest answer today is that it is
+unproven.
 
 **"Is the person check a safety feature?"**
 No. It is an advisory check that can miss people and only sees in front of the camera. Safety comes from
@@ -489,15 +578,23 @@ of every session, from a very low hover over something soft.
 **"How much of this did you write yourself?"**
 Almost none of the code. It was written by AI coding agents (Anthropic Claude: "Claude Fable 5.2"
 orchestrating and writing the backend, "Claude Opus 5.5" sub-agents writing the frontend and docs) under
-my direction, from a written spec and with automated tests. My part is the idea, the requirements, the
-hardware, all real-drone flying and testing (none done yet at the time of writing), and the decisions. The drone protocol work is Marshall
-Richards' turbodrone project; my earlier local changes to turbodrone (2026-11-04/05) were also made with
-AI assistance. Real-drone flying has not started yet at the time of writing.
+my direction, from a written spec and with automated tests, including the browser build's TypeScript
+port of the flight code. My part is the idea, the requirements, the hardware, all real-drone flying and
+testing, and the decisions. The drone protocol work is Marshall Richards' turbodrone project; my earlier
+local changes to turbodrone (2026-11-04/05) were also made with AI assistance.
 
 **"What is AI in the product itself?"**
 Only the optional YOLO11n person detector. The sign detection (ArUco) is classical computer vision and
 the speech is the browser's text-to-speech.
 
 **"What results do you have?"**
-Simulator and loopback test results only. No real-drone flight with MedHop has been done yet at the time
-of writing; the README has an empty table for real-flight results.
+Measured figures come from the simulator and the loopback tests only, and they are labelled as such.
+The drone has flown station runs for real, with no footage. In one run it hovered and did not land; in
+another it found the sign from about 4 m away and then stalled on the approach, because the sign was
+missing from about 45% of the camera frames. Both faults were fixed in the flight logic and the fixes
+were tested in the simulator. The project's notes do not record a real run that went cleanly from
+takeoff to landing. The README's real-flight table is still to be filled in.
+
+**"Does it avoid people?"**
+It waits for them, in the simulator only, and it is not a safety system. See `mission/avoid.py` above.
+The real drone has never been flown near people and must not be.

@@ -4,16 +4,22 @@ Work through this in order, ticking each box. Read [SAFETY.md](SAFETY.md) first.
 **GO** line and a **NO-GO** line. NO-GO means stop: land (or leave the drone on the floor), power off, and
 fix the cause before flying again.
 
-Names in "quotes" are the button and label texts on the Pilot page (`http://localhost:5180/`).
+Names in "quotes" are the button and label texts on the Pilot page (`http://localhost:5180/pilot`). Next
+to the site name the page must say "Real drone" for a real flight.
 
-Nothing in MedHop has been flown on the real drone yet, so the first session is also the first real test
-of the software. Go slowly, and write down what really happens in the logs at the end (sections J and L).
+The drone has flown station runs for real, but the project's notes do not record a real run that went
+cleanly from takeoff to landing (one hovered and did not land; one stalled on the approach). Treat every
+session as a test of the software. Go slowly, and write down what really happens in the logs at the end
+(sections J and L).
 
 > **Does the drone scan the room?** No. It does not map or scan the room, and it does not know where it
 > is. In a station run it looks for one thing only: the printed station sign (an ArUco marker, found with
 > classical computer vision, not AI). It turns slowly until it sees the sign, then flies toward it until
 > the sign looks big enough. It does not see walls, people or obstacles. The optional advisory person
-> check can miss people and is not a safety system.
+> check can miss people and is not a safety system. "Wait for people and obstacles" is **off by default
+> on the real drone**; even switched on, it only knows about people the person check sees, it is tested
+> in the simulator only, and it is not a safety system. With it off, a person the person check sees
+> still stops the run. Never fly near people.
 
 > **Emergency stop has limits.** It only works while the laptop, the Pilot browser tab, the MedHop
 > backend and the drone's Wi-Fi link are all up. The drone sends no confirmation, so the page can only
@@ -62,12 +68,15 @@ of the software. Go slowly, and write down what really happens in the logs at th
       advisory person check, download the YOLO weights (README "Real-drone mode"). Nothing can be
       downloaded later: on the drone's Wi-Fi the laptop has no internet.
 - [ ] 12. **Pilot-link test in the simulator** (once, before the first real session, and after any
-      software update; no drone involved). Start `MEDHOP_PYTHON=.venv/bin/python ./scripts/dev-sim.sh`,
-      open the Pilot page, take off in the simulator with "Takeoff / Land (toggle)", tick "The drone is
-      hovering and the corridor is empty", and press "Start station run". Within a few seconds, close
-      the Pilot tab. In a terminal run
-      `curl -s http://127.0.0.1:8010/api/status | grep -o 'no_pilot_link\|pilot_link_lost'`.
-      Then reopen `http://localhost:5180/` and look at the "Station run" panel. Stop `dev-sim.sh` with
+      software update; no drone involved). Start `MEDHOP_PYTHON=.venv/bin/python ./scripts/dev-sim.sh`
+      (on Windows: `powershell -ExecutionPolicy Bypass -File scripts\dev-sim.ps1`, without `-Browser`:
+      this tests the Python backend), open the Pilot page (`http://localhost:5180/pilot`), take off in
+      the simulator with "Takeoff / Land (toggle)", tick "The drone is hovering and the corridor is
+      empty", and press "Start station run". Within a few seconds, close the Pilot tab. In a terminal run
+      `curl -s http://127.0.0.1:8010/api/status | grep -o 'no_pilot_link\|pilot_link_lost'`
+      (on Windows: `Select-String -InputObject (curl.exe -s http://127.0.0.1:8010/api/status) -Pattern
+      'no_pilot_link|pilot_link_lost' -AllMatches | ForEach-Object { $_.Matches.Value }`).
+      Then reopen `http://localhost:5180/pilot` and look at the "Station run" panel. Stop the script with
       Ctrl-C.
       **GO:** the curl line prints `pilot_link_lost` and `no_pilot_link`, and the reopened page shows the
       run stopped because the pilot window lost its control link.
@@ -97,7 +106,8 @@ of the software. Go slowly, and write down what really happens in the logs at th
       ```
 
       Read the safety reminder, then type `yes`.
-- [ ] 17. Open `http://localhost:5180/` (the Pilot page) in its own browser window. Open the Care and
+- [ ] 17. Open `http://localhost:5180/pilot` (the Pilot page) in its own browser window. Next to the site
+      name it must say "Real drone". Open the Care and
       Caregiver pages only in a **separate** window, never by clicking to them in the Pilot tab: leaving
       the Pilot page closes its control link, which stops a run and removes emergency stop.
 - [ ] 18. Close every other MedHop Pilot tab. (A second one shows "Another pilot window is connected.")
@@ -276,7 +286,8 @@ second toggle just after the drone has landed would make it take off again.
 ### H1. First station runs, with the landing command on arrival OFF
 
 - [ ] 49. In the "Station run" panel, check that "Send the landing command on arrival (off: you land
-      by hand)" is unticked.
+      by hand)" is unticked, and that "Wait for people and obstacles" is Off (the real drone's default;
+      with it off, a person seen by the person check stops the run).
 - [ ] 50. In step 3 of the "Station run" panel, leave "Which dose is this run for?" on "No dose (practice run)".
 - [ ] 51. Look at the drone, take off, and hover facing the sign at your start distance. Corridor empty.
 - [ ] 52. Tick "The drone is hovering and the corridor is empty".

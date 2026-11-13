@@ -2,10 +2,19 @@
 
 Read this before any real flight. Then follow [FLIGHT_CHECKLIST.md](FLIGHT_CHECKLIST.md) step by step.
 
-**Status as of writing:** nothing in MedHop has been flown on the real drone yet. Everything below about
-what the software does comes from reading the code and from tests in the simulator and against a
-loopback stand-in for the drone (`backend/tools/fake_wifi_uav.py`). How the real drone reacts to any of
-it is not known until it has been tried, carefully, following the checklist.
+**Status as of writing:** the drone has flown station runs for real, and there is no footage. In one run
+it hovered and did not land. In another it found the sign from about 4 m away and then stalled on the
+approach, because the sign was missing from about 45% of the camera frames. Both faults were fixed in
+the flight logic and the fixes were tested in the simulator. The project's notes do not record a real
+run that went cleanly from takeoff to landing. Everything below about what the software does comes from
+reading the code and from tests in the simulator and against a loopback stand-in for the drone
+(`backend/tools/fake_wifi_uav.py`). How the real drone reacts to most of it is not known until it has
+been tried, carefully, following the checklist.
+
+Only the Python build of the site (`npm run dev`, started by `scripts/fly-real.sh`) can fly the real
+drone. The browser build and the hosted site run a simulator inside the page and never reach a drone.
+The page says which one it is next to the site name: "Real drone", "Python simulator" or "Browser
+simulator".
 
 The drone is a toy camera drone sold as "AXNEN i1". The manufacturer publishes no payload, weight,
 battery or flight-time figures that the author could find. It has no GPS. MedHop never uses it to
@@ -69,7 +78,7 @@ this drone.
 | **An abort never sends the toggle** | On every abort (any reason) the run stops steering, the mixer goes back to neutral, and the takeoff/land toggle is NOT sent. The Pilot page shows "Take manual control and land". | It does not land the drone. The drone stays wherever it is, at whatever neutral sticks make it do. **The pilot lands by hand.** |
 | **Pilot input aborts the run** | Any non-zero stick input from the pilot, the takeoff/land toggle, or emergency stop aborts a running station run at once (reason `pilot_took_over`, or `estop` for emergency stop). Pilot sticks always win over station-run commands. Pilot sticks count as active for 0.4 s after the last non-zero message; the Pilot page resends held keys every 50 ms. | Pressing nothing does not abort: if the pilot just watches, the run carries on. |
 | **Pilot connection lost** | If the Pilot page's control connection drops (tab closed, browser crash, or navigating the Pilot tab to another page), the backend zeroes the pilot's sticks immediately and aborts a running station run or hover test with reason `pilot_link_lost` (neutral sticks, no toggle). A run or hover test cannot start without a connected Pilot page (blocker `no_pilot_link`). Switching tabs or windows releases all held keys, and so does the control link leaving its open state. | It does not land the drone. With the Pilot page closed nobody can steer, land or emergency-stop the drone through MedHop; the backend only keeps sending neutral sticks until a Pilot page connects again. |
-| **Start blockers** | A station run refuses to start without the "The drone is hovering and the corridor is empty" tick (`confirm_airborne_required`), and when no Pilot page is connected (`no_pilot_link`), there is no live video (`no_video`), emergency stop is active (`estop_active`), a run or hover test is already going (`already_running`), the advisory person check sees a person (`person_in_view`), the battery check is on and a reading younger than 3 s is at or below `MEDHOP_BATTERY_LOW_RAW` (`battery_low`), or the sign already looks arrival-sized (`marker_too_close`). The hover test and arrival calibration also refuse when no sign is visible (`marker_not_visible`). | It cannot check that the drone is really hovering, that the corridor is really empty, or that the battery is really low. The battery byte's meaning is not verified, so the battery check is **off by default** (`MEDHOP_BATTERY_LOW_RAW=-1`); see the checklist's battery notes. |
+| **Start blockers** | A station run refuses to start without the "The drone is hovering and the corridor is empty" tick (`confirm_airborne_required`), and when no Pilot page is connected (`no_pilot_link`), there is no live video (`no_video`), emergency stop is active (`estop_active`), a run or hover test is already going (`already_running`), the advisory person check sees a person (`person_in_view`), something stands in the lane (`obstacle_in_view`; only the simulator reports objects, so on the real drone this never fires), the battery check is on and a reading younger than 3 s is at or below `MEDHOP_BATTERY_LOW_RAW` (`battery_low`), or the sign already looks arrival-sized (`marker_too_close`). The hover test and arrival calibration also refuse when no sign is visible (`marker_not_visible`). | It cannot check that the drone is really hovering, that the corridor is really empty, or that the battery is really low. The battery byte's meaning is not verified, so the battery check is **off by default** (`MEDHOP_BATTERY_LOW_RAW=-1`); see the checklist's battery notes. |
 | **Sign detection limits** | The detector ignores anything narrower than 0.025 of the frame width (16 px), and the run only moves from searching to approaching after 3 detections in a row whose centres agree within 0.1 of the frame width. This cuts false detections. In the simulator this cut-off ends detection at about 4.7 m (simulator figure only). | Detection is only reliable from about 25 px (about 0.04 of the frame width); a reviewer measured this by pasting the sign into frames recorded from this drone's camera, not in flight. Measure the real range with the checklist's motors-off range check (section C). |
 | **Arrival evidence** | "Arrived at station" needs the sign at or above the arrival size on 3 detections in a row AND the sign must have grown by at least 15 % since the run first saw it (evidence the drone moved toward it). The size is corrected for viewing angle. | It does not measure distance in metres. It is only as good as the arrival calibration (checklist section G). The drone keeps moving for a moment after arrival is detected, because the video is about 0.45 s old: start with a stopping distance of at least 1.0 m. |
 | **Off-axis abort** | If the sign looks too narrow for its height (width/height under 0.70, about 45 degrees off to the side) on 3 detections in a row, the run aborts with `off_axis`. | It does not steer the drone back in front of the sign. |
@@ -137,7 +146,9 @@ What it can do:
   on the video.
 - A person seen in the last 2 s blocks a station run from starting (`person_in_view`) and aborts a run that
   is in progress (reason `person_in_view`). Like every abort, that only stops the run steering; it does not
-  land the drone.
+  land the drone. That is the behaviour with waiting for people `off`, the default on the real drone.
+  With it set to `hold`, a person seen while the drone is in the air makes the run wait instead
+  (section 5).
 - The Pilot page's pre-flight checklist shows it as "Advisory person check".
 
 What it cannot do:
@@ -153,3 +164,34 @@ What it cannot do:
   drone's Wi-Fi), so download the weights beforehand if you want it.
 
 A "Clear" result never means the corridor is empty. Check the corridor with your own eyes every time.
+
+## 5. Waiting for people and obstacles (experimental)
+
+"Wait for people and obstacles" on the Pilot page (setting `avoid`, `MEDHOP_AVOID`; SPEC section 11).
+**It is not a safety system.** It is tested in the simulator only, and the rules in section 1 apply
+whether it is on or off. The real drone has never been flown near people and must not be.
+
+What it does (from the code, tested in the simulator):
+
+- It only waits. With something in the drone's lane (0.55 m either side of its line of flight) closer
+  than 3.0 m it slows down; closer than 1.8 m it holds still; closer than 0.9 m it backs off a little.
+  It carries on once the lane has been clear for 1 s.
+- After 25 s blocked in all, it ends the run as `path_blocked`. An automatic run then lands where it is,
+  when the camera gives current evidence that the drone is flying. A manual run, or one without that
+  evidence, sends no landing command, and the pilot lands by hand.
+- A run is refused before takeoff when something stands in the lane (`obstacle_in_view`), or when a
+  person is in view (`person_in_view`).
+- The setting is `hold` or `off`. It is `hold` by default in the simulator and **`off` by default on the
+  real drone**. With it off, a person in view still stops the run (`person_in_view`).
+
+What it does NOT do:
+
+- It never goes around anything. Going around was built, reached the station in 1 of 20 simulated runs,
+  and was removed (SPEC 11.8).
+- On the real drone it can only know about people, and only while the optional person check (section 4)
+  is running, with all that check's misses and blind spots. Walls, furniture, pets and other objects are
+  never detected on the real drone.
+- In the simulator every simulated person and object is reported exactly: a perfect detector, which no
+  real detector is. The simulator results say nothing about how it would do on the real drone.
+- The camera cannot measure anything nearer than about 2.5 m (the floor leaves the bottom of the
+  picture), so anything that close counts as in the lane, wherever it is.

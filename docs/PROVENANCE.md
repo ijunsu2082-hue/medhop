@@ -11,6 +11,7 @@ show or has reported.
 | 2025-04-29 to 2026-06-22 | **turbodrone** upstream: an open-source project that reverse-engineered the "WiFi UAV" phone app's protocol so a laptop can fly these toy drones. 70 commits in its public history over this period, 64 of them by its author Marshall Richards and 6 by three other contributors. Licence: Apache-2.0. Latest upstream commit in the author's checkout: `2c09cf8` ("README small update", 2026-06-22). | Marshall Richards and contributors. Not the MedHop author. | https://github.com/marshallrichards/turbodrone |
 | 2026-11-04 and 2026-11-05 | **The author's local changes inside their turbodrone checkout**, made with AI coding assistance, before MedHop started: fixes that made the takeoff/land commands reliable on this drone; logging of the drone's MCU status messages; a rewrite of the person-follow plugin; a redesign of the browser UI; a video recorder. | The author, with AI coding assistance. | The author's turbodrone checkout only (uncommitted working-tree changes on top of `2c09cf8`). **Not in this repo.** |
 | 2026-11-11 onward | **MedHop** (this repo): the care loop (schedule, reminders, arrival log, self-reported pickup acknowledgement, caregiver page), the station-run controller, the simulator, the loopback test double, the tests, the browser app and these docs. The repo was created on 2026-11-11 and all code in it was written from that date. | AI coding agents (Anthropic's Claude) under the author's direction (see the README's "AI disclosure"). | This repo. |
+| 2026-11-12 and 2026-11-13 | **MedHop rework** (branch `rework/browser-demo`): the browser engine, a TypeScript port of the backend's flight code, care store and API with the simulator, so the site can run with no backend (`frontend/src/engine/`), checked against traces recorded from the Python code (`backend/tools/parity_traces.py`); the start page with its live demo; waiting for people and obstacles (SPEC section 11, simulator-tested only); and the restyle of the pages to six colours and one typeface (Atkinson Hyperlegible Next, self-hosted). | AI coding agents (Anthropic's Claude) under the author's direction. | This repo. |
 
 ### How MedHop relates to the earlier work
 
@@ -21,7 +22,8 @@ show or has reported.
 - **MedHop's real-drone mode does not run against unmodified upstream turbodrone.** It relies on the
   author's uncommitted local changes listed in the next section. Those changes were written by the author
   with AI assistance on 2026-11-04 and 2026-11-05, before MedHop, and are uncommitted in that checkout.
-- **Simulator mode (the default) needs no turbodrone at all.**
+- **Simulator mode (the default) needs no turbodrone at all**, and neither does the browser build of the
+  site, which never talks to a drone.
 - None of the person-follow plugin, the redesigned browser UI or the video recorder from 2026-11-04/05 is
   used by MedHop. MedHop has its own browser app (`frontend/`) and its own, separate person check
   (`backend/medhop/vision/person.py`).
@@ -75,7 +77,8 @@ existed before that. Whether that falls inside a given event's
 build period, and what the event's rules allow, differs per event and is stated below only where it is
 known. Nothing here claims that MedHop is eligible for any event.
 
-No real-drone flight with MedHop has been done yet at the time of writing.
+The drone has flown station runs for real, with no footage; the project's notes do not record a real run
+that went cleanly from takeoff to landing (README "Results").
 
 | Event | What is known | Still to add |
 |---|---|---|

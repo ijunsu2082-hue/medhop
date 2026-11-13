@@ -306,7 +306,9 @@ Server to client: `{"type":"ack","of":"takeoff_land"}` and `{"type":"error","mes
 
 ## 8. Frontend pages
 
-- `/` Pilot: annotated video, keyboard and on-screen controls, big always-visible EMERGENCY STOP, takeoff/land,
+- `/` Start page: what MedHop is; in the browser build only, a live demo of one automatic station run in the
+  simulator inside the page. (The Pilot page moved from `/` to `/pilot` when this page was added.)
+- `/pilot` Pilot: annotated video, keyboard and on-screen controls, big always-visible EMERGENCY STOP, takeoff/land,
   battery (raw, labelled unverified), trim nudges, pre-flight checklist driven by status, station-run start
   (with an explicit hovering confirmation: "The drone is hovering and the corridor is empty"), abort, hover test, arrival calibration, live mission state.
 - `/care` Older-adult view: very large type, the next or due dose, spoken reminder (Web Speech API, with a
@@ -316,6 +318,13 @@ Server to client: `{"type":"ack","of":"takeoff_land"}` and `{"type":"error","mes
 Pilot also has: "Calibrate level" (sends `calibrate`; hold-to-confirm; only on flat ground with motors off),
 and a "Drift assist (experimental)" switch with the live assist roll and, after a run, the suggested roll trim
 with an "Apply as trim" button.
+
+Which backend the pages talk to is fixed when the site is built (`VITE_BACKEND`, `frontend/vite.config.ts`):
+`python` (default; `npm run dev` / `npm run build`) talks to this API on `http://localhost:8010` and is the only
+build that can fly the real drone; `browser` (`npm run dev:browser` / `npm run build:browser`, the hosted site)
+runs the simulator and a TypeScript port of the backend inside the page (`frontend/src/engine/`). There is no
+switching at run time. Every page shows the mode next to the site name: "Browser
+simulator", "Python simulator" or "Real drone".
 
 Keyboard on Pilot: W/S pitch forward/back, A/D roll left/right, arrow up/down throttle, arrow left/right yaw,
 T takeoff/land, Space emergency stop. Keys are ignored while focus is in a text field.
@@ -473,7 +482,7 @@ Orchestrator decisions (added after the Revision 3 fix pass; these win over earl
 - PROVENANCE lists every change in the modified turbodrone checkout that real mode relies on, drops the
   blanket "same for every event" claim, and states per event what is confirmed.
 - README, SAFETY and HOW_IT_WORKS match the behaviour above (pilot-link-lost aborts; e-stop is available
-  only while the links are up; no real flight has been done yet).
+  only while the links are up; the real-flight status says only what is known: flights were made, and no run that went cleanly from takeoff to landing is recorded).
 
 ## 11. Revision 4 (2026-11-12): obstacle avoidance (experimental)
 
@@ -653,7 +662,7 @@ the start, including the 5 s countdown and the 4 s takeoff wait.
 | Scenario (mode `hold`) | Seeds | How the runs ended | Smallest clearance | Where it landed | Run time, s (min / mean / max) |
 |---|---|---|---|---|---|
 | none (baseline, `off`) | 20 | 20 done | - | at the sign | 35.9 / 40.5 / 44.9 |
-| `crossing` | 20 | 20 done (held 3.4 to 3.7 s while the person crossed, then resumed) | 1.17 m | at the sign: 0.38 to 0.51 m from the wall, at most 0.056 m off the centre line | 42.4 / 44.9 / 51.9 |
+| `crossing` | 20 | 20 done (held at least 3.2 s while the person crossed, then resumed; re-measured 2026-11-13) | 1.17 m | at the sign: 0.38 to 0.51 m from the wall, at most 0.056 m off the centre line | 42.4 / 44.9 / 51.9 |
 | `standing` | 20 | 20 `path_blocked` (25 s held), all landed where they were; none needed a pilot | 1.77 m | where it held, never closer than 3.31 m to the wall | 37.4 / 39.9 / 52.2 |
 | `blocked` | 20 | 20 `path_blocked`, all landed where they were; none needed a pilot | 1.10 m | where it held, never closer than 2.98 m to the wall | 38.8 / 39.1 / 40.3 |
 | `cart` | - | every start refused before takeoff (`obstacle_in_view`), manual and automatic, `off` and `hold` | - | never took off | - |

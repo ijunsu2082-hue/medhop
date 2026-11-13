@@ -8,8 +8,11 @@ It is a student hackathon prototype. It uses demo data only, it is not a medical
 it proves that a dose was taken.
 
 **Before any real flight, read [docs/SAFETY.md](docs/SAFETY.md) and follow
-[docs/FLIGHT_CHECKLIST.md](docs/FLIGHT_CHECKLIST.md).** No real-drone flight with MedHop has been done
-yet at the time of writing.
+[docs/FLIGHT_CHECKLIST.md](docs/FLIGHT_CHECKLIST.md).** The drone has flown station runs for real, but
+the project's notes do not record a real run that went cleanly from takeoff to landing (see "Results").
+
+You can try MedHop without installing anything: the hosted site runs the simulator inside the page
+at https://medhop.netlify.app. It cannot fly a real drone (see "Two builds of the site").
 
 ## Who it is for
 
@@ -17,9 +20,13 @@ yet at the time of writing.
   "I picked it up" button.
 - **A caregiver** enters the schedule and checks a status page (`/caregiver`): what is due, what arrived
   at the station, what was acknowledged, what needs attention.
-- **A pilot** (the author) flies the experimental drone leg from the Pilot page (`/`), with manual
+- **A pilot** (the author) flies the experimental drone leg from the Pilot page (`/pilot`), with manual
   control and emergency stop while the laptop, the Pilot tab, the backend and the drone link are all up
   (see "Honest limits").
+
+The start page (`/`) says what MedHop is. In the browser build (see "Two builds of the site") it also
+runs a live demo of the whole loop: one automatic station run in the simulator inside the page, with the
+Care and Caregiver side of it beside the flight.
 
 ## What works, what is experimental, what it does not do
 
@@ -33,9 +40,11 @@ yet at the time of writing.
   acknowledged (self-reported), needs attention, hover test.
 - Caregiver status page with the event log and optional browser notifications.
 - A simulator of the drone and its camera, used by default and by the tests.
+- A browser build in which the simulator and a TypeScript port of the flight code run inside the page,
+  with nothing to install (see "Two builds of the site").
 
-**Experimental (software exists; tested only in the simulator and against a loopback stand-in for the
-drone; no real-drone flight with MedHop has been done yet at the time of writing):**
+**Experimental (software exists; tested in the simulator and against a loopback stand-in for the drone;
+what the real drone has done so far is under "Results"):**
 - The real-drone link, through the third-party turbodrone library.
 - The "station run": the drone, already hovering, turns to find the printed sign, approaches it, stops
   when the sign looks big enough and logs "arrived at station". "Send the landing command on arrival (off:
@@ -79,6 +88,17 @@ drone; no real-drone flight with MedHop has been done yet at the time of writing
   sideways drift seen by the camera, and switches itself off if it makes things worse. It was added
   to the code while these docs were being written.
 - The advisory person check (optional YOLO11n person detector).
+- Waiting for people and obstacles ("Wait for people and obstacles" on the Pilot page, setting `avoid`,
+  SPEC section 11). It only waits: something in the drone's lane (0.55 m either side of its line of
+  flight) closer than 3.0 m slows it down, closer than 1.8 m makes it hold still, and closer than 0.9 m
+  makes it back off a little. It carries on once the lane has been clear for 1 s. After 25 s blocked in
+  all, it ends the run as `path_blocked` and lands where it is. A run is refused before takeoff when
+  something stands in the lane (`obstacle_in_view`). The setting is `hold` or `off` (`MEDHOP_AVOID`):
+  `hold` by default in the simulator, `off` by default on the real drone. With it off, a person in view
+  still stops the run (`person_in_view`). On the real drone only people can be detected, and only with
+  the optional person check running. Going around an obstacle was built, reached the station in 1 of 20
+  simulated runs, and was removed (SPEC 11.8). Tested in the simulator only. It is not a safety system,
+  and the real drone has never been flown near people and must not be.
 
 **Does not do:**
 - It never carries real medicine and is never flown near people.
@@ -88,36 +108,88 @@ drone; no real-drone flight with MedHop has been done yet at the time of writing
 - It does not prove a dose was taken. "Acknowledged" means a button was pressed.
 - It does not measure position: no GPS, no distance sensor. Arrival is judged from the camera picture.
 - The person check is not a safety system. It is advisory only.
+- It does not go around anything in its way. Waiting for people and obstacles only slows, holds, backs
+  off a little or ends the run, and it is not a safety system either.
 - It does not connect to any external service, has no accounts and stores no real personal data.
 
 ## Architecture
 
 ```
 frontend/  Vite + React + TypeScript, port 5180
-   Pilot (/)        video, keyboard and on-screen controls, EMERGENCY STOP, station run, hover test
-   Care (/care)     large-type reminder, spoken reminder, "I picked it up"
-   Caregiver        today's doses, events, schedule editor
-      |  REST, WebSockets (/ws/status, /ws/control), MJPEG (/video.mjpg)
+   Start (/)              what MedHop is; a live demo in the browser build
+   Pilot (/pilot)         video, keyboard and on-screen controls, EMERGENCY STOP, station run, hover test
+   Care (/care)           large-type reminder, spoken reminder, "I picked it up"
+   Caregiver (/caregiver) today's doses, events, schedule editor
+   src/transport/         which backend the pages talk to, fixed when the site is built
+   src/engine/            browser build only: the simulator and the flight code, ported to TypeScript
+      |  Python build: REST, WebSockets (/ws/status, /ws/control), MJPEG (/video.mjpg)
       v
 backend/medhop/  Python, FastAPI, port 8010
    server.py        HTTP and WebSocket API
    mixer.py         the only code that sends stick values to the drone; pilot always wins
-   mission/         station-run state machine and failsafes; steering maths
+   mission/         station-run state machine and failsafes; steering maths; waiting for people (avoid.py)
    vision/          ArUco sign detection (OpenCV), optional YOLO person check, annotated video
    care/            schedule, event log, today's dose status (files in data/)
-   drone/sim.py     simulator (default)
+   drone/sim.py     simulator (default), with simulated people and objects in drone/sim_actors.py
    drone/turbodrone.py  real drone, via a local turbodrone checkout (not copied into this repo)
 ```
+
+On every page the mode is written next to the site name: "Browser
+simulator", "Python simulator" or "Real drone".
 
 The laptop does all the computing. In real-drone mode it joins the drone's own Wi-Fi network, so it has no
 internet while flying. A plain-English walk through every module is in
 [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md). The design contract is [docs/SPEC.md](docs/SPEC.md).
 
+## Two builds of the site
+
+Which backend the pages talk to is fixed when the site is built, by `VITE_BACKEND` (read in
+`frontend/vite.config.ts`; the two transports are in `frontend/src/transport/`). There is no switching
+between them while the site runs, on purpose: a page that was controlling a real drone must never
+quietly become a simulator.
+
+| Build | Commands (in `frontend/`) | The pages talk to | Real drone |
+|---|---|---|---|
+| Python (`VITE_BACKEND=python`, the default) | `npm run dev`, `npm run build` | the MedHop backend on `http://localhost:8010`, in simulator or real-drone mode | the only build that can fly it |
+| Browser (`VITE_BACKEND=browser`) | `npm run dev:browser`, `npm run build:browser` | the simulator and a TypeScript port of the flight code, running inside the page (`frontend/src/engine/`) | never |
+
+The browser build needs nothing installed for a visitor. It is what the hosted site uses: Netlify builds
+it with `npm run build:browser` (`frontend/netlify.toml`), and `vite.config.ts` stops any other build on
+Netlify.
+
+**The browser engine is a port, checked against Python.** `backend/tools/parity_traces.py` records
+traces from the Python code (steering, the mixer, the station run, waiting for people, the simulator and
+the API's answers); `backend/tests/test_parity_fixtures.py` and the frontend's Vitest suite replay them.
+One difference is deliberate: on the real drone and in the Python simulator the sign is found in the
+camera picture with OpenCV, while in the browser simulator its position comes from the simulator's own
+geometry, with noise and dropped frames added (`frontend/src/engine/vision/detector.ts`, whose numbers
+were measured by running the OpenCV detector on Python simulator pictures).
+
+The browser simulator has no advisory person check (it always reports it off, as the Python backend does
+without local weights; simulated people are still seen, as in the Python simulator), no real-drone link
+and no `/video.mjpg` stream (the camera picture is drawn in the page). The hover test and arrival
+calibration are there. It keeps its data in the browser's own storage, not in `data/` (see
+[data/README.md](data/README.md)).
+
 ## Quick start: simulator mode (no drone)
 
-Needs Python 3.11 or newer and Node.js 22.12 or newer (Vite 8 needs 20.19+, Vitest 5 needs 22.12+).
-Run these from the repo folder. If `python3 --version` prints something older than 3.11, use a newer
-interpreter (for example `python3.13`) in place of `python3` in the second line.
+**Simulator inside the page (Node.js only).** Needs Node.js 22.12 or newer.
+
+```bash
+cd frontend && npm install && npm run dev:browser                       # macOS or Linux
+```
+
+```powershell
+cd frontend; npm install; cd ..                                         # Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -File scripts\dev-sim.ps1 -Browser
+```
+
+**Python backend and simulator.** Needs Python 3.11 or newer and Node.js 22.12 or newer (Vite 8 needs
+20.19+, Vitest 5 needs 22.12+). Run these from the repo folder. If `python3 --version` (on Windows,
+`python --version`) prints something older than 3.11, use a newer interpreter in its place in the second
+line.
+
+macOS:
 
 ```bash
 python3 --version
@@ -127,18 +199,35 @@ python3 -m venv .venv
 MEDHOP_PYTHON=.venv/bin/python ./scripts/dev-sim.sh
 ```
 
-`dev-sim.sh` starts the backend on `http://127.0.0.1:8010` and the frontend on `http://localhost:5180`,
-waits until both answer, and stops both on Ctrl-C. Then open:
+Windows (PowerShell; the interpreter in the virtual environment is `.venv\Scripts\python.exe`, which
+`dev-sim.ps1` uses by itself when it exists):
 
-- Pilot: http://localhost:5180/
+```powershell
+python --version
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+cd frontend; npm install; cd ..
+powershell -ExecutionPolicy Bypass -File scripts\dev-sim.ps1
+```
+
+`dev-sim.sh` and `dev-sim.ps1` start the backend on `http://127.0.0.1:8010` and the frontend on
+`http://localhost:5180`, wait until both answer, and stop both on Ctrl-C. Then open:
+
+- Start: http://localhost:5180/
+- Pilot: http://localhost:5180/pilot
 - Care: http://localhost:5180/care
 - Caregiver: http://localhost:5180/caregiver
 
 The same thing by hand, in two terminals:
 
 ```bash
-cd backend && ../.venv/bin/python -m medhop      # terminal 1: backend, port 8010
-cd frontend && npm run dev                       # terminal 2: frontend, port 5180
+cd backend && ../.venv/bin/python -m medhop      # macOS, terminal 1: backend, port 8010
+cd frontend && npm run dev                       # macOS, terminal 2: frontend, port 5180
+```
+
+```powershell
+cd backend; ..\.venv\Scripts\python.exe -m medhop   # Windows, terminal 1: backend, port 8010
+cd frontend; npm run dev                            # Windows, terminal 2: frontend, port 5180
 ```
 
 On first start the backend creates `data/` files with three doses labelled "(demo)". See
@@ -150,6 +239,12 @@ On first start the backend creates `data/` files with three doses labelled "(dem
 .venv/bin/python -m pip install httpx            # needed by the API tests
 (cd backend && ../.venv/bin/python -m unittest discover -s tests -t .)
 (cd frontend && npm test)
+```
+
+```powershell
+.venv\Scripts\python.exe -m pip install httpx
+cd backend; ..\.venv\Scripts\python.exe -m unittest discover -s tests -t .; cd ..
+cd frontend; npm test; cd ..
 ```
 
 The backend suite includes closed-loop simulator runs and takes several minutes. The loopback tests of
@@ -185,6 +280,8 @@ commands are held and repeated. Those changes are uncommitted and unpublished. S
    .venv/bin/python -c "from ultralytics import YOLO; YOLO('yolo11n.pt')"   # saves yolo11n.pt in the current folder
    ```
 
+   On Windows the interpreter is `.venv\Scripts\python.exe` in the same two lines.
+
    This is optional. Without it the person check reports itself as off and everything else works.
 2. Power on the drone and join the laptop to its `FLOW_xxxxxx` Wi-Fi network.
 3. Start:
@@ -200,7 +297,10 @@ commands are held and repeated. Those changes are uncommitted and unpublished. S
    `MEDHOP_YOLO_WEIGHTS` points at a missing file, if ports 8010 or 5180 are in use, or if turbodrone's
    own web server looks to be running (something listening on port 8000, or a process matching
    `web_server`). Only one program may control the drone, so also close the WiFi UAV phone app. It
-   prints a safety reminder and starts only after you type `yes`.
+   prints a safety reminder and starts only after you type `yes`, then prints the Pilot page's address,
+   `http://localhost:5180/pilot`. It always starts the Python build of the site.
+
+   `fly-real.sh` is a macOS shell script. There is no Windows start script for real-drone mode.
 
 ### Settings (environment variables, all optional except where noted)
 
@@ -223,15 +323,23 @@ commands are held and repeated. Those changes are uncommitted and unpublished. S
 | `MEDHOP_CAMERA_HFOV_DEG` | `70` | camera field of view, for the "sign about X m away" estimate and for turning `MEDHOP_LAND_DISTANCE_M` into the arrive width (unmeasured on the real drone) |
 | `MEDHOP_HOST` | `127.0.0.1` | address the backend listens on |
 | `MEDHOP_SIM_CAMERA` | `high` | simulator only: `high` (a rendered room at 1280x720, 15 fps, a clearer picture than the real camera gives; starts 3.2 m from the sign) or `drone` (the drone-like 640x360 profile with noise, blur and JPEG quality 50 that the simulator closed-loop tests and the published figures use) |
-| `MEDHOP_PYTHON` | `python3` | interpreter used by the scripts in `scripts/` |
+| `MEDHOP_AVOID` | `hold` in the simulator, `off` on the real drone | waiting for people and obstacles: `hold` or `off` (anything else is refused at startup). The Pilot page's "Wait for people and obstacles" switch is stored in `data/mission.json` and wins over this |
+| `MEDHOP_PYTHON` | `python3` (`dev-sim.ps1`: `.venv\Scripts\python.exe` if it exists, otherwise `python`) | interpreter used by the scripts in `scripts/` |
+| `VITE_BACKEND` | `python` | frontend, fixed when the site is built: `python` or `browser` (see "Two builds of the site"). `npm run dev:browser` and `npm run build:browser` set `browser`; any other value stops the build |
+| `VITE_API_BASE` | `http://localhost:8010` | frontend, Python build only: the backend's address |
 
 The station sign is `docs/station-marker-A4.png` (ArUco DICT_4X4_50, id 7, 180 mm black square on A4).
 Print it at 100 % and measure it; `backend/tools/make_marker.py` makes other sizes.
 
 ## Honest limits
 
-- **Nothing has been flown on the real drone yet.** All results so far come from the simulator and from a
-  loopback stand-in for the drone. Simulator results are not flight results.
+- **No clean real run is on record.** The drone has flown station runs for real, and there is no
+  footage of them. In one run it hovered and did not land. In another it found the sign from about 4 m
+  away and then stalled on the approach, because the sign was missing from about 45% of the camera
+  frames. Both faults were fixed in the flight logic and the fixes were tested in the simulator.
+  The project's notes do not record a real run that went cleanly from takeoff to landing. All the
+  figures in this README come from the simulator and from a loopback stand-in for the drone, and
+  simulator results are not flight results.
 - The drone leg is short, supervised, in an empty closed-off corridor, and carries no real medicine.
 - The takeoff and land commands are one shared toggle on this drone. Pressing it when the drone has
   already landed by itself makes it take off again.
@@ -251,16 +359,20 @@ Print it at 100 % and measure it; `backend/tools/make_marker.py` makes other siz
 - No GPS and no position sensing: the station run steers by the camera picture only. Sideways drift is
   countered only by roll trim and by the experimental drift assist, if switched on (off by default; its
   roll is capped at 0.15 of full stick and applies only during the approach). The real drift is unknown.
-  In the simulator (Revision 3 build, 10 seeds, start 2.5 m, 0.45 s latency; not flight results; see the
-  simulator table under Results), with +0.08 m/s of simulated drift, runs ended 0.53 to 0.79 m (mean
+  In the simulator (Revision 3 build, 2026-11-11, 10 seeds, start 2.5 m, 0.45 s latency, drone-like
+  camera profile; not flight results; not repeated on this build), with +0.08 m/s of simulated drift, runs ended 0.53 to 0.79 m (mean
   0.64 m) off the sign's axis with the assist off and 0.13 to 0.26 m (mean 0.17 m) with it on; with
   +0.20 m/s they ended 0.75 to 0.99 m (mean 0.84 m) off axis even with it on. If the roll
   direction is wrong on the real drone, the assist makes things worse for 3 to 5 s before it switches
-  itself off. A camera-only estimate cannot tell a slow turn from a sideways slide at range. None of this
-  has been tried on the real drone. Set roll trim first.
+  itself off. A camera-only estimate cannot tell a slow turn from a sideways slide at range. The drift
+  assist has not been tried on the real drone. Set roll trim first.
 - Battery and status values from the drone are raw bytes whose meanings are not verified. The battery
   check is off by default.
 - The person check can miss people and only sees in front of the camera.
+- Waiting for people and obstacles is tested in the simulator only, where every simulated person and
+  object is reported exactly: a perfect detector, which no real detector is. On the real drone it is off
+  by default and can only ever know about people the optional person check sees. It is not a safety
+  system. The real drone has never been flown near people and must not be.
 - "Arrived at station" means the camera saw the sign at arrival size after the drone moved toward it. It
   does not mean anything was picked up. "Acknowledged" is self-reported. The Care page says "The drone
   reached the station at HH:MM.", or "(simulator) The drone reached the station at HH:MM." for a
@@ -278,8 +390,13 @@ Print it at 100 % and measure it; `backend/tools/make_marker.py` makes other siz
 
 ### Real flights
 
-*To be filled in by the author from the run log in docs/FLIGHT_CHECKLIST.md. No real-drone flight with
-MedHop has been done yet at the time of writing.*
+*To be filled in by the author from the run log in docs/FLIGHT_CHECKLIST.md.*
+
+What is known so far, and no more: the drone has flown station runs for real; there is no footage. In
+one run it hovered and did not land. In another it found the sign from about 4 m away and then stalled
+on the approach, because the sign was missing from about 45% of the camera frames. Both faults were
+fixed in the flight logic, and the fixes were tested in the simulator. The project's notes do not record
+a real run that went cleanly from takeoff to landing.
 
 | Measure | Value |
 |---|---|
@@ -294,6 +411,7 @@ MedHop has been done yet at the time of writing.*
 | Aborted: `pilot_took_over` | |
 | Aborted: `pilot_link_lost` | |
 | Aborted: `person_in_view` | |
+| Ended: `path_blocked` | |
 | Aborted: `battery_low` | |
 | Aborted: `estop` | |
 | Start refused, per blocker (see the blocker table in [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)) | |
@@ -305,39 +423,55 @@ MedHop has been done yet at the time of writing.*
 ### Simulator (not flight results)
 
 These numbers come from the simulator in `backend/medhop/drone/sim.py` and from the test suites, not
-from the real drone. These figures, and the simulator closed-loop and marker tests, use the simulator's
-drone-like camera profile and a 2.5 m start (`tests/test_sim_high_quality.py` covers the display profile, and a test that builds the app from default settings, for example in `tests/test_automatic.py`, also runs on it). The interactive simulator (`dev-sim.sh`) uses the display profile by default instead: a
-rendered room at 1280x720 that starts 3.2 m from the sign, so the sign is in view from the ground. Its
-picture is cleaner than the real camera's, so it is not a guide to how well the real camera sees the sign.
+from the real drone. These figures, and the simulator closed-loop and marker tests, use the Python
+simulator's drone-like camera profile (`tests/test_sim_high_quality.py` covers the display profile, and
+a test that builds the app from default settings, for example in `tests/test_automatic.py`, also runs
+on it). The interactive Python simulator (`dev-sim.sh`, `dev-sim.ps1`) uses the display profile by
+default instead: a rendered room at 1280x720 that starts 3.2 m from the sign, so the sign is in view from
+the ground. Its picture is cleaner than the real camera's, so it is not a guide to how well the real
+camera sees the sign. The browser simulator does not look for the sign in a picture at all (see "Two
+builds of the site").
 
-These are simulator results, not real-drone results, from the drone-like camera profile (640x360, noise,
-blur, JPEG quality 50; `MEDHOP_SIM_CAMERA=drone`): 10 seeds per row, start 2.5 m from the sign,
-heading 25 degrees off (alternating side with the seed), 0.45 s command-to-video latency, Revision 3 build
-(1.2 s settle), run on 2026-11-11. "Wall distance" and "lateral" are the simulated drone's distance from
-the wall and its sideways offset from the sign's axis, in metres, when the run ended. With "Land on
-arrival" ON:
+These are simulator results, not real-drone results. They were measured on this build on 2026-11-13
+with `backend/tests/test_avoid_sim.py` (its `fly()` helper): automatic runs from the ground, seeds 0 to
+19 (20 runs per row), the drone-like camera profile (640x360, noise, blur, JPEG quality 50), a sideways
+drift of 0.08 m/s and a start heading 5 degrees off (each to one side or the other, depending on the
+seed), and waiting for people and obstacles set to `hold`. Distances to people are simulator truth: the smallest
+horizontal distance from the simulated drone to any simulated person while flying.
 
-| Drift assist | Drift (m/s) | Runs `done` | Wall distance min / mean / max (m) | Lateral min / mean / max (m) | Toggles on aborted runs | Total toggles |
-|---|---|---|---|---|---|---|
-| off | 0.00 | 10 / 10 | 0.64 / 0.71 / 0.79 | 0.01 / 0.06 / 0.12 | 0 | 10 |
-| off | +0.08 | 10 / 10 | 0.54 / 0.60 / 0.68 | 0.53 / 0.64 / 0.79 | 0 | 10 |
-| on | 0.00 | 10 / 10 | 0.64 / 0.71 / 0.80 | 0.00 / 0.03 / 0.08 | 0 | 10 |
-| on | +0.08 | 10 / 10 | 0.62 / 0.70 / 0.79 | 0.13 / 0.17 / 0.26 | 0 | 10 |
-| on | -0.08 | 10 / 10 | 0.62 / 0.70 / 0.78 | 0.11 / 0.20 / 0.26 | 0 | 10 |
-| on | +0.20 | 10 / 10 | 0.41 / 0.48 / 0.56 | 0.75 / 0.84 / 0.99 | 0 | 10 |
+| Corridor | Start | Outcome | Details |
+|---|---|---|---|
+| Empty | 2.5 m | 20 of 20 landed at the station | landed 0.35 to 0.50 m from the wall (mean 0.43), at most 0.04 m off the centre line; 27 to 37 s per run (mean 32.5) |
+| A person walks across | 4.2 m | 20 of 20 waited, then landed at the station | waited at least 3.2 s; never closer than 1.17 m to the person; 42 to 52 s per run (mean 44.9) |
+| A person stands in the way | 4.2 m | 20 of 20 ended `path_blocked` and landed where they were | never closer than 1.77 m; 37 to 52 s |
+| Three people block the corridor | 4.2 m | 20 of 20 ended `path_blocked` and landed where they were | never closer than 1.10 m; 39 to 40 s |
 
-With "Land on arrival" OFF the same rows also end `done` 10 / 10 with no toggle, but those positions are
-measured at `done` while the drone is still hovering, so they are not comparable with the table above.
-Known limits: the drift assist's roll is capped, so a 0.20 m/s sideways drift still ends well off the
-sign's axis (0.75 to 0.99 m, mean 0.84 m, in this run); none of this has been verified in real flight.
+To reproduce them, from `backend/`:
+
+```bash
+MEDHOP_LONG_TESTS=1 ../.venv/bin/python -m unittest tests.test_avoid_sim          # macOS
+```
+
+```powershell
+$env:MEDHOP_LONG_TESTS = "1"; ..\.venv\Scripts\python.exe -m unittest tests.test_avoid_sim   # Windows
+```
+
+Without `MEDHOP_LONG_TESTS=1` the test runs only the first 3 seeds. With a trolley standing in the lane,
+every start is refused before takeoff (`obstacle_in_view`). In Chrome, the start page's demo of an
+empty-corridor run in the browser simulator takes about 37 s from the press to landed at normal speed.
+
+Known limits: the simulator reports every simulated person exactly, which no real detector does, and
+none of this has been tried on the real drone. An earlier simulator table of the drift assist (Revision 3
+build, 2026-11-11) is summarised under "Honest limits".
 
 ## AI disclosure
 
 Almost all of MedHop's code was written by AI coding agents (Anthropic Claude: "Claude Fable 5.2"
 orchestrating and writing the backend, "Claude Opus 5.5" sub-agents writing the frontend and these docs)
-under the author's direction, from a written spec and with automated tests. The author's role is the
-idea, the requirements, the hardware, all real-drone flying and testing (none done yet at the time of
-writing), and the decisions.
+under the author's direction, from a written spec and with automated tests. That includes the browser
+build's TypeScript port of the flight code, which was checked against traces recorded from the Python
+code. The author's role is the idea, the requirements, the hardware, all real-drone flying and testing
+(see "Results" for what has been flown), and the decisions.
 
 The only AI model inside the running product is the optional, pretrained YOLO11n person detector
 (Ultralytics), used as an advisory person check. The station-sign detection is ArUco via OpenCV, which is
@@ -360,6 +494,7 @@ with AI coding assistance; see [docs/PROVENANCE.md](docs/PROVENANCE.md).
 | [React](https://react.dev/) and React Router | frontend | MIT |
 | [Vite](https://vite.dev/) and Vitest | frontend build, dev server and tests | MIT |
 | [TypeScript](https://www.typescriptlang.org/) | frontend language | Apache-2.0 |
+| Atkinson Hyperlegible Next by the Braille Institute (via the `@fontsource-variable` package) | the site's one typeface, self-hosted | SIL Open Font License 1.1 |
 
 If the optional Ultralytics package is installed and used, its AGPL-3.0 terms apply to that use.
 
