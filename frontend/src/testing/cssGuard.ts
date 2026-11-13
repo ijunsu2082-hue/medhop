@@ -1,14 +1,23 @@
-// A small CSS linter for the design rules (spec section 4 and C6). Used by *.guard.test.ts files:
-//   const css = readCss(import.meta.url, "./pages/pilot.css");
+// A small CSS linter for the design rules. Used by *.guard.test.ts files:
+//   const css = readCss(import.meta.url, "./pilot.css");
 //   expect(cssViolations(css, { allowRootColours: false })).toEqual([]);
 // It is deliberately simple: it walks rule blocks, reads each declaration and reports what the system forbids.
 // Read CSS with readCss, not `import x from "./a.css?raw"`: Vitest's CSS pipeline turns CSS imports into "".
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 /** Read a CSS file relative to the calling test file (pass that file's import.meta.url). */
 export function readCss(fromUrl: string, relativePath: string): string {
   return readFileSync(new URL(relativePath, fromUrl), "utf8");
+}
+
+/** Every file under `dirUrl` (a directory URL ending in "/") whose name ends in one of `extensions`, as
+ * forward-slash paths relative to it, sorted. Test files are left out. */
+export function sourceFiles(dirUrl: URL, extensions: string[]): string[] {
+  return readdirSync(dirUrl, { recursive: true })
+    .map((p) => String(p).replace(/\\/g, "/"))
+    .filter((p) => extensions.some((ext) => p.endsWith(ext)) && !/\.test\.tsx?$/.test(p))
+    .sort();
 }
 
 export interface CssGuardOptions {
@@ -25,8 +34,9 @@ interface Declaration {
 const COLOUR_LITERAL = /#[0-9a-f]{3,8}\b|\brgba?\(|\bhsla?\(/i;
 /** Functional colour notations beyond rgb() and hsl(); `(?<![\w-])` keeps `--x-lab(` style names out. */
 const COLOUR_FUNCTION = /(?<![\w-])(?:hwb|lab|lch|oklab|oklch|color|color-mix|device-cmyk|light-dark)\(/i;
-/** Only the three radius tokens of the spec; removed ones such as --r-pill fail. */
-const RADIUS_TOKEN = /^(0|50%|inherit|var\(--r-[012]\))$/i;
+const GRADIENT = /(?<![\w-])(?:repeating-)?(?:linear|radial|conic)-gradient\(/i;
+/** The two radius tokens, plus 0 and 50% (a circle). */
+const RADIUS_TOKEN = /^(0|50%|inherit|var\(--r\)|var\(--r-round\))$/i;
 
 /** Properties whose value can carry a colour keyword. Custom properties (--*) are checked too. */
 const COLOUR_PROPERTY =
@@ -76,14 +86,14 @@ const FONT_KEYWORD =
 const FONT_METRIC = /^-?[\d.]+(?:px|em|rem|%|vw|vh|dvh|svh|lvh|vmin|vmax|ch|ex|lh|pt)?$/i;
 
 /**
- * A font shorthand is a type-role token, inherit, or metrics followed by exactly one family token:
- * `600 14px/20px var(--font-body)` or `500 clamp(26px, 3.2vw, 32px)/1.2 var(--font-display)`.
+ * A font shorthand is a type-role token, inherit, or metrics followed by the one family token:
+ * `600 14px/20px var(--font)` or `600 clamp(48px, 9vw, 80px)/1.05 var(--font)`.
  * Everything before the family must be a number, a size or a font keyword, so no literal family can ride
- * along: `600 14px/20px Inter` and `600 14px/20px Arial, var(--font-body)` both fail.
+ * along: `600 14px/20px Inter` and `600 14px/20px Arial, var(--font)` both fail.
  */
 function fontShorthandOk(value: string): boolean {
   if (/^(?:var\(--t-[a-z0-9-]+\)|inherit)$/i.test(value)) return true;
-  const match = /^(.*)\svar\(--font-[a-z0-9-]+\)$/i.exec(value);
+  const match = /^(.*)\svar\(--font\)$/i.exec(value);
   if (!match) return false;
   let rest = match[1] ?? "";
   if (/["']/.test(rest)) return false;
@@ -179,6 +189,7 @@ export function cssViolations(css: string, options: CssGuardOptions): string[] {
       const named = namedColours(v);
       if (named.length > 0) problems.push(`named colour ${named.join(", ")} outside :root: ${where}`);
     }
+    if (GRADIENT.test(v)) problems.push(`gradient: ${where}`);
     if ((property === "box-shadow" || property === "-webkit-box-shadow") && v.toLowerCase() !== "none") {
       problems.push(`box-shadow other than none: ${where}`);
     }
@@ -196,14 +207,40 @@ export function cssViolations(css: string, options: CssGuardOptions): string[] {
     }
     if (/^border(-[a-z]+)*-radius$/.test(property)) {
       const bad = splitValue(v).filter((token) => !RADIUS_TOKEN.test(token));
-      if (bad.length > 0) problems.push(`radius not 0, 50% or var(--r-*): ${where}`);
+      if (bad.length > 0) problems.push(`radius not 0, 50%, var(--r) or var(--r-round): ${where}`);
     }
     if (property === "font-family") {
-      if (!/^(var\(--font-[a-z0-9-]+\)|inherit)$/i.test(v)) problems.push(`font-family not var(--font-*): ${where}`);
+      if (!/^(var\(--font\)|inherit)$/i.test(v)) problems.push(`font-family not var(--font): ${where}`);
     }
     if (property === "font" && !fontShorthandOk(v)) {
-      problems.push(`font shorthand not var(--t-*), inherit or ending in one var(--font-*): ${where}`);
+      problems.push(`font shorthand not var(--t-*), inherit or metrics ending in var(--font): ${where}`);
+    }
+    if (property === "text-transform" && /uppercase/i.test(v)) {
+      problems.push(`uppercase: ${where}`);
+    }
+    if (property === "font-variation-settings") {
+      problems.push(`font-variation-settings: ${where}`);
+    }
+    // Tightening a large heading is allowed; letter-spaced labels are not.
+    if (property === "letter-spacing" && /^\+?(?:\d*\.)?\d*[1-9]/.test(v)) {
+      problems.push(`positive letter-spacing: ${where}`);
     }
   }
   return problems;
+}
+
+/** The custom property names read through var(--name) anywhere in the CSS (comments ignored). */
+export function customPropertiesUsed(css: string): string[] {
+  const names = new Set<string>();
+  for (const m of css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/var\(\s*(--[a-z0-9-]+)/gi)) names.add(m[1]!);
+  return [...names].sort();
+}
+
+/** The custom property names declared in any block whose selector is exactly `:root` (also inside @media). */
+export function rootCustomProperties(css: string): string[] {
+  const names = new Set<string>();
+  for (const { selector, property } of declarations(clean(css))) {
+    if (selector.trim() === ":root" && property.startsWith("--")) names.add(property);
+  }
+  return [...names].sort();
 }

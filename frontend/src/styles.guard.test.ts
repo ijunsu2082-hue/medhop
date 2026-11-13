@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { cssViolations, readCss } from "./testing/cssGuard";
+import { cssViolations, customPropertiesUsed, readCss, rootCustomProperties, sourceFiles } from "./testing/cssGuard";
 
-const css = readCss(import.meta.url, "./styles.css");
+const SRC = new URL("./", import.meta.url);
+const read = (path: string) => readCss(import.meta.url, `./${path}`);
+const css = read("styles.css");
+
+/** Every stylesheet and every component under src/, as paths relative to src/. */
+const STYLESHEETS = sourceFiles(SRC, [".css"]);
+const COMPONENTS = sourceFiles(SRC, [".tsx"]);
 
 /** Hex tokens defined in the plain :root block. */
 function rootTokens(source: string): Record<string, string> {
   const root = /(?:^|\n):root\s*\{([\s\S]*?)\n\}/.exec(source.replace(/\/\*[\s\S]*?\*\//g, ""));
   const tokens: Record<string, string> = {};
   if (!root?.[1]) return tokens;
-  for (const m of root[1].matchAll(/(--[a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{6})\s*;/g)) {
+  for (const m of root[1].matchAll(/(--[a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;/g)) {
     tokens[m[1]!] = m[2]!.toUpperCase();
   }
   return tokens;
@@ -29,115 +35,169 @@ function contrast(a: string, b: string): number {
 
 const tokens = rootTokens(css);
 
+/** The six colours: white page, two light greys, a grey for secondary text, near-black ink, and one red. */
 const EXPECTED: Record<string, string> = {
-  "--paper": "#F3F0E8",
-  "--sheet": "#FCFBF7",
-  "--sunken": "#E8E4D9",
-  "--ink": "#14130F",
-  "--ink-hover": "#2B2A25",
-  "--ink-2": "#3D3B34",
-  "--ink-3": "#5C594F",
-  "--border": "#77736A",
-  "--rule": "#CFC9BA",
-  "--console": "#14130F",
-  "--console-2": "#24231F",
-  "--console-inset": "#0C0C0A",
-  "--console-rule": "#45433C",
-  "--console-border": "#8C887C",
-  "--on-console": "#F3F0E8",
-  "--on-console-2": "#B9B5A8",
-  "--pass": "#1A5C38",
-  "--warn": "#7A4A00",
-  "--fail": "#7E1B12",
-  "--on-fail": "#FFFFFF",
-  "--pass-on-console": "#62D394",
-  "--warn-on-console": "#F5B841",
-  "--fail-on-console": "#FF9482",
-  "--signal": "#1F3FD1",
-  "--signal-hover": "#17309F",
-  "--signal-on-console": "#9DB2FF",
-  "--sweep-on-ink": "#3D5BF0",
-  "--sweep-on-light": "#6880F2",
-  "--focus": "#1F3FD1",
-  "--focus-on-console": "#9DB2FF",
-  "--amber": "#F5B301",
-  "--estop": "#D4210B",
-  "--estop-hover": "#B31B08",
-  "--estop-deep": "#941505",
-  "--estop-text": "#FFFFFF",
+  "--bg": "#FFFFFF",
+  "--fill": "#F4F4F4",
+  "--line": "#DADADA",
+  "--mid": "#6B6B6B",
+  "--ink": "#111111",
+  "--red": "#C8102E",
 };
 
-describe("styles.css guard", () => {
+/** Tokens of the earlier designs. None may be defined or read anywhere. */
+const OLD_TOKENS = [
+  "--paper", "--sheet", "--sunken", "--ink-hover", "--ink-2", "--ink-3", "--border", "--rule", "--console",
+  "--console-2", "--console-inset", "--console-rule", "--console-border", "--on-console", "--on-console-2", "--pass",
+  "--warn", "--fail", "--on-fail", "--pass-on-console", "--warn-on-console", "--fail-on-console", "--signal",
+  "--signal-hover", "--signal-on-console", "--sweep-on-ink", "--sweep-on-light", "--focus", "--focus-on-console",
+  "--amber", "--estop", "--estop-hover", "--estop-deep", "--estop-text", "--font-display", "--font-body", "--font-data",
+  "--font-care", "--t-data", "--t-data-lg", "--t-caption", "--t-stamp", "--t-sub", "--r-0", "--r-1", "--r-2", "--r-pill",
+  "--ease", "--icon-lock", "--surface", "--text", "--muted", "--accent", "--shadow", "--radius", "--sans", "--mono",
+];
+const oldToken = (name: string) => new RegExp(`(?<![\\w-])${name}(?![\\w-])`);
+/** The --c-* contextual aliases of the old console/paper split. */
+const C_ALIAS = /(?<![\w-])--c-[a-z]/;
+
+/** Classes of the earlier designs: stamps, numbered section labels, dark console surfaces, square status marks. */
+const OLD_CLASSES = ["stamp", "section-index", "on-console", "status-sq"];
+
+describe("styles.css tokens", () => {
+  it("defines exactly the six colours, with their values", () => {
+    expect(tokens).toEqual(EXPECTED);
+  });
+
+  it("meets the contrast floors", () => {
+    const t = (name: keyof typeof EXPECTED) => EXPECTED[name]!;
+    const floors: [string, string, string, number][] = [
+      ["ink on bg", t("--ink"), t("--bg"), 4.5],
+      ["mid on bg", t("--mid"), t("--bg"), 4.5],
+      ["ink on fill", t("--ink"), t("--fill"), 4.5],
+      ["mid on fill", t("--mid"), t("--fill"), 4.5],
+      ["white on red (emergency stop)", t("--bg"), t("--red"), 4.5],
+      ["red on bg (faults)", t("--red"), t("--bg"), 4.5],
+      ["white on ink (primary buttons)", t("--bg"), t("--ink"), 4.5],
+      ["white on mid (the hold sweep under a primary label)", t("--bg"), t("--mid"), 4.5],
+      ["ink on line (the hold sweep under an outlined label)", t("--ink"), t("--line"), 4.5],
+    ];
+    for (const [what, fg, bg, floor] of floors) {
+      expect(contrast(fg, bg), what).toBeGreaterThanOrEqual(floor);
+    }
+  });
+
   it("breaks none of the CSS rules", () => {
     expect(css.length).toBeGreaterThan(5000);
     expect(cssViolations(css, { allowRootColours: true })).toEqual([]);
   });
 
-  it("defines every palette token with its exact value", () => {
-    for (const [name, value] of Object.entries(EXPECTED)) expect(tokens[name], name).toBe(value);
+  it("names one typeface and two weights", () => {
+    expect(rootCustomProperties(css)).toContain("--font");
+    expect(rootCustomProperties(css).filter((name) => name.startsWith("--font-"))).toEqual([]);
+    const weights = new Set([...css.matchAll(/--t-[a-z]+:\s*(\d{3})\s/g)].map((m) => m[1]));
+    expect([...weights].sort()).toEqual(["400", "600"]);
   });
 
-  it("defines none of the legacy tokens", () => {
-    const legacy = [
-      "--bg", "--surface", "--surface-2", "--surface-3", "--line", "--line-strong", "--text", "--text-2", "--muted",
-      "--faint", "--accent", "--e1", "--e2", "--e3", "--shadow", "--radius", "--r-pill", "--sp-1", "--fs-xs", "--sans",
-      "--mono", "--info", "--sim",
-    ];
-    for (const name of legacy) {
-      expect(new RegExp(`(^|[\\s;{])${name}\\s*:`).test(css), name).toBe(false);
+  it("radius tokens are --r and --r-round only", () => {
+    expect(rootCustomProperties(css).filter((name) => /^--r(-|$)/.test(name))).toEqual(["--r", "--r-round"]);
+  });
+});
+
+describe("every stylesheet under src/", () => {
+  const defined = new Set(rootCustomProperties(css));
+
+  it("includes the pages, the panels, the landing page and the scene", () => {
+    expect(STYLESHEETS).toEqual(
+      expect.arrayContaining([
+        "styles.css",
+        "fonts.css",
+        "pages/pilot.css",
+        "pages/care.css",
+        "pages/caregiver.css",
+        "pages/landing.css",
+        "components/pilot/station-run.css",
+        "components/pilot/manual.css",
+        "components/pilot/setup.css",
+        "scene/scene.css",
+      ]),
+    );
+  });
+
+  for (const file of STYLESHEETS.filter((f) => f !== "styles.css")) {
+    it(`${file} breaks none of the CSS rules`, () => {
+      expect(cssViolations(read(file), { allowRootColours: false })).toEqual([]);
+    });
+  }
+
+  it("reads only custom properties that styles.css defines in :root", () => {
+    for (const file of STYLESHEETS) {
+      const missing = customPropertiesUsed(read(file)).filter((name) => !defined.has(name));
+      expect(missing, file).toEqual([]);
     }
   });
 
-  it("uses none of the removed selectors", () => {
-    const removed = [
-      "panel", "card", "card-raised", "divider", "eyebrow", "chip", "badge", "conn", "btn-secondary", "btn-ghost",
-      "btn-danger-outline", "input-lg", "select-lg", "topnav", "verdict-pass", "verdict-warn", "verdict-fail",
-      "verdict-info",
-    ];
-    for (const name of removed) {
-      expect(new RegExp(`\\.${name}(?![a-z0-9_-])`).test(css), name).toBe(false);
+  it("names none of the old tokens", () => {
+    for (const file of STYLESHEETS) {
+      const source = read(file);
+      for (const name of OLD_TOKENS) expect(oldToken(name).test(source), `${file}: ${name}`).toBe(false);
+      expect(C_ALIAS.test(source), `${file}: --c-*`).toBe(false);
     }
   });
 
-  it("meets the contrast floors", () => {
-    const t = (name: string) => {
-      const v = tokens[name];
-      if (!v) throw new Error(`missing ${name}`);
-      return v;
-    };
-    const floors: [string, string, number][] = [
-      ["--ink", "--paper", 15],
-      ["--ink-2", "--paper", 9],
-      ["--ink-3", "--paper", 6],
-      ["--ink-2", "--sunken", 8],
-      ["--border", "--paper", 4],
-      ["--border", "--sunken", 3],
-      ["--estop-text", "--estop", 4.5],
-      ["--estop-text", "--estop-deep", 7],
-      ["--fail", "--paper", 7],
-      ["--warn", "--paper", 4.5],
-      ["--pass", "--paper", 4.5],
-      ["--signal", "--paper", 4.5],
-      ["--ink", "--amber", 7],
-      ["--on-console-2", "--console", 7],
-      ["--on-console-2", "--console-2", 7],
-      ["--console-border", "--console-2", 3],
-      ["--pass-on-console", "--console", 7],
-      ["--warn-on-console", "--console", 7],
-      ["--fail-on-console", "--console", 7],
-      ["--signal-on-console", "--console", 7],
-      ["--sweep-on-ink", "--ink", 3],
-      ["--paper", "--sweep-on-ink", 4.5],
-      ["--sweep-on-light", "--paper", 3],
-      ["--ink", "--sweep-on-light", 4.5],
-    ];
-    for (const [fg, bg, floor] of floors) {
-      expect(contrast(t(fg), t(bg)), `${fg} on ${bg}`).toBeGreaterThanOrEqual(floor);
+  it("styles none of the old classes", () => {
+    for (const file of STYLESHEETS) {
+      const source = read(file);
+      for (const name of [...OLD_CLASSES, "mono", "data"]) {
+        expect(new RegExp(`\\.${name}(?![\\w-])`).test(source), `${file}: .${name}`).toBe(false);
+      }
+    }
+  });
+});
+
+describe("every component under src/", () => {
+  const defined = new Set(rootCustomProperties(css));
+
+  it("finds the pages", () => {
+    expect(COMPONENTS).toEqual(expect.arrayContaining(["pages/PilotPage.tsx", "pages/CarePage.tsx", "pages/CaregiverPage.tsx"]));
+  });
+
+  it("names none of the old classes", () => {
+    for (const file of COMPONENTS) {
+      const source = read(file);
+      for (const name of OLD_CLASSES) {
+        expect(new RegExp(`(?<![\\w-])${name}(?![\\w])`).test(source), `${file}: ${name}`).toBe(false);
+      }
+    }
+  });
+
+  it("gives no element the mono or data class", () => {
+    for (const file of COMPONENTS) {
+      const source = read(file);
+      const classText = [
+        ...[...source.matchAll(/className="([^"]*)"/g)].map((m) => m[1] ?? ""),
+        ...[...source.matchAll(/className=\{([^\n]*)\}/g)].flatMap((m) =>
+          [...(m[1] ?? "").matchAll(/["'`]([^"'`]*)["'`]/g)].map((s) => s[1] ?? ""),
+        ),
+      ];
+      for (const text of classText) expect(text.split(/\s+/), `${file}: "${text}"`).not.toEqual(expect.arrayContaining(["mono"]));
+      for (const text of classText) expect(text.split(/\s+/), `${file}: "${text}"`).not.toEqual(expect.arrayContaining(["data"]));
+    }
+  });
+
+  it("names none of the old tokens and reads only defined custom properties", () => {
+    for (const file of COMPONENTS) {
+      const source = read(file);
+      for (const name of OLD_TOKENS) expect(oldToken(name).test(source), `${file}: ${name}`).toBe(false);
+      expect(C_ALIAS.test(source), `${file}: --c-*`).toBe(false);
+      const missing = customPropertiesUsed(source).filter((name) => !defined.has(name));
+      expect(missing, file).toEqual([]);
     }
   });
 });
 
 describe("cssViolations", () => {
+  const strict = { allowRootColours: false };
+  const loose = { allowRootColours: true };
+
   it("catches each forbidden pattern", () => {
     const bad = `
       .a { color: #fff; }
@@ -147,19 +207,24 @@ describe("cssViolations", () => {
       .e { border-radius: 999px; }
       .f { font-family: Helvetica, sans-serif; }
       .g { background: rgba(0, 0, 0, 0.5); }
+      .h { text-transform: uppercase; }
+      .i { font-variation-settings: "opsz" 36; }
+      .j { background: linear-gradient(var(--ink), var(--bg)); }
+      .k { letter-spacing: 0.06em; }
     `;
-    expect(cssViolations(bad, { allowRootColours: true })).toHaveLength(7);
+    expect(cssViolations(bad, loose)).toHaveLength(11);
   });
 
-  it("allows tokens, root literals, data URIs and font faces", () => {
+  it("allows tokens, root literals, data URIs, font faces and tightened headings", () => {
     const good = `
       @font-face { font-family: "X"; src: url(x.woff2); }
       :root { --a: #FFFFFF; --i: url("data:image/svg+xml,%3Csvg fill='%23000'%3E"); }
-      .a { color: var(--a); box-shadow: none; border-radius: var(--r-2) 0 50%; font-family: var(--font-body); }
-      @media (max-width: 639px) { .b { font: var(--t-body); } }
+      .a { color: var(--a); box-shadow: none; border-radius: var(--r) 0 50% var(--r-round); font-family: var(--font); }
+      .b { letter-spacing: -0.01em; text-transform: none; }
+      @media (max-width: 639px) { .c { font: var(--t-body); } }
     `;
-    expect(cssViolations(good, { allowRootColours: true })).toEqual([]);
-    expect(cssViolations(good, { allowRootColours: false })).toHaveLength(1);
+    expect(cssViolations(good, loose)).toEqual([]);
+    expect(cssViolations(good, strict)).toHaveLength(1);
   });
 
   it("catches named colours on colour-bearing properties and in custom properties", () => {
@@ -174,7 +239,7 @@ describe("cssViolations", () => {
       ".a { color: var(--missing, white); }",
       ".a { text-decoration-color: gray; }",
     ];
-    for (const rule of cases) expect(cssViolations(rule, { allowRootColours: true }), rule).toHaveLength(1);
+    for (const rule of cases) expect(cssViolations(rule, loose), rule).toHaveLength(1);
   });
 
   it("catches functional colour notations", () => {
@@ -182,47 +247,52 @@ describe("cssViolations", () => {
       ".a { color: oklch(0.6 0.2 30); }",
       ".a { background: lab(50% 40 59); }",
       ".a { color: color(display-p3 1 0 0); }",
-      ".a { background: color-mix(in srgb, var(--ink) 50%, var(--paper)); }",
+      ".a { background: color-mix(in srgb, var(--ink) 50%, var(--bg)); }",
       ".a { color: hwb(0 0% 0%); }",
     ];
-    for (const rule of cases) expect(cssViolations(rule, { allowRootColours: true }), rule).toHaveLength(1);
+    for (const rule of cases) expect(cssViolations(rule, loose), rule).toHaveLength(1);
   });
 
   it("allows colour keywords that are not literals, and words that only look like colours", () => {
     const good = `
       .a { color: currentColor; background: transparent; border-color: inherit; outline: none; fill: none; }
-      .b { background: var(--red-ish); color: var(--white); border: 1px solid var(--c-border); }
-      .c { grid-area: red; transition: background-color var(--t-fast) var(--ease); font: var(--t-body); }
+      .b { background: var(--red); color: var(--bg); border: 1px solid var(--line); }
+      .c { grid-area: red; transition: background-color var(--t-fast); font: var(--t-body); }
       .d { background: currentColor url("icons/white.svg") no-repeat; }
     `;
-    expect(cssViolations(good, { allowRootColours: false })).toEqual([]);
+    expect(cssViolations(good, strict)).toEqual([]);
   });
 
-  it("allows only the three radius tokens", () => {
-    expect(cssViolations(".a { border-radius: var(--r-pill); }", { allowRootColours: true })).toHaveLength(1);
-    expect(cssViolations(".a { border-radius: var(--r-3); }", { allowRootColours: true })).toHaveLength(1);
-    expect(cssViolations(".a { border-radius: var(--r-0) var(--r-1) var(--r-2) 50%; }", { allowRootColours: true }))
-      .toEqual([]);
+  it("allows only 0, 50%, var(--r) and var(--r-round) as radii", () => {
+    expect(cssViolations(".a { border-radius: var(--r-2); }", loose)).toHaveLength(1);
+    expect(cssViolations(".a { border-radius: 4px; }", loose)).toHaveLength(1);
+    expect(cssViolations(".a { border-radius: var(--r) var(--r-round) 0 50%; }", loose)).toEqual([]);
   });
 
-  it("accepts a font shorthand only as a role token, inherit, or metrics plus one var(--font-*)", () => {
+  it("accepts a font shorthand only as a role token, inherit, or metrics plus var(--font)", () => {
     const bad = [
       ".a { font: 600 14px/20px Inter; }",
       ".a { font: 600 14px/20px Arial, Helvetica; }",
-      ".a { font: 600 14px/20px Arial, var(--font-body); }",
-      '.a { font: 600 14px/20px "Inter", var(--font-body); }',
+      ".a { font: 600 14px/20px Arial, var(--font); }",
+      '.a { font: 600 14px/20px "Inter", var(--font); }',
+      ".a { font: 600 14px/20px var(--font-display); }",
       ".a { font: 16px var(--sans); }",
       ".a { font: menu; }",
     ];
-    for (const rule of bad) expect(cssViolations(rule, { allowRootColours: true }), rule).toHaveLength(1);
+    for (const rule of bad) expect(cssViolations(rule, loose), rule).toHaveLength(1);
     const good = `
       .a { font: var(--t-label); }
       .b { font: inherit; }
-      .c { font: 600 18px/28px var(--font-body); }
-      .d { font: 500 clamp(26px, 3.2vw, 32px)/1.2 var(--font-display); }
-      .e { font: italic small-caps 700 1.25rem/1 var(--font-care) !important; }
+      .c { font: 600 18px/28px var(--font); }
+      .d { font: 600 clamp(48px, 9vw, 80px)/1.05 var(--font); }
+      .e { font: 700 1.25rem/1 var(--font) !important; }
     `;
-    expect(cssViolations(good, { allowRootColours: false })).toEqual([]);
+    expect(cssViolations(good, strict)).toEqual([]);
+  });
+
+  it("allows only var(--font) or inherit as a family", () => {
+    expect(cssViolations(".a { font-family: var(--font-data); }", loose)).toHaveLength(1);
+    expect(cssViolations(".a { font-family: inherit; } .b { font-family: var(--font); }", loose)).toEqual([]);
   });
 
   it("catches shadows by any name", () => {
@@ -232,18 +302,19 @@ describe("cssViolations", () => {
       ".a { filter: drop-shadow(0 1px 2px var(--ink)); }",
       ".a { -webkit-filter: drop-shadow(0 0 4px var(--ink)); }",
     ];
-    for (const rule of cases) expect(cssViolations(rule, { allowRootColours: true }), rule).toHaveLength(1);
-    expect(cssViolations(".a { text-shadow: none; -webkit-box-shadow: none; }", { allowRootColours: true }))
-      .toEqual([]);
+    for (const rule of cases) expect(cssViolations(rule, loose), rule).toHaveLength(1);
+    expect(cssViolations(".a { text-shadow: none; -webkit-box-shadow: none; }", loose)).toEqual([]);
   });
 
   it("does not read function names as colour keywords", () => {
     const good = ".a { --x: tan(45deg); --y: steps(4); transform: rotate(calc(tan(45deg) * 1turn)); }";
-    expect(cssViolations(good, { allowRootColours: false })).toEqual([]);
-    expect(cssViolations(".a { --x: tan; }", { allowRootColours: false })).toHaveLength(1);
+    expect(cssViolations(good, strict)).toEqual([]);
+    expect(cssViolations(".a { --x: tan; }", strict)).toHaveLength(1);
   });
 
-  it("names a removed token pattern nowhere: no --*-bg alias", () => {
-    expect(/--[a-z0-9-]*-bg\s*:/.test(css)).toBe(false);
+  it("lists the custom properties a sheet reads and the ones :root defines", () => {
+    const sheet = ":root { --a: 1px; } @media (x) { :root { --b: 2px; } } .c { margin: var(--a) var(--z, var(--b)); }";
+    expect(customPropertiesUsed(sheet)).toEqual(["--a", "--b", "--z"]);
+    expect(rootCustomProperties(sheet)).toEqual(["--a", "--b"]);
   });
 });

@@ -11,11 +11,10 @@ import {
   localDateOf,
   simulatorSuffix,
 } from "../logic/caregiver";
-import { countItems, dayCounts, dayHeadline, isCodeLike, splitStatusLine } from "../logic/caregiverSummary";
+import { countItems, dayCounts, dayHeadline, splitStatusLine } from "../logic/caregiverSummary";
 import { batteryLine } from "../logic/checklist";
 import { formatDateWords } from "../logic/dateWords";
 import { abortText, eventText, missionStateText } from "../text/wording";
-import { IconBell, IconClock, IconCross, IconDrone, IconInfo, IconPass, IconPin, IconWarn } from "../components/Icons";
 import { ScheduleEditor } from "../components/caregiver/ScheduleEditor";
 import "./caregiver.css";
 
@@ -26,63 +25,21 @@ const EVENTS_SHOWN = 8;
 /** Events about the person's dose: bold ink titles. The others describe drone runs and recede. */
 const CARE_EVENTS = new Set(["reminder_due", "arrived_at_station", "pickup_acknowledged", "needs_attention"]);
 
-function StatusIcon({ status }: { status: DoseStatus }) {
-  switch (status) {
-    case "upcoming":
-      return <IconClock size={20} />;
-    case "due":
-      return <IconBell size={20} />;
-    case "arrived":
-      return <IconPin size={20} />;
-    case "acknowledged":
-      return <IconPass size={20} />;
-    case "needs_attention":
-      return <IconCross size={20} />;
-    default:
-      return <IconInfo size={20} />;
-  }
-}
+/** The mark beside a dose's state: filled once it arrived or was picked up, hollow while waiting, red when late. */
+const DOSE_TONE: Record<DoseStatus, string> = {
+  upcoming: "tone-info",
+  due: "tone-warn",
+  arrived: "tone-pass",
+  acknowledged: "tone-pass",
+  needs_attention: "tone-fail",
+};
 
-function EventIcon({ type }: { type: string }) {
-  switch (type) {
-    case "reminder_due":
-      return <IconBell size={16} />;
-    case "run_started":
-    case "hover_test":
-      return <IconDrone size={16} />;
-    case "arrived_at_station":
-      return <IconPin size={16} />;
-    case "run_aborted":
-      return <IconWarn size={16} />;
-    case "pickup_acknowledged":
-      return <IconPass size={16} />;
-    case "needs_attention":
-      return <IconCross size={16} />;
-    default:
-      return <IconInfo size={16} />;
-  }
-}
+const WAITING = <p className="muted">Waiting for status.</p>;
 
-/** Section per contract C3: a 2px rule, the index number, the h2, then the content directly on paper. */
-function Section({
-  id,
-  index,
-  title,
-  className,
-  children,
-}: {
-  id: string;
-  index: string;
-  title: string;
-  className: string;
-  children: ReactNode;
-}) {
+function Section({ id, title, className, children }: { id: string; title: string; className: string; children: ReactNode }) {
   return (
     <section className={`section ${className}`} aria-labelledby={id}>
       <div className="section-head">
-        <span className="section-index" aria-hidden="true">
-          {index}
-        </span>
         <h2 id={id}>{title}</h2>
       </div>
       {children}
@@ -91,7 +48,7 @@ function Section({
 }
 
 function DoseTable({ doses }: { doses: DoseToday[] }) {
-  if (doses.length === 0) return <p className="caregiver-empty">No doses scheduled today.</p>;
+  if (doses.length === 0) return <p className="muted">No doses scheduled today.</p>;
   const sorted = [...doses].sort((a, b) => a.time.localeCompare(b.time));
   return (
     <div className="table-wrap">
@@ -123,9 +80,9 @@ function DoseTable({ doses }: { doses: DoseToday[] }) {
                   {d.notes && <span className="dose-notes">{d.notes}</span>}
                 </td>
                 <td className="dose-status-cell" role="cell">
-                  <span className={`dose-status dose-status-${d.status}`}>
-                    <StatusIcon status={d.status} />
-                    <span className="dose-status-word">{head}</span>
+                  <span className={`state dose-status ${DOSE_TONE[d.status] ?? "tone-info"}`}>
+                    <span className="dot" aria-hidden="true" />
+                    <span>{head}</span>
                   </span>
                   {tail && (
                     <>
@@ -175,11 +132,14 @@ function useEvents(): { events: CareEvent[] | null; failed: boolean } {
 function EventsList({
   events,
   failed,
+  backendDown,
   doses,
   today,
 }: {
   events: CareEvent[] | null;
   failed: boolean;
+  /** the shell already says the backend is not reachable; this list then says nothing more about it */
+  backendDown: boolean;
   doses: DoseToday[];
   /** care.date_local; events from another day carry their date */
   today: string;
@@ -196,13 +156,13 @@ function EventsList({
     setFocusRevealed(false);
   }, [focusRevealed]);
 
-  const failedMsg = failed && <p className="msg msg-warn">Could not load events. Retrying every 5 s.</p>;
-  if (events === null) return failedMsg || <p className="caregiver-empty">Loading events.</p>;
+  const failedMsg = failed && !backendDown && <p className="msg msg-warn">Could not load events. Retrying every 5 s.</p>;
+  if (events === null) return failedMsg || (backendDown ? WAITING : <p className="muted">Loading events.</p>);
   if (events.length === 0) {
     return (
       <>
         {failedMsg}
-        <p className="caregiver-empty">No events yet.</p>
+        <p className="muted">No events yet.</p>
       </>
     );
   }
@@ -232,11 +192,8 @@ function EventsList({
         tabIndex={revealed ? -1 : undefined}
       >
         <span className="event-time">
-          {date && <span className="event-date">{date} </span>}
+          {date && <span className="sr-only">{date} </span>}
           {e.time_local}
-        </span>
-        <span className="event-icon" aria-hidden="true">
-          <EventIcon type={e.type} />
         </span>
         <span className="event-body">
           <span className="event-name">
@@ -273,12 +230,12 @@ function EventsList({
 function NotificationControl() {
   const supported = typeof window !== "undefined" && "Notification" in window;
   const [perm, setPerm] = useState<NotificationPermission | "unsupported">(supported ? Notification.permission : "unsupported");
-  if (perm === "unsupported") return <p className="small notify-state">Browser notifications are not available here.</p>;
-  if (perm === "granted") return <p className="small notify-state">Browser notifications are on for doses that need attention.</p>;
-  if (perm === "denied") return <p className="small notify-state">Browser notifications are blocked in this browser's settings.</p>;
+  if (perm === "unsupported") return <p className="hint">Browser notifications are not available here.</p>;
+  if (perm === "granted") return <p className="hint">Browser notifications are on for doses that need attention.</p>;
+  if (perm === "denied") return <p className="hint">Browser notifications are blocked in this browser's settings.</p>;
   return (
-    <button type="button" className="btn btn-quiet notify-btn" onClick={() => void Notification.requestPermission().then(setPerm)}>
-      <IconBell size={16} /> Turn on browser notifications
+    <button type="button" className="btn btn-quiet" onClick={() => void Notification.requestPermission().then(setPerm)}>
+      Turn on browser notifications
     </button>
   );
 }
@@ -286,56 +243,46 @@ function NotificationControl() {
 function DroneSummary({ status, lastRun, stale }: { status: Status; lastRun: string; stale: boolean }) {
   const t = status.telemetry;
   return (
-    <>
-      {stale && (
-        <p className="drone-stale">
-          <IconInfo size={16} />
-          <span>Last known values; backend not reachable.</span>
-        </p>
-      )}
-      <dl className="kv drone-kv">
-        <dt>Mode</dt>
-        <dd>
-          {status.mode === "sim" ? <span className="stamp">Simulator</span> : <span className="stamp stamp--amber">Real drone</span>}
-        </dd>
+    <dl className="kv drone-kv">
+      <div>
         <dt>Video</dt>
         <dd>
           {status.link.video_live ? (
-            <span className="status-line">
-              <span className={`status-sq ${stale ? "tone-info" : "tone-pass"}`} aria-hidden="true" />
+            <span className={`state ${stale ? "tone-info" : "tone-pass"}`}>
+              <span className="dot" aria-hidden="true" />
               {stale ? "Live (last known)" : "Live"}
             </span>
           ) : (
-            <span className="status-line">
-              <span className="status-sq status-sq--hollow tone-info" aria-hidden="true" />
+            <span className="state tone-info">
+              <span className="dot" aria-hidden="true" />
               No video
             </span>
           )}
         </dd>
+      </div>
+      <div className="drone-battery">
         <dt>Battery</dt>
-        <dd className="drone-battery">
-          {t && t.battery_raw !== null && <span className="drone-battery-raw">{t.battery_raw}</span>}
-          <span className="drone-battery-line">
-            {batteryLine(t)
-              .text.split(/(\d+)/)
-              .map((part, i) => (i % 2 === 1 ? <span key={i} className="tnum">{part}</span> : part))}
-          </span>
-        </dd>
+        {t && t.battery_raw !== null && <dd>{t.battery_raw}</dd>}
+        <dd className="drone-battery-line">{batteryLine(t).text}</dd>
+      </div>
+      <div>
         <dt>Station run now</dt>
         <dd>
           {missionStateText(status.mission.state)}
           {status.mission.state === "aborted" ? `: ${abortText(status.mission.reason)}` : ""}
         </dd>
+      </div>
+      <div>
         <dt>Last run result</dt>
-        <dd className={isCodeLike(lastRun) ? "data" : undefined}>{lastRun}</dd>
-        {typeof status.mission.auto_fly === "boolean" && (
-          <>
-            <dt>Automatic flights</dt>
-            <dd>{status.mission.auto_fly ? "On" : "Off"}</dd>
-          </>
-        )}
-      </dl>
-    </>
+        <dd>{lastRun}</dd>
+      </div>
+      {typeof status.mission.auto_fly === "boolean" && (
+        <div>
+          <dt>Automatic flights</dt>
+          <dd>{status.mission.auto_fly ? "On" : "Off"}</dd>
+        </div>
+      )}
+    </dl>
   );
 }
 
@@ -372,9 +319,8 @@ export function CaregiverPage() {
         {status ? (
           <>
             <p className="caregiver-when">
-              {formatDateWords(status.care.date_local) ?? status.care.date_local},{" "}
-              <span className="data">{status.care.now_local}</span>
-              {reachable === false ? " (last known; backend not reachable)" : ""}
+              {formatDateWords(status.care.date_local) ?? status.care.date_local}, {status.care.now_local}
+              {reachable === false ? " (last known)" : ""}
             </p>
             <h1 className="caregiver-headline">
               <span className="sr-only">Caregiver: </span>
@@ -385,7 +331,7 @@ export function CaregiverPage() {
                 <Fragment key={item.words}>
                   {i > 0 && " "}
                   <span className="caregiver-count">
-                    <span className="data">{item.count}</span> {item.words}
+                    {item.count} {item.words}
                     {i < all.length - 1 && <span aria-hidden="true">{" ·"}</span>}
                   </span>
                 </Fragment>
@@ -393,16 +339,12 @@ export function CaregiverPage() {
             </p>
           </>
         ) : (
-          <>
-            <h1 className="caregiver-headline">Caregiver</h1>
-            <p className="caregiver-counts">Waiting for status from the backend.</p>
-          </>
+          <h1 className="caregiver-headline">Caregiver</h1>
         )}
       </header>
 
       {attention.length > 0 && (
         <div className="banner banner-attention" role="alert">
-          <IconCross size={24} />
           <span>
             <strong>Needs attention: </strong>
             {attention.map((d) => `${d.label} (${d.time})`).join(", ")} not acknowledged in time.
@@ -412,34 +354,35 @@ export function CaregiverPage() {
 
       <div className="caregiver-grid">
         <div className="caregiver-main">
-          <Section id="h-today" index="01" title="Today" className="caregiver-today">
-            {status ? <DoseTable doses={doses} /> : <p className="caregiver-empty">Waiting for status from the backend.</p>}
+          <Section id="h-today" title="Today" className="caregiver-today">
+            {status ? <DoseTable doses={doses} /> : WAITING}
             <div className="caregiver-foot">
-              <p className="small">
+              <p className="hint">
                 "Acknowledged" is the person's own report that they picked the pouch up. It does not confirm the medicine was taken.
               </p>
-              <p className="small">Status is per day and resets at midnight.</p>
-              <div className="caregiver-notify">
-                <NotificationControl />
-              </div>
+              <p className="hint">Status is per day and resets at midnight.</p>
+              <NotificationControl />
             </div>
           </Section>
 
-          <Section id="h-schedule" index="02" title="Schedule" className="caregiver-schedule">
-            <p className="schedule-note">
-              <span className="stamp">Demo data</span>
-              <span>Use made-up labels only. No real names or medicines.</span>
-            </p>
-            <ScheduleEditor />
+          <Section id="h-schedule" title="Schedule" className="caregiver-schedule">
+            <p className="hint schedule-note">Demo data: use made-up labels only. No real names or medicines.</p>
+            <ScheduleEditor backendDown={reachable === false} />
           </Section>
         </div>
 
         <div className="caregiver-rail">
-          <Section id="h-events" index="03" title="Recent events" className="caregiver-events">
-            <EventsList events={events} failed={failed} doses={doses} today={status?.care.date_local ?? ""} />
+          <Section id="h-events" title="Recent events" className="caregiver-events">
+            <EventsList
+              events={events}
+              failed={failed}
+              backendDown={reachable === false}
+              doses={doses}
+              today={status?.care.date_local ?? ""}
+            />
           </Section>
 
-          <Section id="h-drone" index="04" title="Drone" className="caregiver-drone">
+          <Section id="h-drone" title="Drone" className="caregiver-drone">
             {status ? (
               <DroneSummary
                 status={status}
@@ -447,7 +390,7 @@ export function CaregiverPage() {
                 stale={reachable === false}
               />
             ) : (
-              <p className="caregiver-empty">Waiting for status.</p>
+              WAITING
             )}
           </Section>
         </div>

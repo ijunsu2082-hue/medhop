@@ -11,7 +11,7 @@ import "./setup.css";
 interface Props {
   /** null while there is no status (or the backend is not reachable) */
   status: Status | null;
-  /** shown in place of a sub-card that needs status */
+  /** shown in place of a sub-panel that needs status */
   waiting: ReactNode;
   send: (m: ControlMessage) => boolean;
   controlOpen: boolean;
@@ -22,7 +22,7 @@ interface Props {
 
 /**
  * "Setup and tuning": closed by default, open while a hover test runs. The content stays mounted when closed
- * (only hidden), so a sub-card keeps its messages and nothing is torn down mid-action.
+ * (only hidden), so a sub-panel keeps its messages and nothing is torn down mid-action.
  */
 export function AdvancedPanel({ status, waiting, send, controlOpen, calHold, calBlocked, calNote }: Props) {
   const [userOpen, setUserOpen] = useState(false);
@@ -31,7 +31,7 @@ export function AdvancedPanel({ status, waiting, send, controlOpen, calHold, cal
 
   const row = (id: string, title: string, description: string, body: ReactNode) => (
     <section className="setup-row" aria-labelledby={id}>
-      <div className="setup-row-head">
+      <div>
         <h3 id={id}>{title}</h3>
         <p className="setup-desc">{description}</p>
       </div>
@@ -41,34 +41,29 @@ export function AdvancedPanel({ status, waiting, send, controlOpen, calHold, cal
 
   return (
     <section className="section pilot-setup" aria-labelledby="h-setup">
-      <div className="section-head pilot-setup-head">
-        <span className="section-index" aria-hidden="true">
-          04
-        </span>
-        <h2 id="h-setup" className="pilot-setup-heading">
-          <button
-            type="button"
-            className="disclosure disclosure-heading"
-            aria-expanded={open}
-            aria-controls="setup-body"
-            onClick={(e) => {
-              setUserOpen(!open);
-              // Give focus back so Space and the flight keys never land on this button (SPEC 10.5).
-              e.currentTarget.blur();
-            }}
-          >
-            <IconChevron className="disclosure-chevron" size={20} />
-            Setup and tuning
-            {!open && (
-              <span className="setup-summary" aria-hidden="true">
-                Trim, stick limit, hover test, calibration
-              </span>
-            )}
-          </button>
-        </h2>
-      </div>
-      {hoverRunning && <p className="hint small">Open while the hover test runs.</p>}
-      <div className="setup-grid" id="setup-body" hidden={!open}>
+      <h2 id="h-setup">
+        <button
+          type="button"
+          className="disclosure setup-toggle"
+          aria-expanded={open}
+          aria-controls="setup-body"
+          onClick={(e) => {
+            setUserOpen(!open);
+            // Give focus back so Space and the flight keys never land on this button (SPEC 10.5).
+            e.currentTarget.blur();
+          }}
+        >
+          <IconChevron className="disclosure-chevron" size={20} />
+          Setup and tuning
+          {!open && (
+            <span className="section-summary" aria-hidden="true">
+              Trim, stick limit, hover test, calibration
+            </span>
+          )}
+        </button>
+      </h2>
+      {hoverRunning && <p className="hint">Open while the hover test runs.</p>}
+      <div id="setup-body" hidden={!open}>
         {row("h-trim", "Trim", "Small constant stick offsets that cancel drift.", status ? <TrimPanel trim={status.trim} /> : waiting)}
         {row(
           "h-maxstick",

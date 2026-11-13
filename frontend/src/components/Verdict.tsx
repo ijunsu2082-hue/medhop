@@ -1,15 +1,12 @@
 import type { Verdict as V } from "../logic/checklist";
-import { IconCross, IconInfo, IconPass, IconWarn } from "./Icons";
 
 const WORD: Record<V, string> = { pass: "Pass", warn: "Warn", fail: "Fail", info: "Info" };
-const ICON: Record<V, typeof IconPass> = { pass: IconPass, warn: IconWarn, fail: IconCross, info: IconInfo };
 
-/** Icon + word in a stamp, so the verdict never relies on colour alone. */
+/** The verdict as a word with a round mark (filled on pass, hollow on warn and info, red on fail). */
 export function VerdictTag({ verdict }: { verdict: V }) {
-  const Icon = ICON[verdict];
   return (
-    <span className={`stamp stamp--${verdict} verdict`}>
-      <Icon size={16} />
+    <span className={`state tone-${verdict} verdict`}>
+      <span className="dot" aria-hidden="true" />
       <span>{WORD[verdict]}</span>
     </span>
   );

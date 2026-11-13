@@ -1,355 +1,175 @@
-/* Pilot page (/): the page frame and its two instruments.
-   This file (contract C4, task pilot-console): page frame and grid, command strip, e-stop, annunciator, e-stop
-   banner, every hold-button look, title row, camera figure, video overlays and tag, rails, caption, checklist and
-   the Manual flying wrapper. Everything inside StationRun, AutoRun, RunSteps, KeyLegend, AxisIndicators, StickPad,
-   MaxStickSlider and AdvancedPanel lives in station-run.css, manual.css and setup.css.
-   Every rule is scoped under .pilot. Tokens and shared primitives come from styles.css; no literals here. */
+/* Pilot page: the strip (emergency stop, takeoff / land, links) that stays at the top, the hold buttons, the camera,
+   the checklist and the Manual flying wrapper. The station run, the flying controls and Setup and tuning are styled
+   in station-run.css, manual.css and setup.css. Every rule is scoped under .pilot and uses the tokens only. */
 
-/* ===================================================================================== Frame */
-
-.pilot {
-  /* Full-bleed bands (strip, banner, annunciator) keep their content on the .container edges. */
-  --pilot-gutter: max(var(--s-6), calc((100% - 1200px) / 2));
-  min-width: 0;
-}
+/* ===================================================================================== Strip */
 
 .pilot .pilot-sticky {
   position: sticky;
   top: 0;
   z-index: 20;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
 }
 
-.pilot .pilot-body {
-  padding-top: var(--s-5);
-  padding-bottom: var(--s-8);
-}
-
-/* ===================================================================================== Command strip */
-
-/* A grid at every width, so nothing drops to a stray line:
-   1200 and up   one row: e-stop, takeoff, reason (takes the rest), readout as legend/value rows.
-   640 to 1199   e-stop, takeoff and the reason; the readout as one line beneath (see the media blocks).
-   below 640     e-stop and takeoff; the readout line; the reason.
-   Rows after the first are spaced by margins, so an empty reason leaves no gap behind. */
+/* Emergency stop, takeoff and the status column on one row; below 960px the status goes under the two buttons. */
 .pilot .command-bar {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
-  grid-template-areas: "estop takeoff note status";
+  grid-template-columns: minmax(0, 340px) minmax(0, 260px) minmax(0, 1fr);
+  grid-template-areas: "estop takeoff status";
   align-items: center;
-  column-gap: var(--s-4);
-  padding: var(--s-3) var(--pilot-gutter);
+  gap: var(--s-3) var(--s-4);
+  padding-block: var(--s-3);
 }
 
-/* Real drone: a 4px amber rule along the top; the strip keeps its height. */
-.pilot .command-bar--real {
-  border-top: 4px solid var(--amber);
-  padding-top: var(--s-2);
-}
-
-/* The takeoff button and its reason, and the backend alert and the readout, are cells of the strip grid. */
-.pilot .takeoff-wrap,
-.pilot .command-status {
-  display: contents;
-}
-
-/* EMERGENCY STOP: the largest control and the only saturated red on the page. */
+/* The fastest thing to hit: first, largest, the one solid red control. */
 .pilot .estop {
   grid-area: estop;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
-    "icon main key"
-    "icon sub key";
+    "main key"
+    "sub key";
   align-content: center;
   align-items: center;
   column-gap: var(--s-3);
-  height: 72px;
-  min-width: 360px;
+  min-height: 72px;
   margin: 0;
-  padding: 0 var(--s-4);
-  background: var(--estop);
-  color: var(--estop-text);
-  border: 2px solid var(--estop-text);
-  border-radius: var(--r-2);
+  padding: var(--s-2) var(--s-4);
+  background: var(--red);
+  color: var(--bg);
+  border: 0;
+  border-radius: var(--r);
   text-align: left;
   cursor: pointer;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color var(--t-fast) var(--ease);
-}
-
-.pilot .estop:hover {
-  background: var(--estop-hover);
-}
-
-.pilot .estop:active {
-  background: var(--estop-deep);
 }
 
 .pilot .estop:focus-visible {
-  outline: 3px solid var(--estop-text);
-  outline-offset: 3px;
-}
-
-.pilot .estop-icon {
-  grid-area: icon;
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
 }
 
 .pilot .estop-main {
   grid-area: main;
-  align-self: end;
-  font: 800 22px/26px var(--font-body);
-  letter-spacing: 0.04em;
-  white-space: nowrap;
+  font: 600 22px/28px var(--font);
 }
 
 .pilot .estop-sub {
   grid-area: sub;
-  align-self: start;
-  font: 500 14px/20px var(--font-body);
-  color: var(--estop-text);
+  font: var(--t-small);
 }
 
 .pilot .estop-key {
   grid-area: key;
-  display: inline-flex;
-  align-items: center;
-  height: 26px;
-  padding: 0 var(--s-2);
-  background: var(--estop-text);
-  color: var(--ink);
-  border: 1px solid var(--estop-text);
-  border-radius: var(--r-1);
-  font: 600 13px/1 var(--font-data);
+  border-color: var(--bg);
 }
 
-/* Takeoff / Land in the strip: paper on ink when it can be used, the console disabled recipe otherwise. */
-.pilot .takeoff.takeoff-compact {
-  grid-area: takeoff;
-  width: auto;
-  min-width: 260px;
-  height: 72px;
-  min-height: 72px;
-  background: var(--paper);
-  color: var(--ink);
-  border: 1px solid var(--paper);
-}
-
-.pilot .takeoff.takeoff-compact:hover:not(:disabled) {
-  background: var(--sheet);
-}
-
-.pilot .takeoff-compact .takeoff-label {
-  font: 700 16px/24px var(--font-body);
-}
-
-.pilot .takeoff-compact .takeoff-sub {
-  color: var(--ink-2);
-}
-
-.pilot .takeoff-compact .takeoff-fill {
-  background: var(--sweep-on-light);
-}
-
-/* The reason beside it: the full text, wrapping, never cut. */
-.pilot .takeoff-note {
-  grid-area: note;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-2);
+.pilot .strip-status {
+  grid-area: status;
   min-width: 0;
-  font: var(--t-caption);
-  color: var(--c-fg-2);
-  overflow-wrap: anywhere;
 }
 
-.pilot .takeoff-note:empty {
-  display: none;
+.pilot .strip-real {
+  margin: 0 0 var(--s-1);
+  font: var(--t-heading);
 }
 
-.pilot .takeoff-note--blocked {
-  font-weight: 600;
-  color: var(--c-fg);
-}
-
-/* As tall as one line of the reason, so the padlock centres on the first line without a nudge. */
-.pilot .takeoff-note-icon {
-  flex: none;
-  height: 1lh;
-}
-
-/* Backend down: the alert takes the reason's cell and says it once; the reason (aria-hidden) is not drawn. */
-.pilot .command-bar--down .takeoff-note {
-  display: none;
-}
-
-.pilot .command-down {
-  grid-area: note;
+.pilot .readout {
   display: flex;
-  align-items: baseline;
-  gap: var(--s-2);
-  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-5);
   margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--t-small);
+}
+
+.pilot .readout-k {
+  margin-right: var(--s-2);
+  color: var(--mid);
+}
+
+.pilot .readout .state {
+  display: inline-flex;
+}
+
+.pilot .strip-sticks,
+.pilot .takeoff-note {
+  margin: var(--s-1) 0 0;
   font: var(--t-label);
 }
 
-/* Readout: legend / value rows. A square sits on the baseline like a glyph, at the height of the lowercase. */
-.pilot .readout {
-  grid-area: status;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: baseline;
-  column-gap: var(--s-4);
-  min-width: 0;
-  max-width: 360px;
+/* With the emergency-stop band open, the band says why takeoff is unavailable; the strip does not repeat it. */
+.pilot .takeoff-note:empty,
+.pilot .pilot-sticky--banner .takeoff-note {
+  display: none;
 }
 
-.pilot .readout-row {
-  display: contents;
-}
-
-.pilot .readout-legend {
-  font: 600 12px/16px var(--font-data);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--c-fg-2);
-  white-space: nowrap;
-}
-
-.pilot .readout-data {
-  min-width: 0;
-  font: 500 13px/16px var(--font-data);
-  font-variant-numeric: tabular-nums;
-}
-
-.pilot .readout-mode .readout-data {
-  display: flex;
-  align-items: center;
-  min-height: 22px;
-}
-
-.pilot .readout-value {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s-2);
-}
-
-/* ===================================================================================== E-stop bands */
-
-/* Deep red, so the button above stays the brightest red on the page. */
+/* The emergency-stop band: solid red, white text, white buttons. */
 .pilot .estop-banner {
-  position: relative;
+  background: var(--red);
+  color: var(--bg);
+}
+
+.pilot .estop-banner-inner {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  column-gap: var(--s-3);
-  row-gap: var(--s-1);
-  padding: var(--s-3) var(--pilot-gutter);
-  background: var(--estop-deep);
-  color: var(--estop-text);
+  gap: var(--s-1);
+  padding-block: var(--s-3);
 }
 
-/* Centred on the title row. */
-.pilot .estop-banner-icon {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: center;
-}
-
-.pilot .estop-banner-title,
-.pilot .estop-banner-detail,
-.pilot .estop-banner-actions {
-  grid-column: 2;
+/* Not sent or not confirmed: a white bar down the left edge. */
+.pilot .estop-banner-unsent .estop-banner-inner {
+  border-left: 4px solid var(--bg);
 }
 
 .pilot .estop-banner-title {
-  font: 700 18px/26px var(--font-body);
+  font: var(--t-heading);
 }
 
 .pilot .estop-banner-detail {
   max-width: 80ch;
-  font: var(--t-body);
 }
 
 .pilot .estop-banner-actions {
   margin-top: var(--s-2);
 }
 
-/* Not sent or not confirmed: a 6px white bar on the container edge. */
-.pilot .estop-banner-unsent {
-  padding-left: calc(var(--pilot-gutter) + var(--s-5));
-}
-
-.pilot .estop-banner-unsent::before {
-  content: "";
-  position: absolute;
-  top: var(--s-3);
-  bottom: var(--s-3);
-  left: var(--pilot-gutter);
-  width: 6px;
-  background: var(--estop-text);
-}
-
 .pilot .estop-banner .btn {
-  background: var(--estop-text);
-  color: var(--estop-deep);
-  border: 1px solid var(--estop-text);
-  font-weight: 700;
+  background: var(--bg);
+  color: var(--ink);
+  border-color: var(--bg);
 }
 
 .pilot .estop-banner .btn:hover:not(:disabled) {
-  background: var(--sheet);
-  color: var(--estop-deep);
-  text-decoration: none;
+  background: var(--fill);
+  opacity: 1;
+}
+
+.pilot .estop-banner .estop-banner-retry {
+  color: var(--red);
 }
 
 .pilot .estop-banner .btn:focus-visible {
-  outline: 3px solid var(--estop-text);
-  outline-offset: 3px;
+  outline-color: var(--bg);
 }
 
 .pilot .estop-banner .btn:disabled {
   background: transparent;
-  color: var(--estop-text);
-  border: 1px dashed var(--estop-text);
+  color: var(--bg);
+  border-color: var(--bg);
 }
 
 .pilot .estop-banner-note {
-  font: var(--t-caption);
-  color: var(--estop-text);
+  font: var(--t-small);
 }
 
-/* The refused-link annunciator. */
-.pilot .pilot-annunciator {
-  padding: var(--s-3) var(--pilot-gutter);
-  background: var(--console-2);
-  color: var(--on-console);
-  border-top: 1px solid var(--console-rule);
-}
+/* ===================================================================================== Hold buttons */
 
-.pilot .pilot-annunciator-inner {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-3);
-}
-
-.pilot .pilot-annunciator-state {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: var(--s-2);
-  height: 24px;
-}
-
-.pilot .pilot-annunciator-text {
-  font: var(--t-body);
-  text-wrap: pretty;
-}
-
-/* ===================================================================================== Hold buttons (C2) */
-
-/* Base: the secondary look. The fill is frame driven (scaleX from useHoldGuard): never transition transform. */
+/* Outlined by default. The fill is driven every frame (scaleX from useHoldGuard): never transition transform. */
 .pilot .takeoff {
   position: relative;
   isolation: isolate;
@@ -362,14 +182,14 @@
   align-content: center;
   align-items: center;
   column-gap: var(--s-3);
+  width: 100%;
   min-height: 64px;
-  max-width: 100%;
   margin: 0;
   padding: var(--s-2) var(--s-4);
-  background: transparent;
-  color: var(--c-fg);
-  border: 1px solid var(--c-fg);
-  border-radius: var(--r-2);
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: var(--r);
   text-align: left;
   cursor: pointer;
   touch-action: none;
@@ -377,18 +197,14 @@
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    background-color var(--t-fast) var(--ease),
-    color var(--t-fast) var(--ease),
-    border-color var(--t-fast) var(--ease);
 }
 
 .pilot .takeoff:hover:not(:disabled) {
-  background: var(--c-hover-fill);
+  background: var(--fill);
 }
 
 .pilot .takeoff[data-holding="true"] {
-  outline: 2px solid var(--c-signal);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
@@ -397,7 +213,7 @@
   inset: 0;
   z-index: -1;
   transform-origin: left center;
-  background: var(--sweep-on-light);
+  background: var(--line);
   pointer-events: none;
   transition: none;
 }
@@ -415,182 +231,109 @@
 .pilot .takeoff-sub {
   grid-area: sub;
   min-width: 0;
-  font: var(--t-sub);
-  color: var(--c-fg-2);
+  font: var(--t-small);
+  color: var(--mid);
 }
 
-.pilot .takeoff-key {
-  grid-area: key;
-  align-self: center;
-}
-
-/* Primary: ink fill, paper text, full width. */
-.pilot .takeoff-large {
-  width: 100%;
-  background: var(--ink);
-  color: var(--paper);
-  border-color: var(--ink);
-}
-
-.pilot .takeoff-large:hover:not(:disabled) {
-  background: var(--ink-hover);
-}
-
-.pilot .takeoff-large .takeoff-sub {
-  color: var(--on-console-2);
-}
-
-.pilot .takeoff-large .takeoff-fill {
-  background: var(--sweep-on-ink);
-}
-
-/* Full width in the secondary look. */
-.pilot .takeoff-large.takeoff-secondary {
-  background: transparent;
-  color: var(--c-fg);
-  border-color: var(--c-fg);
-}
-
-.pilot .takeoff-large.takeoff-secondary:hover:not(:disabled) {
-  background: var(--c-hover-fill);
-}
-
-.pilot .takeoff-large.takeoff-secondary .takeoff-sub {
-  color: var(--c-fg-2);
-}
-
-.pilot .takeoff-large.takeoff-secondary .takeoff-fill {
-  background: var(--sweep-on-light);
-}
-
-/* While held, the second line reads "Keep holding..." in the label colour, over the sweep. */
-.pilot .takeoff[data-holding="true"] .takeoff-sub,
-.pilot .takeoff-large[data-holding="true"] .takeoff-sub,
-.pilot .takeoff-large.takeoff-secondary[data-holding="true"] .takeoff-sub {
+.pilot .takeoff[data-holding="true"] .takeoff-sub {
   color: inherit;
   font-weight: 600;
 }
 
-.pilot .calibrate-btn {
-  width: min(100%, 400px);
+.pilot .takeoff-key {
+  grid-area: key;
 }
 
-/* Disabled: the shared recipe from the contextual aliases (paper or console), with a padlock before the label. */
-.pilot .takeoff:disabled,
-.pilot .takeoff.takeoff-compact:disabled,
-.pilot .takeoff-large.takeoff-secondary:disabled {
-  background: var(--c-disabled-fill);
-  color: var(--c-disabled-fg);
-  border: 1px dashed var(--c-disabled-border);
+.pilot .takeoff-primary,
+.pilot .takeoff-primary:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.pilot .takeoff-primary .takeoff-sub {
+  color: var(--bg);
+}
+
+.pilot .takeoff-primary .takeoff-fill {
+  background: var(--mid);
+}
+
+.pilot .takeoff:disabled {
+  background: var(--fill);
+  color: var(--mid);
+  border-color: var(--line);
   cursor: not-allowed;
 }
 
-.pilot .takeoff:disabled .takeoff-sub,
-.pilot .takeoff-large:disabled .takeoff-sub,
-.pilot .takeoff-large.takeoff-secondary:disabled .takeoff-sub {
-  color: var(--c-disabled-fg);
+.pilot .takeoff:disabled .takeoff-sub {
+  color: var(--mid);
 }
 
-.pilot .takeoff:disabled .takeoff-key {
-  background: transparent;
-  color: var(--c-disabled-fg);
-  border-color: var(--c-disabled-border);
+.pilot .takeoff-compact {
+  grid-area: takeoff;
+  min-height: 72px;
 }
 
-/* A hanging indent: a label that wraps keeps its second line clear of the padlock (16px + 8px). */
-.pilot .takeoff:disabled:not([aria-busy="true"]) .takeoff-label {
-  padding-left: var(--s-5);
-  text-indent: calc(-1 * var(--s-5));
+.pilot .calibrate-btn {
+  max-width: 400px;
 }
 
-.pilot .takeoff:disabled:not([aria-busy="true"]) .takeoff-label::before {
-  content: "";
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  margin-right: var(--s-2);
-  vertical-align: -0.125em;
-  background: currentColor;
-  -webkit-mask: var(--icon-lock) center / 16px 16px no-repeat;
-  mask: var(--icon-lock) center / 16px 16px no-repeat;
+/* ===================================================================================== Page */
+
+.pilot .pilot-body {
+  padding-top: var(--s-6);
 }
 
-/* ===================================================================================== Title row */
+.pilot .pilot-body > .banner {
+  margin: 0 0 var(--s-5);
+}
 
-.pilot .pilot-title-row {
+.pilot .pilot-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 var(--s-5);
-  margin-bottom: var(--s-4);
+  margin-bottom: var(--s-6);
 }
 
-.pilot .pilot-title-row h1 {
+.pilot .pilot-head h1 {
   margin: 0;
 }
 
 .pilot .pilot-about {
   flex: 1 0 100%;
   max-width: 68ch;
+  color: var(--mid);
 }
 
-.pilot .pilot-lede {
-  margin: var(--s-1) 0 0;
-  color: var(--ink-2);
+.pilot .pilot-about p {
+  margin: var(--s-2) 0 0;
 }
-
-/* ===================================================================================== Grid */
 
 .pilot .pilot-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--s-6);
+  gap: var(--s-7);
   align-items: start;
 }
 
-.pilot .pilot-grid ~ section {
+.pilot .pilot-manual,
+.pilot .pilot-setup {
   margin-top: var(--s-7);
 }
 
-/* ===================================================================================== Camera figure */
-
-.pilot .pilot-camera {
-  min-width: 0;
-}
+/* ===================================================================================== Camera */
 
 .pilot .camera {
   margin: 0;
-  border-radius: 0;
-}
-
-.pilot .camera-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--s-3);
-  min-height: 44px;
-  padding: 0 var(--s-4);
-}
-
-.pilot .camera-head h2 {
-  margin: 0;
-  font: 700 16px/24px var(--font-body);
-}
-
-.pilot .camera-readout {
-  margin-left: auto;
-  font: 500 13px/20px var(--font-data);
-  font-variant-numeric: tabular-nums;
-  color: var(--c-fg-2);
-  white-space: nowrap;
 }
 
 .pilot .video-frame {
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  background: var(--console-inset);
-  border-radius: 0;
+  background: var(--fill);
+  border-radius: var(--r);
 }
 
 .pilot .video-img {
@@ -600,128 +343,71 @@
   object-fit: cover;
 }
 
-/* Full-frame states sit on a low-contrast hatch, never a bare black frame. */
 .pilot .video-overlay {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--s-1);
-  padding: var(--s-5) max(var(--s-5), calc((100% - 420px) / 2));
-  background: repeating-linear-gradient(135deg, var(--console) 0 8px, var(--console-2) 8px 16px);
-  color: var(--c-fg);
+  padding: var(--s-5);
+  text-align: center;
 }
 
 .pilot .video-overlay-title {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  font: 700 20px/28px var(--font-body);
+  font: var(--t-heading);
 }
 
-.pilot .video-overlay-title::before {
-  content: "";
-  flex: none;
-  width: 12px;
-  height: 12px;
-  background: var(--c-fg-2);
+.pilot .video-overlay--no_video .video-overlay-title {
+  color: var(--red);
 }
 
-.pilot .video-overlay--no_video .video-overlay-title::before,
-.pilot .video-overlay--unreachable .video-overlay-title::before {
-  background: var(--c-fail);
-}
-
-.pilot .video-overlay--interrupted .video-overlay-title::before {
-  background: var(--c-warn);
-}
-
-.pilot .video-overlay-detail {
-  font: var(--t-body);
-  color: var(--c-fg-2);
-}
-
+.pilot .video-overlay-detail,
 .pilot .video-overlay-age {
-  font: 500 13px/20px var(--font-data);
-  font-variant-numeric: tabular-nums;
-  color: var(--c-fg-2);
+  color: var(--mid);
 }
 
-/* The only tag allowed on the picture: VIDEO DELAYED. */
-.pilot .video-chips {
+.pilot .video-tags {
   position: absolute;
   top: var(--s-3);
   left: var(--s-3);
-  display: flex;
-  gap: var(--s-2);
 }
 
 .pilot .video-tag {
-  display: inline-flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 var(--s-2);
-  background: var(--amber);
+  display: inline-block;
+  padding: var(--s-1) var(--s-2);
+  background: var(--bg);
   color: var(--ink);
-  border-radius: 0;
-  font: var(--t-stamp);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.pilot .camera-estop {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  min-height: 36px;
-  padding: 0 var(--s-4);
-  background: var(--estop-deep);
-  color: var(--estop-text);
-  font: 700 16px/24px var(--font-body);
+  border-radius: var(--r);
+  font: var(--t-label);
 }
 
 .pilot .camera-rail {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid var(--console-rule);
+  gap: var(--s-4);
+  margin: var(--s-3) 0 0;
 }
 
-.pilot .camera-cell {
-  min-width: 0;
-  padding: var(--s-2) var(--s-4);
+.pilot .camera-rail dt {
+  font: var(--t-small);
+  color: var(--mid);
 }
 
-.pilot .camera-cell + .camera-cell {
-  border-left: 1px solid var(--console-rule);
+.pilot .camera-rail dd {
+  margin: 0;
 }
 
-.pilot .camera-cell:only-child {
-  grid-column: 1 / -1;
-}
-
-.pilot .camera-legend {
-  display: block;
-  font: var(--t-stamp);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--c-fg-2);
-}
-
-.pilot .camera-value {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s-2);
-  font: 600 16px/24px var(--font-body);
+.pilot .camera-waiting {
+  margin: var(--s-3) 0 0;
 }
 
 .pilot .camera-caption {
   max-width: 68ch;
-  margin: var(--s-3) 0 0;
-  font: var(--t-caption);
-  color: var(--ink-2);
+  margin-top: var(--s-3);
+  font: var(--t-small);
+  color: var(--mid);
 }
 
 /* ===================================================================================== Checklist */
@@ -729,8 +415,7 @@
 .pilot .checklist {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  column-gap: var(--s-5);
+  column-gap: var(--s-6);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -738,10 +423,10 @@
 
 .pilot .check {
   min-width: 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 
-.pilot .check-chip {
+.pilot .check-row {
   display: flex;
   align-items: center;
   gap: var(--s-3);
@@ -752,20 +437,14 @@
   background: none;
   border: 0;
   color: var(--ink);
-  font: 500 16px/24px var(--font-body);
+  font: var(--t-body);
   text-align: left;
   cursor: pointer;
 }
 
-.pilot .check-chip:hover .check-label {
+.pilot .check-row:hover .check-label {
   text-decoration: underline;
-  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
-}
-
-.pilot .check-icon {
-  display: inline-flex;
-  flex: none;
 }
 
 .pilot .check-label {
@@ -773,46 +452,27 @@
   min-width: 0;
 }
 
-.pilot .check-state {
-  flex: none;
-}
-
-.pilot .check-chevron {
-  flex: none;
-  color: var(--ink-2);
-}
-
-.pilot .check-chip[aria-expanded="true"] .check-chevron {
-  transform: rotate(90deg);
+.pilot .check-row .disclosure-chevron {
+  color: var(--mid);
 }
 
 .pilot .check-text {
   margin: 0;
-  padding: var(--s-2) 0 var(--s-3);
-  font: var(--t-caption);
-  color: var(--ink-2);
+  padding: 0 0 var(--s-3);
+  font: var(--t-small);
+  color: var(--mid);
 }
 
-.pilot .check-word {
-  font-weight: 600;
-  color: var(--ink);
-}
-
-/* ===================================================================================== Manual flying wrapper */
+/* ===================================================================================== Manual flying */
 
 .pilot .manual-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--s-5);
+  gap: var(--s-6);
 }
 
-.pilot .manual-keys h3,
-.pilot .manual-live h3 {
+.pilot .manual-grid h3 {
   margin: 0 0 var(--s-3);
-}
-
-.pilot .manual-keys .hint {
-  margin: var(--s-3) 0 0;
 }
 
 .pilot .manual-live .msg {
@@ -823,17 +483,11 @@
   margin: var(--s-3) 0 0;
 }
 
-.pilot .manual-note-value {
-  font: var(--t-data);
-  font-weight: 600;
-  color: var(--ink);
-}
-
 .pilot .pilot-manual > .disclosure {
   margin-top: var(--s-4);
 }
 
-/* ===================================================================================== 640 and up */
+/* ===================================================================================== Breakpoints */
 
 @media (min-width: 640px) {
   .pilot .checklist {
@@ -841,97 +495,24 @@
   }
 }
 
-/* ===================================================================================== Below 1200: readout as a line */
-
-/* Under 1200px the four cells do not fit one row (e-stop 360 + takeoff 260 + a readout of about 330).
-   The buttons and the reason keep the first row; the readout becomes one line of legend and value pairs. */
-@media (max-width: 1199px) {
-  .pilot .command-bar {
-    grid-template-columns: auto auto minmax(0, 1fr);
-    grid-template-areas:
-      "estop takeoff note"
-      "status status status";
-  }
-
-  .pilot .readout {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0 var(--s-5);
-    max-width: none;
-    margin-top: var(--s-3);
-  }
-
-  .pilot .readout-row {
-    display: flex;
-    align-items: baseline;
-    gap: var(--s-2);
-  }
-
-  .pilot .readout-legend,
-  .pilot .readout-data {
-    line-height: 22px;
-  }
-}
-
-/* Below 960 the readout line is short of room. In simulator mode the DRONE row only repeats the MODE stamp
-   ("Simulator (no real drone)"): it stays for assistive tech and is not drawn. */
-@media (max-width: 959px) {
-  .pilot .readout-row--redundant {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-  }
-}
-
-/* 640 to 959: the reason gets its own row under the readout. */
-@media (min-width: 640px) and (max-width: 959px) {
-  .pilot .command-bar {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-    grid-template-areas:
-      "estop takeoff"
-      "status status"
-      "note note";
-  }
-
-  .pilot .estop,
-  .pilot .takeoff.takeoff-compact {
-    min-width: 0;
-  }
-
-  .pilot .takeoff-note,
-  .pilot .command-down {
-    margin-top: var(--s-2);
-  }
-}
-
-/* ===================================================================================== 960 and up */
-
 @media (min-width: 960px) {
   .pilot .pilot-grid {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    gap: var(--s-5);
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    column-gap: var(--s-6);
   }
 
   .pilot .pilot-camera {
-    grid-column: 1 / span 8;
+    grid-column: 1;
     grid-row: 1;
   }
 
   .pilot .pilot-run {
-    grid-column: 9 / span 4;
-    grid-row: 1;
+    grid-column: 2;
+    grid-row: 1 / span 2;
   }
 
   .pilot .pilot-check {
-    grid-column: 1 / -1;
-  }
-
-  .pilot .checklist {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-column: 1;
   }
 
   .pilot .manual-grid {
@@ -939,186 +520,80 @@
   }
 }
 
-/* ===================================================================================== Below 640 */
-
-@media (max-width: 639px) {
-  .pilot {
-    --pilot-gutter: var(--s-4);
-  }
-
-  .pilot .pilot-body {
-    padding-top: var(--s-4);
-  }
-
-  /* Row 1: e-stop and takeoff. Row 2: the readout as one mono line. The reason wraps beneath. */
+@media (max-width: 959px) {
   .pilot .command-bar {
-    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
     grid-template-areas:
       "estop takeoff"
-      "status status"
-      "note note";
-    column-gap: var(--s-2);
+      "status status";
+  }
+}
+
+@media (max-width: 639px) {
+  .pilot .command-bar {
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+    gap: var(--s-2);
     padding-block: var(--s-2);
   }
 
-  .pilot .command-bar--real {
-    padding-top: var(--s-1);
-  }
-
+  /* The label gets the full width, so "Emergency stop" stays on one line; the key cap moves beside the second line. */
   .pilot .estop {
-    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "main main"
       "sub key";
-    column-gap: var(--s-2);
-    height: 64px;
-    min-width: 0;
-    padding: 0 var(--s-3);
-  }
-
-  .pilot .estop-icon {
-    display: none;
-  }
-
-  .pilot .estop-main {
-    font-size: 18px;
-    line-height: 22px;
-    letter-spacing: 0.02em;
-  }
-
-  .pilot .estop-sub {
-    font-size: 13px;
-    line-height: 16px;
+    min-height: 64px;
+    padding-inline: var(--s-3);
   }
 
   .pilot .estop-key {
     align-self: end;
-    height: 22px;
-    padding: 0 var(--s-1);
   }
 
-  .pilot .takeoff.takeoff-compact {
+  .pilot .takeoff-compact {
+    min-height: 64px;
+    padding-inline: var(--s-2);
+  }
+
+  .pilot .estop-main {
+    font: 600 20px/24px var(--font);
+  }
+
+  /* On a phone the takeoff button shows its label only; the reason is printed under the strip. */
+  .pilot .takeoff-compact {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "label"
       "sub";
-    min-width: 0;
-    height: 64px;
-    min-height: 64px;
-    padding: var(--s-1) var(--s-2);
-  }
-
-  /* Disabled on a phone: the padlock and label only; the reason is printed in full beneath the strip. */
-  .pilot .takeoff.takeoff-compact:disabled .takeoff-sub {
-    display: none;
-  }
-
-  .pilot .takeoff-compact .takeoff-label {
-    font-size: 15px;
-    line-height: 20px;
   }
 
   .pilot .takeoff-compact .takeoff-paren,
-  .pilot .takeoff-compact .takeoff-key {
+  .pilot .takeoff-compact .takeoff-key,
+  .pilot .takeoff-compact:disabled .takeoff-sub {
     display: none;
   }
 
-  .pilot .takeoff-compact .takeoff-sub {
-    font-size: 13px;
-    line-height: 16px;
-  }
-
-  /* One line where it fits: short legends (MODE is implied by its stamp), 18px rows, no row gap, tighter pairs. */
   .pilot .readout {
-    gap: 0 var(--s-3);
-    margin-top: var(--s-1);
-  }
-
-  .pilot .readout-row {
-    gap: var(--s-2);
-  }
-
-  .pilot .readout-value {
-    gap: var(--s-1);
-  }
-
-  .pilot .readout-legend,
-  .pilot .readout-data {
-    line-height: 18px;
-  }
-
-  .pilot .readout-legend--mode,
-  .pilot .readout-legend-more {
-    display: none;
-  }
-
-  .pilot .readout .stamp {
-    height: 18px;
-  }
-
-  .pilot .readout-mode .readout-data {
-    min-height: 18px;
-  }
-
-  .pilot .takeoff-note,
-  .pilot .command-down {
-    margin-top: var(--s-1);
-  }
-
-  /* With the emergency-stop band open, the band explains the disabled takeoff; the strip reason (aria-hidden)
-     would only repeat it. */
-  .pilot .pilot-sticky--banner .takeoff-note {
-    display: none;
-  }
-
-  .pilot .estop-banner {
-    padding-block: var(--s-2);
+    gap: 0 var(--s-4);
   }
 
   .pilot .estop-banner-detail {
-    font: var(--t-caption);
-    color: var(--estop-text);
+    font: var(--t-small);
   }
 
-  .pilot .estop-banner .btn {
-    min-height: 48px;
-  }
-
-  .pilot .camera-head {
-    padding-block: var(--s-1);
+  .pilot .pilot-body {
+    padding-top: var(--s-5);
   }
 
   .pilot .camera-rail {
     grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 
-  .pilot .camera-cell {
-    display: grid;
-    grid-template-columns: 112px minmax(0, 1fr);
-    align-items: baseline;
-    gap: var(--s-3);
-    padding: var(--s-2) var(--s-4);
-  }
-
-  .pilot .camera-cell + .camera-cell {
-    border-left: 0;
-    border-top: 1px solid var(--console-rule);
-  }
-
-  .pilot .camera-cell:only-child {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pilot .video-overlay {
-    padding: var(--s-4);
-  }
-
-  .pilot .video-overlay-title {
-    font-size: 18px;
-    line-height: 24px;
-  }
-
-  .pilot .video-overlay-detail {
-    font: var(--t-caption);
+  .pilot .camera-rail > div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-4);
+    padding: var(--s-2) 0;
+    border-bottom: 1px solid var(--line);
   }
 }

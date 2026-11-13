@@ -4,11 +4,9 @@ import { cssViolations, readCss } from "../testing/cssGuard";
 const css = readCss(import.meta.url, "./caregiver.css");
 const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
 
-/** The declaration blocks whose selector mentions `.dose-status`. */
-function doseStatusBlocks(source: string): string[] {
-  return [...source.matchAll(/([^{}]*)\{([^{}]*)\}/g)]
-    .filter((m) => (m[1] ?? "").includes(".dose-status"))
-    .map((m) => m[2] ?? "");
+/** Innermost blocks as [selector list, body]. */
+function blocks(source: string): [string, string][] {
+  return [...source.matchAll(/([^{}]*)\{([^{}]*)\}/g)].map((m) => [(m[1] ?? "").trim(), m[2] ?? ""]);
 }
 
 describe("caregiver.css design guard", () => {
@@ -23,15 +21,21 @@ describe("caregiver.css design guard", () => {
   });
 
   it("never clips a dose status line", () => {
-    const blocks = doseStatusBlocks(withoutComments);
-    expect(blocks.length).toBeGreaterThan(0);
-    for (const block of blocks) expect(block).not.toContain("white-space: nowrap");
+    const statusBlocks = blocks(withoutComments).filter(([sel]) => sel.includes(".dose-status"));
+    expect(statusBlocks.length).toBeGreaterThan(0);
+    for (const [, body] of statusBlocks) expect(body).not.toContain("white-space: nowrap");
   });
 
   it("sets type through the role tokens only: every font shorthand is a var(--t-*)", () => {
     const shorthands = [...withoutComments.matchAll(/(?:^|[;{\s])font\s*:\s*([^;}]+)/g)].map((m) => (m[1] ?? "").trim());
     expect(shorthands.length).toBeGreaterThan(0);
     for (const value of shorthands) expect(value).toMatch(/^var\(--t-[a-z-]+\)$/);
+  });
+
+  it("uses red only for a dose that needs attention", () => {
+    for (const [sel, body] of blocks(withoutComments)) {
+      if (body.includes("var(--red)")) expect(sel).toContain("needs_attention");
+    }
   });
 
   it("is scoped under .caregiver", () => {

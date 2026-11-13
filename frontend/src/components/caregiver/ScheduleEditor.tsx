@@ -80,7 +80,7 @@ function DoseForm({
         <label htmlFor={`${idPrefix}-time`}>
           Time <span className="muted">HH:MM</span>
         </label>
-        <input {...field("time")} className="mono" type="text" inputMode="numeric" placeholder="e.g. 08:00" autoComplete="off" maxLength={5} />
+        <input {...field("time")} type="text" inputMode="numeric" placeholder="e.g. 08:00" autoComplete="off" maxLength={5} />
         {errors.time && (
           <span className="field-error" id={`${idPrefix}-time-err`}>
             {errors.time}
@@ -116,8 +116,11 @@ function DoseForm({
   );
 }
 
-/** Add / edit / delete doses: GET, POST, PUT /{id}, DELETE /{id} on /api/schedule. Demo data only. */
-export function ScheduleEditor() {
+/**
+ * Add / edit / delete doses: GET, POST, PUT /{id}, DELETE /{id} on /api/schedule. Demo data only.
+ * `backendDown`: the shell already says the backend is not reachable, so a failed load then shows one quiet line.
+ */
+export function ScheduleEditor({ backendDown = false }: { backendDown?: boolean }) {
   const [doses, setDoses] = useState<ScheduleDose[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -188,12 +191,15 @@ export function ScheduleEditor() {
 
   return (
     <div className="schedule">
-      {loadError && (
-        <p className="msg msg-warn" role="status">
-          {loadError}
-          {doses === null ? " Retrying every 5 s." : ""}
-        </p>
-      )}
+      {loadError &&
+        (backendDown ? (
+          doses === null && <p className="muted">Waiting for status.</p>
+        ) : (
+          <p className="msg msg-warn" role="status">
+            {loadError}
+            {doses === null ? " Retrying every 5 s." : ""}
+          </p>
+        ))}
       {actionError && (
         <p className="msg msg-fail" role="alert">
           {actionError}
@@ -229,14 +235,14 @@ export function ScheduleEditor() {
                   <span className="schedule-time">{d.time}</span>
                   <span className="schedule-label">
                     {d.label}
-                    {d.notes && <span className="small muted block">{d.notes}</span>}
+                    {d.notes && <span className="hint block">{d.notes}</span>}
                   </span>
                   <span className="row schedule-actions">
                     {confirmDelete === d.id ? (
                       <>
                         <button
                           type="button"
-                          className="btn btn-danger"
+                          className="btn btn-primary"
                           disabled={deleting === d.id}
                           aria-busy={deleting === d.id ? true : undefined}
                           aria-label={deleting === d.id ? undefined : `Confirm delete ${d.label} at ${d.time}`}
@@ -286,7 +292,7 @@ export function ScheduleEditor() {
                         <button
                           id={deleteId(d.id)}
                           type="button"
-                          className="btn btn-danger-quiet schedule-delete"
+                          className="btn btn-quiet schedule-delete"
                           onClick={() => {
                             // The safe choice takes focus, so a second Enter keeps the dose rather than deleting it.
                             requestFocus(keepId(d.id));

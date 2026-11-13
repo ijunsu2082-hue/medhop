@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { api } from "../api/client";
 import { useStatus } from "../hooks/useStatus";
 import { ACK_COOLDOWN_MS, arrivalLine, careFocus, isEarlyArrival, reminderMaySpeak, spokenReminder } from "../logic/care";
-import { IconCheck, IconCross, IconPass, IconPin, IconSpeaker } from "../components/Icons";
 import { formatDateWords } from "../logic/dateWords";
 import "./care.css";
 
@@ -115,8 +114,7 @@ export function CarePage() {
 
   const thanksLine = thanks && (
     <p className="care-thanks" role="status">
-      <IconPass size={40} />
-      <span>Thank you. We noted that you picked up {thanks.label}.</span>
+      Thank you. We noted that you picked up {thanks.label}.
     </p>
   );
 
@@ -150,14 +148,14 @@ export function CarePage() {
         <p className="care-sub">{early ? "It is not time for it yet." : `This was due at ${d.time}.`}</p>
         {d.notes && <p className="care-sub">{d.notes}</p>}
         {arrival && (
-          <p className="care-arrived">
-            <IconPin size={24} />
+          <p className="care-arrived state tone-pass">
+            <span className="dot" aria-hidden="true" />
             <span>{arrival}.</span>
           </p>
         )}
         {ackError && (
-          <p className="care-error" role="alert">
-            <IconCross size={24} />
+          <p className="care-error state tone-fail" role="alert">
+            <span className="dot" aria-hidden="true" />
             <span>{ackError}</span>
           </p>
         )}
@@ -173,8 +171,7 @@ export function CarePage() {
             disabled={waiting}
             aria-busy={sending ? true : undefined}
           >
-            {!waiting && <IconCheck size={36} />}
-            <span>{sending ? "Sending..." : "I picked it up"}</span>
+            {sending ? "Sending..." : "I picked it up"}
           </button>
         </div>
       </>
@@ -250,9 +247,9 @@ export function CarePage() {
               else setMuted((m) => !m);
             }}
           >
-            <IconSpeaker size={24} muted={!speechActive} />
-            <span className="care-speech-label">Spoken reminders</span>
-            <span className={speechActive ? "care-speech-state care-speech-state--on" : "care-speech-state"} aria-hidden="true">
+            <span>Spoken reminders</span>
+            <span className={`state ${speechActive ? "tone-pass" : "tone-warn"}`} aria-hidden="true">
+              <span className="dot" />
               {speechActive ? "On" : "Off"}
             </span>
           </button>

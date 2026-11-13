@@ -12,30 +12,9 @@ const AXES: { axis: Axis; label: string }[] = [
   { axis: "roll", label: "Roll" },
 ];
 
-/** A marker position inside a stick square: x and y are axis values from -1 to 1, up is positive. */
-function stickPos(x: number, y: number) {
-  const clamp = (v: number) => Math.max(-1, Math.min(1, v));
-  return { left: `${50 + clamp(x) * 50}%`, top: `${50 - clamp(y) * 50}%` };
-}
-
 export function AxisIndicators({ axes, maxStick }: { axes: Axes; maxStick: number | null }) {
   return (
     <div className="axes" role="group" aria-label="Stick values being sent">
-      {/* Decorative: the two sticks as squares. The meters and values below carry the information. */}
-      <div className="sticks" aria-hidden="true">
-        <div className="stick">
-          <span className="stick-square">
-            <span className="stick-marker" style={stickPos(axes.yaw, axes.throttle)} />
-          </span>
-          <span className="stick-label">Throttle / yaw</span>
-        </div>
-        <div className="stick">
-          <span className="stick-square">
-            <span className="stick-marker" style={stickPos(axes.roll, axes.pitch)} />
-          </span>
-          <span className="stick-label">Pitch / roll</span>
-        </div>
-      </div>
       {AXES.map(({ axis, label }) => {
         const v = axes[axis];
         const pct = Math.abs(v) * 50;
@@ -46,12 +25,12 @@ export function AxisIndicators({ axes, maxStick }: { axes: Axes; maxStick: numbe
               <span className="axis-zero" />
               <span className="axis-fill" style={{ left: v < 0 ? `${50 - pct}%` : "50%", width: `${pct}%` }} />
             </span>
-            <span className="axis-value mono">{v < 0 ? v.toFixed(2) : `+${Math.abs(v).toFixed(2)}`}</span>
+            <span className="axis-value">{v < 0 ? v.toFixed(2) : `+${Math.abs(v).toFixed(2)}`}</span>
           </div>
         );
       })}
       <p className="hint axes-note">
-        Stick values are fractions of full deflection, scaled by Max stick{maxStick !== null ? ` (${maxStick.toFixed(2)})` : ""}.
+        Fractions of full stick, scaled by Max stick{maxStick !== null ? ` (${maxStick.toFixed(2)})` : ""}.
       </p>
     </div>
   );
@@ -276,12 +255,11 @@ export function MaxStickSlider({
         }}
         aria-describedby="max-stick-desc"
       />
-      <output htmlFor="max-stick" className="data">
+      <output htmlFor="max-stick">
         {shown.toFixed(2)}
       </output>
       <span id="max-stick-desc" className="hint">
-        A full key press sends this fraction of full stick. Backend value:{" "}
-        {serverValue !== null ? serverValue.toFixed(2) : "unknown"}.
+        Backend value: {serverValue !== null ? serverValue.toFixed(2) : "unknown"}.
       </span>
     </div>
   );

@@ -45,16 +45,16 @@ export function HoverTestPanel({ status }: { status: Status }) {
         Hover facing the station sign. For 10 s the backend holds the sticks neutral (trim still applies) and measures drift.
       </p>
       <div className="setup-action">
-        <button type="button" className="btn btn-block setup-wide" onClick={() => void start()} disabled={busy || running || blocked !== null}>
+        <button type="button" className="btn" onClick={() => void start()} disabled={busy || running || blocked !== null}>
           {running ? "Hover test running" : "Start hover test"}
         </button>
-        {blocked && !running && <span className="hint small">{blocked}</span>}
+        {blocked && !running && <span className="hint">{blocked}</span>}
       </div>
       {running && (
         <div className="progress-row">
           <label htmlFor="hover-progress">Progress</label>
           <progress id="hover-progress" max={HOVER_TEST_S} value={elapsed} />
-          <span className="mono">
+          <span>
             {elapsed.toFixed(1)} / {HOVER_TEST_S} s
           </span>
         </div>
@@ -68,14 +68,22 @@ export function HoverTestPanel({ status }: { status: Status }) {
         <div className="hover-result" aria-live="polite">
           <VerdictTag verdict={r.pass ? "pass" : "fail"} />
           <dl className="kv">
-            <dt>Drift</dt>
-            <dd className="mono">{r.drift_frame_widths.toFixed(2)} frame widths</dd>
-            <dt>Drift (estimate)</dt>
-            <dd className="mono">{r.drift_m_estimate.toFixed(2)} m estimate</dd>
-            <dt>Sign size change</dt>
-            <dd className="mono">{r.width_change_pct.toFixed(1)} %</dd>
-            <dt>Sign visible</dt>
-            <dd className="mono">{r.visible_pct.toFixed(0)} % of the time</dd>
+            <div>
+              <dt>Drift</dt>
+              <dd>{r.drift_frame_widths.toFixed(2)} frame widths</dd>
+            </div>
+            <div>
+              <dt>Drift (estimate)</dt>
+              <dd>{r.drift_m_estimate.toFixed(2)} m estimate</dd>
+            </div>
+            <div>
+              <dt>Sign size change</dt>
+              <dd>{r.width_change_pct.toFixed(1)} %</dd>
+            </div>
+            <div>
+              <dt>Sign visible</dt>
+              <dd>{r.visible_pct.toFixed(0)} % of the time</dd>
+            </div>
           </dl>
           <p className="hint">Pass means drift within 0.5 m (estimate) and the sign visible at least 80 % of the time.</p>
         </div>
@@ -113,12 +121,12 @@ export function ArrivalCalibration({ status }: { status: Status }) {
     <div className="calibration">
       <p className="hint">Hold the drone by hand at the stopping distance, facing the sign, then press.</p>
       <div className="setup-action">
-        <button type="button" className="btn btn-block setup-wide" onClick={() => void calibrate()} disabled={busy || marker === null}>
+        <button type="button" className="btn" onClick={() => void calibrate()} disabled={busy || marker === null}>
           Set arrival distance from current view
         </button>
-        {marker === null && <span className="hint small">The station sign must be in view.</span>}
+        {marker === null && <span className="hint">The station sign must be in view.</span>}
       </div>
-      <p className="mono small setup-readout">
+      <p className="hint">
         Arrive width now: {status.mission.arrive_width.toFixed(2)} of frame
         {marker ? `; sign width now: ${marker.width.toFixed(2)}` : ""}
       </p>

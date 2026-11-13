@@ -4,7 +4,7 @@ import { api, blockersFrom, errorText } from "../../api/client";
 import type { MissionState, Status } from "../../api/types";
 import { alignmentLine, doneMessage } from "../../logic/pilot";
 import { abortText, blockerText, missionStateText } from "../../text/wording";
-import { IconChevron, IconCross, IconPass, IconWarn } from "../Icons";
+import { IconChevron } from "../Icons";
 import { DriftAssistControl } from "./DriftAssist";
 import { HoldButton, type Hold } from "./HoldButton";
 
@@ -161,9 +161,8 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
               sub="Press and hold for 0.6 s"
               subId="takeoff-step-desc"
               keyShortcut="T"
-              className={current === 1 ? "takeoff-large" : "takeoff-large takeoff-secondary"}
+              className={current === 1 ? "takeoff-primary" : undefined}
             />
-            <p className="run-step-text small muted">Hold T, or press and hold this button for 0.6 s.</p>
             <p className="run-step-live" role="status">
               {liveLine}
             </p>
@@ -172,14 +171,14 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                 Reset emergency stop
               </button>
             )}
-            <p className="hint small">The drone does not report that it is airborne. You confirm that in step 2.</p>
+            <p className="hint">The drone does not report that it is airborne. You confirm that in step 2.</p>
           </>,
         )}
 
         {step(
           2,
           "Confirm",
-          <label className={`check-field confirm-card${confirmed ? " confirm-card-on" : ""}`}>
+          <label className="check-field run-confirm">
             <input
               type="checkbox"
               checked={confirmed}
@@ -212,46 +211,44 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                 <div className="run-state" aria-live="polite" aria-atomic="true">
                   <strong>{missionStateText(m.state)}</strong>
                   {alignLine && <span>{alignLine}</span>}
-                  <span className="mono">Elapsed {m.elapsed_s.toFixed(1)} s</span>
-                  <span className="mono">
+                  <span>Elapsed {m.elapsed_s.toFixed(1)} s</span>
+                  <span>
                     Command yaw {m.command.yaw.toFixed(2)}, pitch {m.command.pitch.toFixed(2)}
                   </span>
                   {runDose && <span>For: {runDose.label}</span>}
                 </div>
-                <button type="button" className="btn btn-danger btn-lg btn-block" onClick={() => void abort()} disabled={busy === "abort"}>
+                <button type="button" className="btn btn-lg btn-block" onClick={() => void abort()} disabled={busy === "abort"}>
                   Abort run
                 </button>
               </div>
             ) : (
               <>
                 {m.state === "done" && (
-                  <div className="run-outcome" aria-live="polite" aria-atomic="true">
-                    <IconPass size={24} />
-                    <div className="run-outcome-body">
+                  <div className="msg msg-pass run-outcome" aria-live="polite" aria-atomic="true">
+                    <p>
                       <strong>{missionStateText("done")}</strong>
-                      <p>{doneMessage(m.last_landing)}</p>
-                      <p className="mono small">Elapsed {m.elapsed_s.toFixed(1)} s</p>
-                      {runDose && <p className="small">For: {runDose.label}</p>}
-                      <Link to="/care" className="btn run-care-link">
-                        Open the Care page
-                      </Link>
-                    </div>
+                    </p>
+                    <p>{doneMessage(m.last_landing)}</p>
+                    <p>Elapsed {m.elapsed_s.toFixed(1)} s</p>
+                    {runDose && <p>For: {runDose.label}</p>}
+                    <Link to="/care" className="btn btn-sm">
+                      Open the Care page
+                    </Link>
                   </div>
                 )}
 
                 {m.state === "aborted" && (
                   <>
-                    <div className="run-state run-state-aborted" aria-live="polite" aria-atomic="true">
+                    <div className="run-state" aria-live="polite" aria-atomic="true">
                       <strong>{missionStateText(m.state)}</strong>
-                      <span className="mono">Elapsed {m.elapsed_s.toFixed(1)} s</span>
+                      <span>Elapsed {m.elapsed_s.toFixed(1)} s</span>
                       {runDose && <span>For: {runDose.label}</span>}
                     </div>
-                    <div className="abort-notice" role="alert">
-                      <IconWarn size={20} />
-                      <div>
+                    <div className="msg msg-fail" role="alert">
+                      <p>
                         <strong>Take manual control and land</strong>
-                        <p>The run stopped and will not land the drone for you. {abortText(m.reason)}</p>
-                      </div>
+                      </p>
+                      <p>The run stopped and will not land the drone for you. {abortText(m.reason)}</p>
                     </div>
                   </>
                 )}
@@ -273,7 +270,6 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                       e.currentTarget.blur();
                     }}
                     disabled={active}
-                    aria-describedby="run-dose-hint"
                   >
                     <option value="">No dose (practice run)</option>
                     {doses.map((d) => (
@@ -282,21 +278,15 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                       </option>
                     ))}
                   </select>
-                  <span className="hint small" id="run-dose-hint">
-                    Pick a dose so the Care page shows that the drone arrived at the station. No dose means a practice run.
-                  </span>
                 </div>
 
                 {allBlockers.length > 0 && (
-                  <div className="blockers" id="run-blockers">
-                    <p className="blockers-title">Before you can start:</p>
+                  <div className="msg msg-warn blockers" id="run-blockers">
+                    <p>Before you can start:</p>
                     <ul>
                       {allBlockers.map((b) => (
                         <li key={b.text}>
-                          <IconCross size={20} />
-                          <span>
-                            {b.step !== null && <strong className="blocker-step">Step {b.step}:</strong>} {b.text}
-                          </span>
+                          {b.step !== null && <strong>Step {b.step}:</strong>} {b.text}
                         </li>
                       ))}
                     </ul>
@@ -358,7 +348,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                 />
                 <span>
                   Send the landing command on arrival
-                  <span className="hint small block"> When off, you land by hand.</span>
+                  <span className="hint block"> When off, you land by hand.</span>
                 </span>
               </label>
               {m.drift_assist && <DriftAssistControl da={m.drift_assist} trim={status.trim} runActive={active} />}

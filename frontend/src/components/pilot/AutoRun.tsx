@@ -18,7 +18,7 @@ import {
   landingExplainerText,
 } from "../../logic/pilot";
 import { blockerText, missionStateText } from "../../text/wording";
-import { IconChevron, IconCross, IconPass, IconWarn } from "../Icons";
+import { IconChevron } from "../Icons";
 import { HoldButton } from "./HoldButton";
 
 interface Props {
@@ -177,12 +177,11 @@ export function AutoRun({ status, controlOpen }: Props) {
   return (
     <div className="run-steps auto-run">
       {needsPilot && (
-        <div className="abort-notice" role="alert">
-          <IconWarn size={20} />
-          <div>
+        <div className="msg msg-fail" role="alert">
+          <p>
             <strong>{NEEDS_PILOT_TEXT}</strong>
-            {result && result.tone === "warn" && <p>{result.text}</p>}
-          </div>
+          </p>
+          {result && result.tone === "warn" && <p>{result.text}</p>}
         </div>
       )}
 
@@ -223,7 +222,7 @@ export function AutoRun({ status, controlOpen }: Props) {
           >
             Stop the run
           </button>
-          <p className="hint small auto-help" id="auto-stop-desc">
+          <p className="hint auto-help" id="auto-stop-desc">
             {m.state === "countdown"
               ? "Stopping now cancels the takeoff."
               : "The drone stops and hovers. Land it with T or the emergency stop."}
@@ -234,22 +233,16 @@ export function AutoRun({ status, controlOpen }: Props) {
           {result &&
             !(needsPilot && result.tone === "warn") &&
             (result.tone === "pass" ? (
-              <div className="run-outcome" aria-live="polite" aria-atomic="true">
-                <IconPass size={24} />
-                <div className="run-outcome-body">
-                  <p>{result.text}</p>
-                  {runDose && <p className="small">For: {runDose.label}</p>}
-                  <Link to="/care" className="btn run-care-link">
-                    Open the Care page
-                  </Link>
-                </div>
+              <div className="msg msg-pass run-outcome" aria-live="polite" aria-atomic="true">
+                <p>{result.text}</p>
+                {runDose && <p>For: {runDose.label}</p>}
+                <Link to="/care" className="btn btn-sm">
+                  Open the Care page
+                </Link>
               </div>
             ) : (
-              <div className="abort-notice" role="alert">
-                <IconWarn size={20} />
-                <div>
-                  <p>{result.text}</p>
-                </div>
+              <div className="msg msg-warn" role="alert">
+                <p>{result.text}</p>
               </div>
             ))}
 
@@ -274,14 +267,11 @@ export function AutoRun({ status, controlOpen }: Props) {
           </div>
 
           {blockers.length > 0 && (
-            <div className="blockers" id="auto-blockers">
-              <p className="blockers-title">Before it can fly:</p>
+            <div className="msg msg-warn blockers" id="auto-blockers">
+              <p>Before it can fly:</p>
               <ul>
                 {blockers.map((b) => (
-                  <li key={b}>
-                    <IconCross size={20} />
-                    <span>{b}</span>
-                  </li>
+                  <li key={b}>{b}</li>
                 ))}
               </ul>
             </div>
@@ -293,9 +283,9 @@ export function AutoRun({ status, controlOpen }: Props) {
             label={busy === "start" ? "Starting..." : "Hold to fly to the station"}
             sub="Press and hold for 0.6 s"
             subId="auto-start-desc"
-            className="takeoff-large"
+            className="takeoff-primary"
           />
-          <p className="hint small auto-help">Put the drone on its start spot, facing the sign.</p>
+          <p className="hint auto-help">Put the drone on its start spot, facing the sign.</p>
         </>
       )}
 
@@ -336,20 +326,20 @@ export function AutoRun({ status, controlOpen }: Props) {
             </span>
             <span>Fly automatically when a dose is due</span>
           </label>
-          <p className="hint small" id="auto-fly-desc">
+          <p className="hint" id="auto-fly-desc">
             Keep this page open while it is on. The emergency stop has to stay one press away.
           </p>
           {ready &&
             (ready.ready ? (
-              <p className="small auto-ready" role="status">
+              <p className="hint auto-ready" role="status">
                 {ready.text}
               </p>
             ) : (
               <div className="auto-ready">
-                <p className="small">{ready.text}</p>
+                <p className="hint">{ready.text}</p>
                 <button
                   type="button"
-                  className="btn"
+                  className="btn btn-sm"
                   onClick={(e) => {
                     void markReady();
                     e.currentTarget.blur();
@@ -378,7 +368,7 @@ export function AutoRun({ status, controlOpen }: Props) {
         Where does it land?
       </button>
       <div className="run-options" id="auto-explain" hidden={!explainOpen}>
-        <p className="small">{landingExplainerText(m.arrive_distance_m)}</p>
+        <p className="hint">{landingExplainerText(m.arrive_distance_m)}</p>
       </div>
     </div>
   );

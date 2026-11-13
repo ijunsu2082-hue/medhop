@@ -4,7 +4,6 @@ import type { StreamState } from "../../logic/streamController";
 import { videoHealth } from "../../logic/videoHealth";
 import { cameraCaption, headReadout, signValue, videoRailTone, videoRailValue, type FrameSize } from "../../text/pilotWording";
 import { missionStateText } from "../../text/wording";
-import { IconStop } from "../Icons";
 import { VideoFeed } from "../VideoFeed";
 
 interface Props {
@@ -18,9 +17,8 @@ interface Props {
 }
 
 /**
- * The camera instrument: a head rail (title, mode, measured readout), the picture with nothing drawn over it in
- * normal operation, an emergency-stop band while the stop is latched, and a three-cell status rail. The caption
- * under it is mode-aware and never calls the simulator picture the drone's stream.
+ * The camera: a heading with the measured readout, the picture with nothing drawn over it in normal operation,
+ * and three states under it. The caption is mode-aware and never calls the simulator picture the drone's stream.
  */
 export function CameraFigure({ status, backendReachable, streamState, onStreamState }: Props) {
   const [frame, setFrame] = useState<FrameSize | null>(null);
@@ -32,18 +30,15 @@ export function CameraFigure({ status, backendReachable, streamState, onStreamSt
   // A size is only a fact about the picture while one is shown.
   const shownFrame = health === "live" || health === "delayed" ? frame : null;
   const readout = status ? headReadout(shownFrame, status.link.fps, frameAgeS) : "";
-  const videoTone = videoRailTone(health, streamState);
   const signInView = status ? status.vision.marker !== null : false;
 
   return (
-    <div className="pilot-camera">
-      <figure className="camera on-console" aria-labelledby="h-video">
-        <div className="camera-head">
-          <h2 id="h-video">Camera</h2>
-          {mode === "sim" && <span className="stamp">Simulator</span>}
-          {mode === "real" && <span className="stamp stamp--amber">Real drone</span>}
-          {readout && <span className="camera-readout data">{readout}</span>}
-        </div>
+    <section className="section pilot-camera" aria-labelledby="h-video">
+      <div className="section-head">
+        <h2 id="h-video">Camera</h2>
+        {readout && <span className="section-summary">{readout}</span>}
+      </div>
+      <figure className="camera">
         <VideoFeed
           videoLive={videoLive}
           backendReachable={backendReachable}
@@ -51,50 +46,39 @@ export function CameraFigure({ status, backendReachable, streamState, onStreamSt
           mode={mode}
           onFrameSize={setFrame}
           onStreamState={onStreamState}
-          chips={health === "delayed" ? <span className="video-tag">Video delayed</span> : undefined}
+          tags={health === "delayed" ? <span className="video-tag">Video delayed</span> : undefined}
         />
-        {status?.pilot.estop_active && (
-          <div className="camera-estop">
-            <IconStop size={20} />
-            <span>Emergency stop active</span>
-          </div>
-        )}
-        <div className="camera-rail" role="status">
-          {status ? (
-            <>
-              <div className="camera-cell">
-                <span className="camera-legend">Run</span>
-                <span className="camera-value">
-                  <span className="status-sq" aria-hidden="true" />
-                  <span>{missionStateText(status.mission.state)}</span>
-                </span>
-              </div>
-              <div className="camera-cell">
-                <span className="camera-legend">Station sign</span>
-                <span className={`camera-value${signInView ? " tone-pass" : " tone-info"}`}>
-                  <span className={`status-sq${signInView ? "" : " status-sq--hollow"}`} aria-hidden="true" />
-                  <span>{signValue(signInView)}</span>
-                </span>
-              </div>
-              <div className="camera-cell">
-                <span className="camera-legend">Video</span>
-                <span className={`camera-value tone-${videoTone}`}>
-                  <span className="status-sq" aria-hidden="true" />
-                  <span>{videoRailValue(health, streamState, frameAgeS)}</span>
-                </span>
-              </div>
-            </>
-          ) : (
-            <div className="camera-cell">
-              <span className="camera-value tone-info">
-                <span className="status-sq status-sq--hollow" aria-hidden="true" />
-                <span>{backendReachable ? "Waiting for status" : "Backend not reachable"}</span>
-              </span>
+        {status ? (
+          <dl className="camera-rail" role="status">
+            <div>
+              <dt>Run</dt>
+              <dd className="state tone-pass">
+                <span className="dot" aria-hidden="true" />
+                {missionStateText(status.mission.state)}
+              </dd>
             </div>
-          )}
-        </div>
+            <div>
+              <dt>Station sign</dt>
+              <dd className={`state ${signInView ? "tone-pass" : "tone-info"}`}>
+                <span className="dot" aria-hidden="true" />
+                {signValue(signInView)}
+              </dd>
+            </div>
+            <div>
+              <dt>Video</dt>
+              <dd className={`state tone-${videoRailTone(health, streamState)}`}>
+                <span className="dot" aria-hidden="true" />
+                {videoRailValue(health, streamState, frameAgeS)}
+              </dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="camera-waiting muted" role="status">
+            Waiting for status.
+          </p>
+        )}
+        <figcaption className="camera-caption">{cameraCaption(mode, shownFrame).join(" ")}</figcaption>
       </figure>
-      <p className="camera-caption">{cameraCaption(mode, shownFrame).join(" ")}</p>
-    </div>
+    </section>
   );
 }

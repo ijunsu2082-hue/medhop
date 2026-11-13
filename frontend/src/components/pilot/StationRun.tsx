@@ -48,9 +48,6 @@ export function StationRun(props: Props) {
   return (
     <>
       <div className="section-head">
-        <span className="section-index" aria-hidden="true">
-          01
-        </span>
         <h2 id="h-run">Station run</h2>
       </div>
       <div className="run-mode tabs" role="group" aria-label="How to run">
@@ -58,8 +55,6 @@ export function StationRun(props: Props) {
           <button
             key={m.mode}
             type="button"
-            className="run-mode-option"
-            data-label={m.label}
             aria-pressed={mode === m.mode}
             onClick={(e) => {
               setMode(m.mode);

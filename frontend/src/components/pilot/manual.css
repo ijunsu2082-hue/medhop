@@ -1,10 +1,9 @@
-/* Manual flying controls: KeyLegend, AxisIndicators and StickPad (spec 9, contract C4).
-   Every rule is scoped under .pilot and uses tokens only. The section wrapper and its two columns
-   (.pilot-manual, .manual-grid, .manual-keys, .manual-live, .manual-note) are styled in pilot.css. */
+/* Manual flying controls: KeyLegend, AxisIndicators and StickPad. Every rule is scoped under .pilot. The section
+   and its two columns (.manual-grid and friends) are styled in pilot.css. */
 
 /* ------------------------------------------------------------------ Key legend */
 
-/* Two clusters laid out like the keyboard, then T and Space on their own row. */
+/* Two clusters laid out like the keyboard, then T and Space on a row of their own. */
 .pilot .key-legend {
   display: flex;
   flex-wrap: wrap;
@@ -14,7 +13,6 @@
 
 .pilot .key-cluster {
   display: grid;
-  /* Three equal columns, wide enough for the longest caption ('Turn right'), in both clusters. */
   grid-template-columns: repeat(3, 72px);
   grid-template-areas:
     ". up ."
@@ -29,41 +27,31 @@
   gap: var(--s-4) var(--s-5);
 }
 
-/* Caps and captions sit on the column's left edge, so W lines up over S, and T and Space over A. */
 .pilot .key {
   display: grid;
   justify-items: start;
-  align-content: start;
-  gap: var(--s-2);
+  gap: var(--s-1);
 }
 
-/* The shared key cap at full size: sheet fill, ink edge with a 3px bottom, Plex Mono. */
 .pilot .key kbd {
-  min-width: 44px;
-  height: 44px;
-  padding: 0 var(--s-2);
-  font: 600 15px/1 var(--font-data);
+  min-width: 40px;
+  height: 40px;
+  font: 600 15px/1 var(--font);
 }
 
 .pilot .key .kbd-wide {
-  width: 112px;
+  width: 104px;
 }
 
 .pilot .key-does {
-  font: var(--t-caption);
-  color: var(--c-fg-2);
+  font: var(--t-small);
+  color: var(--mid);
   white-space: nowrap;
 }
 
-/* Space is the emergency stop: the only use of the e-stop red outside the e-stop button. */
-.pilot .key-estop kbd {
-  color: var(--estop);
-  border: 2px solid var(--estop);
-  border-bottom-width: 3px;
-}
-
 .pilot .key-estop .key-does {
-  color: var(--c-fg);
+  font-weight: 600;
+  color: var(--ink);
 }
 
 /* ------------------------------------------------------------------ Live input */
@@ -71,77 +59,12 @@
 .pilot .axes {
   display: grid;
   gap: var(--s-1);
-  margin: 0;
 }
 
-/* Two stick squares (decorative; the meters and values carry the information). */
-.pilot .sticks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-5);
-  margin: 0 0 var(--s-4);
-}
-
-.pilot .stick {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--s-2);
-}
-
-.pilot .stick-square {
-  position: relative;
-  display: block;
-  width: 120px;
-  height: 120px;
-  background: var(--sheet);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-0);
-}
-
-/* Crosshair. */
-.pilot .stick-square::before,
-.pilot .stick-square::after {
-  content: "";
-  position: absolute;
-  background: var(--c-rule);
-}
-
-.pilot .stick-square::before {
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-}
-
-.pilot .stick-square::after {
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-}
-
-/* The marker: inline left and top are set from the axis values; this centres it on that point. */
-.pilot .stick-marker {
-  position: absolute;
-  z-index: 1;
-  width: 10px;
-  height: 10px;
-  background: var(--c-signal);
-  transform: translate(-50%, -50%);
-}
-
-.pilot .stick-label {
-  font: var(--t-stamp);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--c-fg-2);
-}
-
-/* Four meters: label, a 12px track with a centre detent and end ticks, and a signed value in a 7ch column. */
+/* Label, a track with a centre line, and the signed value. */
 .pilot .axis {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) auto;
+  grid-template-columns: 72px minmax(0, 1fr) 7ch;
   align-items: center;
   gap: var(--s-3);
   min-height: 32px;
@@ -149,110 +72,64 @@
 
 .pilot .axis-label {
   font: var(--t-label);
-  color: var(--c-fg);
 }
 
 .pilot .axis-track {
   position: relative;
   display: block;
-  height: 12px;
-  background: var(--c-track);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-0);
+  height: 8px;
+  background: var(--fill);
 }
 
-/* End ticks: 1px, overshooting the track by 4px above and below. */
-.pilot .axis-track::before,
-.pilot .axis-track::after {
-  content: "";
+.pilot .axis-zero {
   position: absolute;
-  top: -5px;
-  bottom: -5px;
+  left: 50%;
+  top: -4px;
+  bottom: -4px;
   width: 1px;
-  background: var(--c-border);
-}
-
-.pilot .axis-track::before {
-  left: -1px;
-}
-
-.pilot .axis-track::after {
-  right: -1px;
+  background: var(--mid);
 }
 
 .pilot .axis-fill {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: var(--c-signal);
-}
-
-/* Centre detent: a 2px ink line overshooting the track by 4px above and below. */
-.pilot .axis-zero {
-  position: absolute;
-  z-index: 1;
-  left: 50%;
-  top: -5px;
-  bottom: -5px;
-  width: 2px;
-  background: var(--c-fg);
-  transform: translateX(-50%);
+  background: var(--ink);
 }
 
 .pilot .axis-value {
-  width: 7ch;
   text-align: right;
-  font: 500 16px/20px var(--font-data);
-  font-variant-numeric: tabular-nums;
-  color: var(--c-fg);
 }
 
-.pilot .axes .axes-note {
+.pilot .axes-note {
   margin: var(--s-2) 0 0;
 }
 
 /* ------------------------------------------------------------------ On-screen sticks */
 
-/* One group per row below 960px, two from 960px (lined up with the Keyboard and Live input columns). Each
-   button is at most 176px, so a group never stretches its buttons, and at its narrowest (a 360px phone) a
-   disabled button still holds padlock, label and key cap on one line. */
 .pilot .stickpad {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--s-4) var(--s-5);
-  margin: var(--s-3) 0 0;
+  margin-top: var(--s-3);
 }
 
-@media (min-width: 960px) {
-  .pilot .stickpad {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* A ruled group: hairline, subhead, two hold buttons. No fill. */
 .pilot .stickpad-group {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 176px));
   gap: var(--s-2);
-  padding: var(--s-3) 0 0;
-  background: transparent;
-  border-top: 1px solid var(--c-rule);
 }
 
 .pilot .stickpad-title {
   grid-column: 1 / -1;
-  font: var(--t-subhead);
-  color: var(--c-fg);
+  font: var(--t-label);
 }
 
-/* Hold buttons: the shared outlined .btn at 48px, with the key in a small cap. One line and one height in
-   every state: label, key cap and (when disabled) the padlock never wrap. */
+/* One line in every state: label and key cap never wrap. */
 .pilot .hold-btn {
-  flex-wrap: nowrap;
-  gap: var(--s-1);
   min-width: 0;
   min-height: 48px;
-  padding: 0 var(--s-2);
+  padding: 0 var(--s-3);
   white-space: nowrap;
   touch-action: none;
   user-select: none;
@@ -261,26 +138,24 @@
 }
 
 .pilot .btn.hold-btn:active:not(:disabled) {
-  background: var(--c-primary);
-  border-color: var(--c-primary);
-  color: var(--c-on-primary);
-}
-
-.pilot .hold-btn > span,
-.pilot .hold-btn kbd {
-  flex: none;
+  background: var(--ink);
+  color: var(--bg);
 }
 
 .pilot .hold-btn kbd {
   min-width: 20px;
   height: 20px;
   padding: 0 var(--s-1);
-  border-bottom-width: 2px;
-  font: 600 11px/1 var(--font-data);
+  font: 600 11px/1 var(--font);
 }
 
-/* The reason the on-screen sticks are locked, printed right under them (the disabled recipe). */
 .pilot .stickpad-reason {
   grid-column: 1 / -1;
   margin: 0;
+}
+
+@media (min-width: 960px) {
+  .pilot .stickpad {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

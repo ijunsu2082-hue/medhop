@@ -48,7 +48,7 @@ export function CalibrateLevel({ hold, blocked, note }: Props) {
           {hold.holding ? "Keep holding..." : "Press and hold for 0.6 s"}
         </span>
       </button>
-      {blocked && <p className="muted small">{blocked}</p>}
+      {blocked && <p className="hint">{blocked}</p>}
       {note && (
         <p className={`msg ${note.ok === true ? "msg-pass" : note.ok === false ? "msg-fail" : "msg-warn"}`} role="status">
           {note.text}

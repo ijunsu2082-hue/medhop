@@ -28,7 +28,7 @@ describe("pilot panel CSS (station run, manual flying, setup)", () => {
     });
 
     it(`${file} styles nothing owned by the page frame`, () => {
-      const owned = /\.(command-|estop|camera|video-|check|manual-grid|manual-keys|manual-live)/;
+      const owned = /\.(command-|estop|strip-|readout|camera|video-|check|manual-grid|manual-keys|manual-live)/;
       expect(selectors(css).filter((s) => owned.test(s))).toEqual([]);
     });
 
@@ -37,8 +37,12 @@ describe("pilot panel CSS (station run, manual flying, setup)", () => {
       expect(unscoped).toEqual([]);
     });
 
-    it(`${file} defines no colour tokens of its own`, () => {
+    it(`${file} defines no custom properties of its own`, () => {
       expect(css).not.toMatch(/(^|[;{\s])--[a-z0-9-]+\s*:/);
+    });
+
+    it(`${file} sets no red: faults use the shared .msg-fail`, () => {
+      expect(css).not.toContain("var(--red)");
     });
   }
 });

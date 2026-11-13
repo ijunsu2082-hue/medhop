@@ -28,7 +28,6 @@ import {
 } from "../logic/pilot";
 
 const RUN_OR_HOVER = new Set(["countdown", "taking_off", "searching", "approaching", "aligning", "arrived", "landing", "hover_test"]);
-const NOT_CONNECTED = "Backend not reachable: controls are not connected.";
 
 export function PilotPage() {
   const { status: rawStatus, reachable } = useStatus();
@@ -187,18 +186,12 @@ export function PilotPage() {
   });
   const droneLink = droneLinkView(status);
 
-  const waiting = (text: string) =>
-    backendDown ? (
-      <p className="msg msg-fail" role="status">
-        {NOT_CONNECTED}
-      </p>
-    ) : (
-      <p className="muted">{text}</p>
-    );
+  // Where content needs status, one quiet line. The shell's banner already says when the backend is not reachable.
+  const waiting = <p className="muted">Waiting for status.</p>;
 
   const runOrHover = status ? RUN_OR_HOVER.has(status.mission.state) || (status.hover_test?.running ?? false) : false;
   const calBlocked = backendDown
-    ? NOT_CONNECTED
+    ? "Not available: backend not reachable."
     : !status
       ? "Waiting for status."
       : !controlOpen
@@ -227,7 +220,7 @@ export function PilotPage() {
   return (
     <div className="pilot">
       {/* The stop button and the emergency-stop banner stay together at the top while scrolling. */}
-      <div className={`pilot-sticky on-console${estopView ? " pilot-sticky--banner" : ""}`}>
+      <div className={`pilot-sticky${estopView ? " pilot-sticky--banner" : ""}`}>
         <CommandBar
           mode={status?.mode ?? null}
           control={control.state}
@@ -247,24 +240,16 @@ export function PilotPage() {
           onDismiss={() => setEstopPending(null)}
         />
       </div>
-      {control.state === "refused" && (
-        <div className="pilot-annunciator on-console" role="alert">
-          <span className="pilot-annunciator-inner">
-            <span className="pilot-annunciator-state tone-fail" aria-hidden="true">
-              <span className="status-sq" />
-              <span className="stamp stamp--fail">Refused</span>
-            </span>
-            <span className="pilot-annunciator-text">
-              Another pilot window is connected. This window cannot fly the drone. Close the other window; this one
-              retries every 5 s.
-            </span>
-          </span>
-        </div>
-      )}
 
       <div className="container pilot-body">
-        <header className="pilot-title-row">
-          <h1>Pilot: fly the drone to the station</h1>
+        {control.state === "refused" && (
+          <div className="banner banner-fail" role="alert">
+            Another pilot window is connected. This window cannot fly the drone. Close the other window; this one
+            retries every 5 s.
+          </div>
+        )}
+        <header className="pilot-head">
+          <h1>Pilot</h1>
           <button
             type="button"
             className="disclosure pilot-about-toggle"
@@ -280,11 +265,11 @@ export function PilotPage() {
             What a station run does
           </button>
           <div className="pilot-about" id="pilot-about" hidden={!aboutOpen}>
-            <p className="pilot-lede">
+            <p>
               Fly a small toy drone from this laptop. A station run turns the drone until its camera sees the printed
               station sign, flies toward it and stops. The Care page then shows that it arrived at the station.
             </p>
-            {status?.mode === "sim" && <p className="pilot-lede">No real drone moves.</p>}
+            {status?.mode === "sim" && <p>No real drone moves.</p>}
           </div>
         </header>
 
@@ -303,12 +288,9 @@ export function PilotPage() {
             ) : (
               <>
                 <div className="section-head">
-                  <span className="section-index" aria-hidden="true">
-                    01
-                  </span>
                   <h2 id="h-run">Station run</h2>
                 </div>
-                {waiting("Waiting for status.")}
+                {waiting}
               </>
             )}
           </section>
@@ -322,31 +304,21 @@ export function PilotPage() {
 
           <section className="section pilot-check" aria-labelledby="h-check">
             <div className="section-head">
-              <span className="section-index" aria-hidden="true">
-                02
-              </span>
               <h2 id="h-check">Pre-flight checklist</h2>
               {checkSummary && <span className="section-summary">{checkSummary}</span>}
             </div>
-            {status ? <Checklist status={status} /> : waiting("Waiting for status from the backend.")}
+            {status ? <Checklist status={status} /> : waiting}
           </section>
         </div>
 
         <section className="section pilot-manual" aria-labelledby="h-manual">
           <div className="section-head">
-            <span className="section-index" aria-hidden="true">
-              03
-            </span>
             <h2 id="h-manual">Manual flying</h2>
           </div>
           <div className="manual-grid">
             <div className="manual-keys">
               <h3>Keyboard</h3>
               <KeyLegend />
-              <p className="hint">
-                Keys work anywhere on this page, including while a slider, checkbox, list or button is selected. They
-                are ignored while you type in a text field.
-              </p>
             </div>
             <div className="manual-live">
               <h3>Live input</h3>
@@ -363,9 +335,8 @@ export function PilotPage() {
               )}
               <AxisIndicators axes={axes} maxStick={status?.pilot.max_stick ?? null} />
               {status && (
-                <p className="small manual-note">
-                  Manual input reaching the backend:{" "}
-                  <span className="manual-note-value">{status.pilot.manual_active ? "yes" : "no"}</span>
+                <p className="hint manual-note">
+                  Manual input reaching the backend: <strong>{status.pilot.manual_active ? "yes" : "no"}</strong>
                 </p>
               )}
             </div>
@@ -391,7 +362,7 @@ export function PilotPage() {
 
         <AdvancedPanel
           status={status}
-          waiting={waiting("Waiting for status.")}
+          waiting={waiting}
           send={control.send}
           controlOpen={controlOpen}
           calHold={calHold}

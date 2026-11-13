@@ -1,172 +1,89 @@
-/* Care page (older-adult view, /care): one statement, one action, readable at arm's length.
-   Paper ground, ink text, left-aligned in an 800px column. No cards, no pills, no mono, no uppercase.
-   Every rule is scoped under .care. Nothing here is under 18px; reminder content is 22px or more. */
+/* Care page (/care), for older adults with low vision: the time, one statement and one action, readable at arm's
+   length. Nothing here is set under 18px. Rules are scoped under .care; the .app--care rules lift the shell's own
+   small text to 18px on this page and leave the not-reachable message to the page, said once in plain words. */
 
 .care {
-  /* Care type roles (spec section 3). Display roles are Newsreader, everything else Atkinson Hyperlegible Next. */
-  --t-care-date: 500 clamp(26px, 3.2vw, 32px)/1.2 var(--font-display);
-  --t-care-clock: 700 clamp(56px, 9vw, 88px)/1 var(--font-care);
-  --t-care-lead: 500 24px/32px var(--font-care);
-  --t-care-dose: 600 clamp(44px, 9vw, 80px)/1.04 var(--font-display);
-  --t-care-quiet: 600 clamp(36px, 6vw, 56px)/1.1 var(--font-display);
-  --t-care-body: 400 24px/34px var(--font-care);
-  --t-care-arrival: 500 22px/32px var(--font-care);
-  --t-care-button: 700 30px/36px var(--font-care);
-  --t-care-secondary: 600 22px/28px var(--font-care);
-  /* The quiet masthead above: 62px plus its 2px rule (two rows, 94px, on phones). */
-  --care-head: 64px;
-
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: center;
-  min-height: calc(100dvh - var(--care-head));
   width: 100%;
-  max-width: calc(800px + 2 * var(--s-6));
+  max-width: calc(760px + 2 * var(--s-5));
   margin-inline: auto;
-  padding: calc(var(--s-6) + var(--s-2)) var(--s-6) var(--s-6);
-  color: var(--ink);
-  font: var(--t-care-body);
-  text-align: left;
+  padding: var(--s-6) var(--s-5);
+  font: 400 24px/34px var(--font);
 }
 
 .care p {
   margin: 0;
 }
 
-/* ------------------------------------------------------------------ Day, date and clock */
+.care .dot {
+  width: 14px;
+  height: 14px;
+}
+
+/* ------------------------------------------------------------------ Date and clock */
 
 .care .care-top {
   margin-bottom: var(--s-5);
 }
 
-/* Loading or unreachable: the same two lines, invisible, so the block below keeps its place. */
+/* Loading or not reachable: the same two lines, invisible, so the block below keeps its place. */
 .care .care-top--placeholder {
   visibility: hidden;
 }
 
 .care .care-date {
-  font: var(--t-care-date);
-  font-variation-settings: "opsz" 36;
-  font-variant-numeric: lining-nums;
-  color: var(--ink);
+  font: 400 28px/36px var(--font);
 }
 
 .care .care-clock {
-  margin-top: var(--s-1);
-  font: var(--t-care-clock);
+  font: 600 clamp(72px, 12vw, 112px)/1 var(--font);
   letter-spacing: -0.02em;
-  color: var(--ink);
 }
 
-/* Without tabular figures this face sets the colon narrower than the digit gaps (measured 21px and 18px against
-   32px at 3x), so the colon gets a little room back: the gaps either side now match the letter spacing. */
-.care .care-clock-colon {
-  margin-inline: 0.03em 0.04em;
-}
+/* ------------------------------------------------------------------ The reminder */
 
-/* ------------------------------------------------------------------ The reminder block */
-
-/* One height in every state; the action is pinned to its bottom edge, so it never moves. */
+/* One height in every state; the button is pinned to its bottom edge, so it never moves. */
 .care .care-block {
   display: flex;
   flex-direction: column;
   gap: var(--s-4);
-  min-height: clamp(420px, 58dvh, 620px);
-  padding-top: calc(var(--s-5) + var(--s-1));
-  border-top: 4px solid var(--ink);
-  border-radius: var(--r-0);
-  background: transparent;
+  min-height: clamp(400px, 56dvh, 600px);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--line);
 }
 
-/* Thanks: first in the block, under it a hairline. */
 .care .care-thanks {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-3);
   padding-bottom: var(--s-4);
-  border-bottom: 1px solid var(--rule);
-  font: 600 28px/36px var(--font-care);
-  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+  font: 600 28px/36px var(--font);
 }
 
-.care .care-thanks svg {
-  flex: none;
-  margin-top: -2px;
-  color: var(--pass);
-}
-
-/* "Next:" after an acknowledgement, while another dose is pending: the quiet head of the same statement,
-   4px above the lead, in secondary ink so the pair reads as one lead rather than two. */
-.care .care-next {
-  font: var(--t-care-arrival);
-  color: var(--ink-2);
-}
-
-/* "It is time for:" on its own line, then the dose label: one sentence. */
 .care .care-statement {
   display: flex;
   flex-direction: column;
   gap: var(--s-1);
-  min-width: 0;
 }
 
-.care .care-lead {
-  font: var(--t-care-lead);
-  color: var(--ink);
+.care .care-next {
+  color: var(--mid);
 }
 
 .care .care-dose {
-  font: var(--t-care-dose);
+  font: 600 clamp(48px, 9vw, 80px)/1.05 var(--font);
   letter-spacing: -0.015em;
-  font-variation-settings: "opsz" 72;
-  font-variant-numeric: lining-nums;
-  color: var(--ink);
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
 
-.care .care-sub {
-  font: var(--t-care-body);
-  color: var(--ink);
-}
-
-/* The drone reached the station sign: a green bar, a pin and the sentence. */
-.care .care-arrived {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-3);
-  padding-left: var(--s-4);
-  border-left: 6px solid var(--pass);
-  font: var(--t-care-arrival);
-  color: var(--ink);
-}
-
-.care .care-arrived svg,
-.care .care-error svg {
-  flex: none;
-  margin-top: var(--s-1);
-}
-
-.care .care-arrived svg {
-  color: var(--ink);
-}
-
-/* Error: a fail callout, no fill. */
+.care .care-arrived,
 .care .care-error {
-  display: flex;
   align-items: flex-start;
   gap: var(--s-3);
-  padding-left: var(--s-4);
-  border-left: 6px solid var(--fail);
-  font: var(--t-care-arrival);
-  color: var(--ink);
 }
 
-.care .care-error svg {
-  color: var(--fail);
+.care .care-arrived .dot,
+.care .care-error .dot {
+  margin-top: 10px;
 }
-
-/* ------------------------------------------------------------------ The one action */
 
 .care .care-action {
   display: flex;
@@ -177,9 +94,8 @@
 
 /* One line held above the button in every state, so nothing shifts when it fills. */
 .care .care-ack-note {
-  min-height: 32px;
-  font: var(--t-care-arrival);
-  color: var(--ink-2);
+  min-height: 34px;
+  color: var(--mid);
 }
 
 .care .care-ack-note[data-empty="true"] {
@@ -190,92 +106,56 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--s-4);
   width: 100%;
-  height: 104px;
+  min-height: 104px;
   margin: 0;
-  padding: 0 var(--s-5);
+  padding: var(--s-3) var(--s-5);
   background: var(--ink);
-  color: var(--paper);
-  border: 0;
-  border-radius: var(--r-2);
-  font: var(--t-care-button);
+  color: var(--bg);
+  border: 2px solid var(--ink);
+  border-radius: var(--r);
+  font: 600 32px/40px var(--font);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    background-color var(--t-fast) var(--ease),
-    color var(--t-fast) var(--ease);
-}
-
-.care .care-ack svg {
-  flex: none;
 }
 
 .care .care-ack:hover:not(:disabled) {
-  background: var(--ink-hover);
+  opacity: 0.88;
 }
 
-.care .care-ack:focus-visible {
-  outline: 4px solid var(--focus);
+.care .care-ack:focus-visible,
+.care .care-speech-toggle:focus-visible {
+  outline: 4px solid var(--ink);
   outline-offset: 4px;
 }
 
-/* Sending or cooling down: same size and place, the disabled recipe. A padlock only while cooling down
-   (aria-busy marks the sending state, which shows no padlock). */
 .care .care-ack:disabled {
-  background: var(--sunken);
-  color: var(--ink-2);
-  border: 2px dashed var(--border);
+  background: var(--fill);
+  color: var(--mid);
+  border-color: var(--line);
   cursor: not-allowed;
 }
 
-.care .care-ack:disabled:not([aria-busy="true"])::before {
-  content: "";
-  flex: none;
-  width: 28px;
-  height: 28px;
-  background: currentColor;
-  -webkit-mask: var(--icon-lock) center / 28px 28px no-repeat;
-  mask: var(--icon-lock) center / 28px 28px no-repeat;
-}
-
-/* ------------------------------------------------------------------ Quiet states: no button */
+/* ------------------------------------------------------------------ Nothing to do now */
 
 .care .care-quiet-title {
-  font: var(--t-care-quiet);
-  font-variation-settings: "opsz" 72;
-  font-variant-numeric: lining-nums;
-  color: var(--ink);
+  font: 600 clamp(36px, 6vw, 52px)/1.15 var(--font);
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
 
-.care .care-support {
-  font: var(--t-care-body);
-  color: var(--ink-2);
+.care .care-support,
+.care .care-speech-note {
+  color: var(--mid);
 }
 
-/* "Next: Evening dose at 20:00" set on three lines. */
-.care .care-upnext {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-}
-
-.care .care-upnext-lead,
-.care .care-upnext-at {
-  display: block;
-  font: var(--t-care-body);
-  color: var(--ink);
-}
-
-.care .care-upnext .care-quiet-title {
+/* "Next:", the dose, "at 20:00" on three lines. */
+.care .care-upnext > span {
   display: block;
 }
 
 .care .care-upnext-time {
-  font: 700 48px/52px var(--font-care);
-  color: var(--ink);
+  font: 600 48px/56px var(--font);
 }
 
 /* ------------------------------------------------------------------ Spoken reminders */
@@ -287,82 +167,54 @@
 .care .care-speech-toggle {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--s-4);
   width: 100%;
   min-height: 64px;
   margin: 0;
   padding: var(--s-2) var(--s-5);
-  background: transparent;
+  background: var(--bg);
   color: var(--ink);
   border: 2px solid var(--ink);
-  border-radius: var(--r-2);
-  font: var(--t-care-secondary);
+  border-radius: var(--r);
+  font: 600 22px/28px var(--font);
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color var(--t-fast) var(--ease);
 }
 
 .care .care-speech-toggle:hover {
-  background: var(--sunken);
+  background: var(--fill);
 }
 
-.care .care-speech-toggle:focus-visible {
-  outline: 4px solid var(--focus);
-  outline-offset: 4px;
+/* ------------------------------------------------------------------ The shell on this page */
+
+.app--care .mode,
+.app--care .skip-link,
+.app--care .footer {
+  font-size: 18px;
+  line-height: 28px;
 }
 
-.care .care-speech-toggle svg {
-  flex: none;
+.app--care > .banner {
+  display: none;
 }
 
-.care .care-speech-label {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-/* The state word: Off is outlined, On is solid ink. Both boxes are the same size. */
-.care .care-speech-state {
-  flex: none;
-  padding: calc(var(--s-1) - 2px) calc(var(--s-3) - 2px);
-  border: 2px solid var(--ink);
-  border-radius: var(--r-1);
-  font: 700 22px/28px var(--font-care);
-  color: var(--ink);
-}
-
-.care .care-speech-state--on {
-  background: var(--ink);
-  color: var(--paper);
-}
-
-.care .care-speech-note {
-  font: var(--t-care-body);
-  color: var(--ink-2);
-}
-
-/* ------------------------------------------------------------------ Phones */
+/* ------------------------------------------------------------------ Phones and short screens */
 
 @media (max-width: 639px) {
   .care {
-    --care-head: 94px;
     padding: var(--s-5) var(--s-4) var(--s-6);
   }
 
-  /* The block tracks the viewport so the button sits on screen: its top is about 233px down (masthead, date and
-     clock), so 100dvh - 250px ends it just above the bottom edge. On a 390x844 screen that is about 594px, which
-     still holds the tallest state (thanks, "Next:", the next dose and the arrival line) so the button keeps its
-     place; on shorter phones it falls back to the 420px floor. */
+  /* The block tracks the viewport so the button stays on screen below the masthead, date and clock. */
   .care .care-block {
-    min-height: clamp(420px, calc(100dvh - 250px), 620px);
+    min-height: clamp(400px, calc(100dvh - 250px), 600px);
   }
 
   .care .care-ack {
-    height: 88px;
-  }
-
-  .care .care-quiet-title {
-    font-variation-settings: "opsz" 36;
+    min-height: 88px;
+    font: 600 28px/36px var(--font);
   }
 
   .care .care-speech-toggle {
@@ -370,11 +222,9 @@
   }
 }
 
-/* Short screens (a 720p laptop with browser chrome, a phone with its toolbars showing): the button must clear the
-   bottom edge. On wide screens the date and the clock share one line; on phones the space above them tightens. */
+/* A 720p laptop with browser chrome: the date and the clock share one line so the button clears the bottom edge. */
 @media (min-width: 640px) and (max-height: 699px) {
   .care {
-    --t-care-clock: 700 64px/1 var(--font-care);
     padding-top: var(--s-4);
   }
 
@@ -387,23 +237,6 @@
   }
 
   .care .care-clock {
-    margin-top: 0;
-  }
-}
-
-@media (max-width: 639px) and (max-height: 699px) {
-  .care {
-    padding-top: var(--s-4);
-  }
-
-  .care .care-top {
-    margin-bottom: var(--s-4);
-  }
-}
-
-@media (max-width: 419px) {
-  .care {
-    --t-care-body: 400 22px/32px var(--font-care);
-    --t-care-button: 700 26px/32px var(--font-care);
+    font: 600 64px/1 var(--font);
   }
 }

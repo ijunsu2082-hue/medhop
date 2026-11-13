@@ -18,7 +18,7 @@ interface Props {
    * the simulator. */
   mode?: "sim" | "real" | null;
   /** tags drawn over the picture (the Pilot page passes the "video delayed" tag here) */
-  chips?: ReactNode;
+  tags?: ReactNode;
   /** natural size of the picture, or null when there is none; called only when it changes */
   onFrameSize?: (size: FrameSize | null) => void;
   /** called when the stream state changes */
@@ -42,7 +42,7 @@ const nextToken = () => ++streamToken;
  * video_live changes.
  */
 export function VideoFeed(props: Props) {
-  const { videoLive, backendReachable, chips, onFrameSize, onStreamState } = props;
+  const { videoLive, backendReachable, tags, onFrameSize, onStreamState } = props;
   const shared = useOptionalStatus()?.status ?? null;
   const mode = props.mode !== undefined ? props.mode : (shared?.mode ?? null);
   const frameAgeS = props.frameAgeS !== undefined ? props.frameAgeS : (shared?.link.frame_age_s ?? null);
@@ -167,11 +167,12 @@ export function VideoFeed(props: Props) {
       {text && (
         <div className={`video-overlay video-overlay--${overlayClass}`} role="status">
           <strong className="video-overlay-title">{text.title}</strong>
-          <span className="video-overlay-detail">{text.detail}</span>
+          {/* Unreachable: the page shell already says the backend is not reachable, once. */}
+          {kind !== "unreachable" && <span className="video-overlay-detail">{text.detail}</span>}
           {text.age && <span className="video-overlay-age">{text.age}</span>}
         </div>
       )}
-      {chips && <div className="video-chips">{chips}</div>}
+      {tags && <div className="video-tags">{tags}</div>}
     </div>
   );
 }

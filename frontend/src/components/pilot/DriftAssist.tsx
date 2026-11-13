@@ -82,12 +82,12 @@ export function DriftAssistControl({ da, trim, runActive }: Props) {
         </span>
         <span>Drift assist (experimental)</span>
       </label>
-      <p className="hint small" id="drift-desc">
+      <p className="hint" id="drift-desc">
         Uses the camera view of the sign to counter sideways drift. Experimental: keep a hand on the controls.
       </p>
 
       {da.active && (
-        <p className="mono small" aria-live="polite">
+        <p className="small" aria-live="polite">
           Drift assist roll now: {formatSigned(da.roll)}
         </p>
       )}
@@ -100,7 +100,7 @@ export function DriftAssistControl({ da, trim, runActive }: Props) {
 
       {showSuggestion && body && (
         <div className="row">
-          <span className="mono">Suggested roll trim: {formatSigned(da.suggested_trim_roll ?? body.roll)}</span>
+          <span>Suggested roll trim: {formatSigned(da.suggested_trim_roll ?? body.roll)}</span>
           <button
             type="button"
             className="btn"
@@ -109,7 +109,7 @@ export function DriftAssistControl({ da, trim, runActive }: Props) {
           >
             Apply as trim
           </button>
-          {trim.roll === body.roll && <span className="muted small">Already the current roll trim.</span>}
+          {trim.roll === body.roll && <span className="hint">Already the current roll trim.</span>}
         </div>
       )}
 

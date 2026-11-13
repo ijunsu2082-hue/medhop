@@ -48,10 +48,10 @@ export function TrimPanel({ trim }: { trim: Trim }) {
     <div className="trim">
       <div className="trim-values" aria-live="polite">
         <span className="trim-stat">
-          <span className="trim-k">Roll</span> <span className="trim-v data">{formatSigned(shown.roll)}</span>
+          <span className="trim-k">Roll</span> <span className="trim-v">{formatSigned(shown.roll)}</span>
         </span>
         <span className="trim-stat">
-          <span className="trim-k">Pitch</span> <span className="trim-v data">{formatSigned(shown.pitch)}</span>
+          <span className="trim-k">Pitch</span> <span className="trim-v">{formatSigned(shown.pitch)}</span>
         </span>
       </div>
       <div className="trim-grid">

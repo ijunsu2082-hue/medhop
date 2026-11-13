@@ -1,9 +1,8 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import type { Mode } from "../../api/types";
 import type { ControlState } from "../../hooks/useControlSocket";
 import type { DroneLinkView } from "../../logic/pilot";
 import { withoutLegend, type RailTone } from "../../text/pilotWording";
-import { IconLock, IconStop } from "../Icons";
 import { HoldButton, type Hold } from "./HoldButton";
 
 interface Props {
@@ -18,11 +17,11 @@ interface Props {
   takeoffNote: { ok: boolean | null; text: string } | null;
   /** backend-to-drone link, shown apart from this browser's control link */
   droneLink: DroneLinkView;
-  /** the VIDEO readout (text/pilotWording.ts videoRailValue) and its tone, the same value as the camera rail */
+  /** the video value (text/pilotWording.ts videoRailValue) and its tone, the same value as under the camera */
   video: { value: string; tone: RailTone };
 }
 
-// "refused" is explained once, in the banner under this bar (PilotPage).
+// "refused" is explained once, in the banner under this strip (PilotPage).
 const CONTROL_TEXT: Record<ControlState, string> = {
   open: "Control link: connected",
   connecting: "Control link: connecting",
@@ -30,6 +29,21 @@ const CONTROL_TEXT: Record<ControlState, string> = {
   refused: "Control link: refused",
 };
 
+function Item({ legend, tone, children }: { legend: string; tone: RailTone; children: ReactNode }) {
+  return (
+    <li>
+      <span className="readout-k" aria-hidden="true">
+        {legend}
+      </span>
+      <span className={`state tone-${tone}`}>
+        <span className="dot" aria-hidden="true" />
+        {children}
+      </span>
+    </li>
+  );
+}
+
+/** The strip at the top of the Pilot page: the emergency stop first, then takeoff / land and the links. */
 export function CommandBar({
   mode,
   control,
@@ -51,18 +65,12 @@ export function CommandBar({
     onEstop();
   };
 
-  const controlOpen = control === "open";
   // Short copy of the step 1 live line; the announced one is in step 1.
   const note = takeoffBlocked ?? takeoffNote?.text ?? "";
-
-  const controlTone = controlOpen ? "pass" : control === "refused" ? "fail" : "warn";
-  // In simulator mode the DRONE row repeats the MODE stamp; on a phone it is left to assistive tech.
-  const droneRedundant = mode === "sim" && droneLink.link?.tone === "pass";
-  // With the backend down the alert below says so once: the reason beside takeoff and the VIDEO row are not drawn.
-  const barClass = `command-bar${mode === "real" ? " command-bar--real" : ""}${backendReachable ? "" : " command-bar--down"}`;
+  const controlTone: RailTone = control === "open" ? "pass" : control === "refused" ? "fail" : "warn";
 
   return (
-    <section className={barClass} aria-label="Flight commands">
+    <section className="command-bar container" aria-label="Flight commands">
       <button
         type="button"
         className="estop"
@@ -71,8 +79,7 @@ export function CommandBar({
         aria-keyshortcuts="Space"
         aria-describedby="estop-desc"
       >
-        <IconStop className="estop-icon" size={30} />
-        <span className="estop-main">EMERGENCY STOP</span>
+        <span className="estop-main">Emergency stop</span>
         <span className="estop-sub" id="estop-desc">
           Sends motor cut. The drone drops.<span className="sr-only"> Key: Space</span>
         </span>
@@ -81,104 +88,56 @@ export function CommandBar({
         </kbd>
       </button>
 
-      <div className="takeoff-wrap">
-        <HoldButton
-          hold={takeoff}
-          disabled={takeoffBlocked !== null}
-          label={
-            <>
-              Takeoff / Land <span className="takeoff-paren">(toggle)</span>
-            </>
-          }
-          sub="Press and hold for 0.6 s"
-          subId="takeoff-desc"
-          keyShortcut="T"
-          className="takeoff-compact"
-        />
-        <span className={`takeoff-note${takeoffBlocked !== null ? " takeoff-note--blocked" : ""}`} aria-hidden="true">
-          {takeoffBlocked !== null && <IconLock className="takeoff-note-icon" size={16} />}
-          {note}
-        </span>
-      </div>
+      <HoldButton
+        hold={takeoff}
+        disabled={takeoffBlocked !== null}
+        label={
+          <>
+            Takeoff / Land <span className="takeoff-paren">(toggle)</span>
+          </>
+        }
+        sub="Press and hold for 0.6 s"
+        subId="takeoff-desc"
+        keyShortcut="T"
+        className="takeoff-compact"
+      />
 
-      <div className="command-status">
-        {!backendReachable && (
-          <p className="command-down tone-fail backend-down" role="alert">
-            <span className="status-sq" aria-hidden="true" />
-            <strong>Backend not reachable: controls are not connected</strong>
-          </p>
-        )}
-        <div className="readout">
-          {mode && (
-            <div className="readout-row readout-mode">
-              <span className="readout-legend readout-legend--mode" aria-hidden="true">
-                Mode
-              </span>
-              <span className="readout-data">
-                {mode === "sim" ? (
-                  <span className="stamp" aria-hidden="true">
-                    Simulator
-                  </span>
-                ) : (
-                  <span className="stamp stamp--amber" aria-hidden="true">
-                    Real drone
-                  </span>
-                )}
-                <span className="sr-only">{mode === "sim" ? "Mode: simulator" : "Mode: real drone"}</span>
-              </span>
-            </div>
-          )}
-          <div className="readout-row">
-            {/* "Control" on a phone, "Control link" elsewhere: every value keeps its noun. */}
-            <span className="readout-legend" aria-hidden="true">
-              Control<span className="readout-legend-more"> link</span>
+      <div className="strip-status">
+        {mode === "real" && <p className="strip-real">Real drone</p>}
+        <ul className="readout">
+          <Item legend="Control link" tone={controlTone}>
+            <span role="status">
+              <span aria-hidden="true">{withoutLegend(CONTROL_TEXT[control], "Control link:")}</span>
+              <span className="sr-only">{CONTROL_TEXT[control]}</span>
             </span>
-            <span className="readout-data">
-              <span className={`readout-value tone-${controlTone}`} role="status">
-                <span className="status-sq" aria-hidden="true" />
-                <span aria-hidden="true">{withoutLegend(CONTROL_TEXT[control], "Control link:")}</span>
-                <span className="sr-only">{CONTROL_TEXT[control]}</span>
+          </Item>
+          {/* In the simulator the drone link only says "Simulator": the masthead already names the mode. */}
+          {mode === "real" && droneLink.link && (
+            <Item legend="Drone link" tone={droneLink.link.tone}>
+              <span role="status">
+                <span aria-hidden="true">{withoutLegend(droneLink.link.text, "Drone link:")}</span>
+                <span className="sr-only">{droneLink.link.text}</span>
               </span>
-            </span>
-          </div>
-          {droneLink.link && (
-            <div className={`readout-row${droneRedundant ? " readout-row--redundant" : ""}`}>
-              <span className="readout-legend" aria-hidden="true">Drone</span>
-              <span className="readout-data">
-                <span className={`readout-value tone-${droneLink.link.tone}`} role="status">
-                  <span className="status-sq" aria-hidden="true" />
-                  <span aria-hidden="true">{withoutLegend(droneLink.link.text, "Drone link:")}</span>
-                  <span className="sr-only">{droneLink.link.text}</span>
-                </span>
-              </span>
-            </div>
-          )}
-          {droneLink.sticks && (
-            <div className="readout-row">
-              <span className="readout-legend" aria-hidden="true">Sticks</span>
-              <span className="readout-data">
-                <span className="readout-value tone-warn" role="status">
-                  <span className="status-sq" aria-hidden="true" />
-                  <span>{droneLink.sticks}</span>
-                </span>
-              </span>
-            </div>
+            </Item>
           )}
           {backendReachable && (
-            <div className="readout-row">
-              <span className="readout-legend" aria-hidden="true">Video</span>
-              <span className="readout-data">
-                <span className={`readout-value tone-${video.tone}`}>
-                  <span className="status-sq" aria-hidden="true" />
-                  <span>
-                    <span className="sr-only">Video: </span>
-                    {video.value}
-                  </span>
-                </span>
+            <Item legend="Video" tone={video.tone}>
+              <span>
+                <span className="sr-only">Video: </span>
+                {video.value}
               </span>
-            </div>
+            </Item>
           )}
-        </div>
+        </ul>
+        {droneLink.sticks && (
+          <p className="strip-sticks state tone-warn" role="status">
+            <span className="dot" aria-hidden="true" />
+            <span>{droneLink.sticks}</span>
+          </p>
+        )}
+        <p className="takeoff-note" aria-hidden="true">
+          {note}
+        </p>
       </div>
     </section>
   );
