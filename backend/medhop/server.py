@@ -345,11 +345,22 @@ class MedHopCore:
         }
 
     def sim_snapshot(self) -> Optional[Dict[str, Any]]:
-        """Simulator only: the scenario and where its simulated actors are now (simulator truth).
-        None on the real drone."""
+        """Simulator only: the scenario, where its simulated actors are now and where the simulated
+        drone is now (simulator truth, for a plan view). None on the real drone."""
         if self.link.mode != "sim" or not hasattr(self.link, "actors_now"):
             return None
-        return {"scenario": self.link.scenario, "actors": [a.as_status() for a in self.link.actors_now()]}
+        pose = self.link.pose()
+        return {
+            "scenario": self.link.scenario,
+            "actors": [a.as_status() for a in self.link.actors_now()],
+            "pose": {
+                "x_m": round(float(pose["x_m"]), 3),
+                "distance_m": round(float(pose["distance_m"]), 3),
+                "heading_deg": round(float(pose["heading_deg"]), 1),
+                "altitude_m": round(float(pose["altitude_m"]), 3),
+                "airborne": bool(pose["airborne"]),
+            },
+        }
 
     def set_scenario(self, name: str) -> Optional[List[str]]:
         """Simulator only: put a named scenario's actors in the corridor. Returns blockers, or None."""

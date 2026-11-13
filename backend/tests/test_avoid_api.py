@@ -11,6 +11,8 @@ from tests.test_api import ApiTestCase, wait_for
 AVOID_KEYS = {"mode", "state", "kind", "distance_m", "held_s"}
 OBSTACLE_KEYS = {"kind", "box", "distance_m", "lateral_m", "in_lane"}
 ACTOR_KEYS = {"kind", "x_m", "distance_m", "width_m", "depth_m", "height_m"}
+SIM_KEYS = {"scenario", "actors", "pose"}
+POSE_KEYS = {"x_m", "distance_m", "heading_deg", "altitude_m", "airborne"}
 
 
 class AvoidApiTests(ApiTestCase):
@@ -33,11 +35,22 @@ class AvoidApiTests(ApiTestCase):
     def test_the_scenario_endpoint_and_the_status(self):
         self.reset_sim(distance=3.0)
         status = self.status()
-        self.assertEqual(status["sim"], {"scenario": "empty", "actors": []})
+        self.assertEqual(set(status["sim"]), SIM_KEYS)
+        self.assertEqual((status["sim"]["scenario"], status["sim"]["actors"]), ("empty", []))
+        # where the simulated drone is now (simulator truth, for a plan view)
+        pose = status["sim"]["pose"]
+        self.assertEqual(set(pose), POSE_KEYS)
+        self.assertAlmostEqual(pose["distance_m"], 3.0, delta=0.1)
+        self.assertAlmostEqual(pose["x_m"], 0.0, delta=0.1)
+        self.assertIs(pose["airborne"], True)
+        self.assertAlmostEqual(pose["altitude_m"], 1.0, delta=0.05)
+        self.assertEqual(pose["x_m"], round(pose["x_m"], 3))
+        self.assertEqual(pose["heading_deg"], round(pose["heading_deg"], 1))
         self.assertEqual(status["vision"]["obstacles"], [])
         response = self.client.post("/api/sim/scenario", json={"name": "cart"})
         self.assertEqual(response.status_code, 200)
         body = response.json()
+        self.assertEqual(set(body), {"ok"} | SIM_KEYS)
         self.assertEqual((body["ok"], body["scenario"]), (True, "cart"))
         self.assertEqual([set(a) for a in body["actors"]], [ACTOR_KEYS])
         self.assertEqual(body["actors"][0]["kind"], "object")

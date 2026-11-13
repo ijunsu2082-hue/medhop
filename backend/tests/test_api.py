@@ -35,6 +35,8 @@ CARE_KEYS = {"now_local", "date_local", "doses", "next_due_id"}
 DOSE_STATUS_KEYS = {"id", "time", "label", "notes", "status", "arrived_at", "acknowledged_at", "arrived_mode"}
 DOSE_KEYS = {"id", "time", "label", "notes"}
 EVENT_KEYS = {"ts", "time_local", "type", "dose_id", "run_id", "detail"}
+SIM_KEYS = {"scenario", "actors", "pose"}      # simulator only; null on the real drone
+SIM_POSE_KEYS = {"x_m", "distance_m", "heading_deg", "altitude_m", "airborne"}
 STATUSES = {"upcoming", "due", "arrived", "acknowledged", "needs_attention"}
 HELLO = {"type": "hello", "pilot": True}
 
@@ -116,6 +118,8 @@ class StatusTests(ApiTestCase):
         for dose in status["care"]["doses"]:
             self.assertEqual(set(dose), DOSE_STATUS_KEYS)
             self.assertIn(dose["status"], STATUSES)
+        self.assertEqual(set(status["sim"]), SIM_KEYS)
+        self.assertEqual(set(status["sim"]["pose"]), SIM_POSE_KEYS)
 
     def test_status_values_in_sim_mode(self):
         self.reset_sim()
@@ -154,6 +158,11 @@ class StatusTests(ApiTestCase):
             self.assertIsNotNone(mission)
             self.assertEqual(mission["blockers"], [])
         self.assertIsNone(status["hover_test"])
+        pose = status["sim"]["pose"]      # simulator truth: reset_sim put it 2 m out, hovering, facing the sign
+        self.assertAlmostEqual(pose["distance_m"], 2.0, delta=0.1)
+        self.assertAlmostEqual(pose["heading_deg"], 0.0, delta=3.0)
+        self.assertAlmostEqual(pose["altitude_m"], 1.0, delta=0.05)
+        self.assertIs(pose["airborne"], True)
         self.assertRegex(status["care"]["now_local"], r"^\d\d:\d\d$")
         self.assertRegex(status["care"]["date_local"], r"^\d{4}-\d\d-\d\d$")
         self.assertEqual([d["label"] for d in status["care"]["doses"]],

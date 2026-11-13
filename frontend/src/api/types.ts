@@ -270,9 +270,23 @@ export interface SimActor {
   height_m: number;
 }
 
+/** Where the simulated drone is now (simulator truth, SPEC 11.6), for a plan view. Metres and degrees. */
+export interface SimPose {
+  /** along the wall, + = right as seen facing it */
+  x_m: number;
+  /** from the wall */
+  distance_m: number;
+  /** 0 faces the wall, + = turned right */
+  heading_deg: number;
+  altitude_m: number;
+  airborne: boolean;
+}
+
 export interface SimStatus {
   scenario: SimScenarioName | string;
   actors: SimActor[];
+  /** Added 2026-11-12. Optional: an older backend does not send it. */
+  pose?: SimPose;
 }
 
 export interface Status {

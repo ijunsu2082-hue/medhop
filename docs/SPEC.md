@@ -619,7 +619,13 @@ States `clear`, `slow`, `hold`, `blocked`.
   for the newest frame (empty when that is older than 1 s); `distance_m` and `lateral_m` null when very
   close (hover-height estimates). On the real drone, people from the person check only.
 - Status `sim`: `{"scenario", "actors": [{"kind", "x_m", "distance_m", "width_m", "depth_m",
-  "height_m"}]}` in simulator mode (where the actors are now: simulator truth), null on the real drone.
+  "height_m"}], "pose": {"x_m", "distance_m", "heading_deg", "altitude_m", "airborne"}}` in simulator
+  mode (where the actors and the simulated drone are now: simulator truth), null on the real drone.
+  `pose` is `SimLink.pose()` for a plan view: `x_m` along the wall (+ = right facing it), `distance_m`
+  from the wall, `altitude_m` (metres, rounded to 3 decimals), `heading_deg` (0 faces the wall, + =
+  turned right, 1 decimal) and `airborne`. Added 2026-11-12 for the browser simulator, which reports the
+  same field; a page must treat it as optional (an older backend does not send it). `POST
+  /api/sim/scenario` returns it too.
 - Status `mission.blockers` and `mission.auto_blockers` may contain `"obstacle_in_view"`.
 - `POST /api/sim/scenario {"name": "empty" | "crossing" | "standing" | "cart" | "blocked"}`: simulator
   only. 200 `{"ok": true, "scenario", "actors": [...]}`; 422 for an unknown name; 409
