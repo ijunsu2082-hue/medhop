@@ -130,7 +130,8 @@ echo "fly-real: starting backend (REAL drone at ${MEDHOP_DRONE_IP:-192.168.169.1
 BACKEND_PID=$!
 
 echo "fly-real: starting frontend on http://localhost:$FRONTEND_PORT"
-(cd "$ROOT/frontend" && exec "$VITE") &
+# VITE_BACKEND=python: these pages talk to the backend started above, and through it to the real drone, never to the simulator inside the page.
+(cd "$ROOT/frontend" && VITE_BACKEND=python exec "$VITE") &
 FRONTEND_PID=$!
 
 answers() {
@@ -155,7 +156,7 @@ done
 
 echo
 echo "fly-real: ready (REAL drone)."
-echo "  Pilot page: http://localhost:$FRONTEND_PORT/   (keep it open and in front while flying)"
+echo "  Pilot page: http://localhost:$FRONTEND_PORT/pilot   (keep it open and in front while flying)"
 echo "  Press Ctrl-C to stop both."
 echo
 

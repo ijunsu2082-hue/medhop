@@ -80,7 +80,8 @@ echo "dev-sim: starting backend (simulator) on http://127.0.0.1:$BACKEND_PORT"
 BACKEND_PID=$!
 
 echo "dev-sim: starting frontend on http://localhost:$FRONTEND_PORT"
-(cd "$ROOT/frontend" && exec "$VITE") &
+# VITE_BACKEND=python: these pages talk to the backend started above, never to the simulator inside the page.
+(cd "$ROOT/frontend" && VITE_BACKEND=python exec "$VITE") &
 FRONTEND_PID=$!
 
 answers() {
@@ -105,7 +106,8 @@ done
 
 echo
 echo "dev-sim: ready (simulator mode, no drone)."
-echo "  Pilot:     http://localhost:$FRONTEND_PORT/"
+echo "  Home:      http://localhost:$FRONTEND_PORT/"
+echo "  Pilot:     http://localhost:$FRONTEND_PORT/pilot"
 echo "  Care:      http://localhost:$FRONTEND_PORT/care"
 echo "  Caregiver: http://localhost:$FRONTEND_PORT/caregiver"
 echo "  Press Ctrl-C to stop both."
