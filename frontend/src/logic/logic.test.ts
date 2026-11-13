@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { CareEvent, DoseToday, Status } from "../api/types";
+import type { CareEvent, DoseToday, Obstacle, Status } from "../api/types";
 import { arrivalLine, careFocus, isEarlyArrival, newlyNeedingAttention, reminderMaySpeak, spokenReminder } from "./care";
 import { doseTableStatusLine, eventDetailText, eventWhen, lastRunResult, localDateOf, simulatorSuffix } from "./caregiver";
-import { BATTERY_CHECK_OFF_TEXT, batteryLine, preflightChecklist } from "./checklist";
+import { BATTERY_CHECK_OFF_TEXT, batteryLine, pathAheadLine, preflightChecklist } from "./checklist";
 import { formatClock, isBeforeClock, isValidHHMM, normaliseHHMM } from "./time";
 import { suggestedTrimBody } from "./trim";
 import {
@@ -20,7 +20,6 @@ import {
   missionStateText,
 } from "../text/wording";
 import { reconnectDelayMs } from "../hooks/backoff";
-import { wsUrlFrom } from "../api/config";
 
 const dose = (id: string, time: string, status: DoseToday["status"], extra: Partial<DoseToday> = {}): DoseToday => ({
   id,
@@ -96,6 +95,7 @@ describe("wording", () => {
         "no_pilot_link",
         "drone_flying",
         "recent_toggle",
+        "obstacle_in_view",
       ].sort(),
     );
     expect(Object.keys(ABORT_TEXT).sort()).toEqual(
@@ -114,9 +114,21 @@ describe("wording", () => {
         "takeoff_refused",
         "not_lined_up",
         "already_at_station",
+        "path_blocked",
+        "obstacle_in_view",
       ].sort(),
     );
     expect(blockerText("new_thing")).toContain("new_thing");
+  });
+  it("has the revision 4 texts for every new code", () => {
+    expect(blockerText("obstacle_in_view")).toBe("Something is in the drone's path. Clear the corridor first.");
+    expect(abortText("obstacle_in_view")).toBe("Something was in the drone's path before takeoff, so it did not take off.");
+    expect(abortText("path_blocked")).toBe(
+      "The way stayed blocked for 25 seconds. The drone landed where it was: clear the corridor and send it again.",
+    );
+    // A simulated person counts as a person in view even with the person check off: the words name no source.
+    expect(blockerText("person_in_view")).toBe("A person is in view of the camera. Clear the corridor first.");
+    expect(abortText("person_in_view")).toBe("A person came into view of the camera during the run.");
   });
   it("has the revision 3 texts for every new code", () => {
     expect(abortText("pilot_link_lost")).toBe(
@@ -374,6 +386,34 @@ describe("caregiver helpers (SPEC 10.5)", () => {
       lastRunResult([ev({ type: "run_aborted", detail: { reason: "unexpected_descent", mode: "sim" } })], "2026-11-11"),
     ).toMatch(/^Stopped early at 14:30 \(simulator\): The drone looked like/);
   });
+  it("a path_blocked run reads properly, landed or not (SPEC 11.6)", () => {
+    const blocked = {
+      reason: "path_blocked",
+      mode: "sim",
+      automatic: true,
+      safe_landing: true,
+      avoid: { mode: "hold", holds: 2, held_s: 25.1 },
+      blocked_by: "timeout",
+      obstacle_kind: "person",
+      obstacle_distance_m: 2.61,
+    };
+    expect(eventDetailText(ev({ type: "run_aborted", detail: blocked }))).toBe(
+      "The way stayed blocked for 25 seconds. The drone landed where it was: clear the corridor and send it again.",
+    );
+    expect(lastRunResult([ev({ type: "run_aborted", detail: blocked })], "2026-11-11")).toBe(
+      "Stopped early at 14:30 (simulator): The way stayed blocked for 25 seconds. The drone landed where it was: clear the corridor and send it again.",
+    );
+    // Not landed by the run (no evidence it was flying, or a step-by-step run): land it by hand.
+    for (const detail of [{ ...blocked, safe_landing: false }, { reason: "path_blocked", mode: "sim" }]) {
+      const text = eventDetailText(ev({ type: "run_aborted", detail })) ?? "";
+      expect(text).toBe("The way stayed blocked for 25 seconds. It did not land by itself: land it by hand, then clear the corridor.");
+      expect(text).not.toMatch(/landed where it was/);
+      expect(lastRunResult([ev({ type: "run_aborted", detail })], "2026-11-11")).toMatch(/land it by hand/);
+    }
+    expect(eventDetailText(ev({ type: "run_aborted", detail: { reason: "obstacle_in_view", automatic: true, safe_landing: false } }))).toBe(
+      "Something was in the drone's path before takeoff, so it did not take off.",
+    );
+  });
 });
 
 describe("battery line (SPEC 10.5)", () => {
@@ -516,12 +556,88 @@ describe("preflightChecklist", () => {
   });
 });
 
+describe("preflightChecklist: Path ahead (SPEC 11.6)", () => {
+  const obstacle = (over: Partial<Obstacle>): Obstacle => ({
+    kind: "person",
+    box: [0.612, 0.202, 0.746, 0.986],
+    distance_m: 2.61,
+    lateral_m: 0.66,
+    in_lane: true,
+    ...over,
+  });
+  const withObstacles = (obstacles: Obstacle[] | undefined, over: Partial<Status> = {}): Status => {
+    const s = { ...baseStatus(), ...over };
+    s.vision = { ...s.vision, obstacles };
+    return s;
+  };
+  const row = (s: Status) => preflightChecklist(s).find((r) => r.id === "path");
+
+  it("is one row, after the person check, labelled Path ahead", () => {
+    const ids = preflightChecklist(withObstacles([])).map((r) => r.id);
+    expect(ids).toEqual(["video", "marker", "person", "path", "light", "battery", "estop"]);
+    expect(row(withObstacles([]))?.label).toBe("Path ahead");
+  });
+  it("passes when nothing is in the lane", () => {
+    expect(pathAheadLine(withObstacles([]))).toEqual({ verdict: "pass", text: "Nothing in the way" });
+    expect(pathAheadLine(withObstacles([obstacle({ in_lane: false })]))).toEqual({ verdict: "pass", text: "Nothing in the way" });
+  });
+  it("warns, naming what is in the lane and how far", () => {
+    expect(pathAheadLine(withObstacles([obstacle({})]))).toEqual({ verdict: "warn", text: "In the way: person about 2.6 m ahead" });
+    expect(pathAheadLine(withObstacles([obstacle({ kind: "object", distance_m: null, lateral_m: null })]))).toEqual({
+      verdict: "warn",
+      text: "In the way: object very close",
+    });
+    // Nearest first, and how many more.
+    expect(
+      pathAheadLine(
+        withObstacles([obstacle({ distance_m: 2.9 }), obstacle({ kind: "object", distance_m: 2.4 }), obstacle({ in_lane: false, distance_m: 1 })]),
+      ).text,
+    ).toBe("In the way: object about 2.4 m ahead, and 1 more");
+    expect(pathAheadLine(withObstacles([obstacle({ distance_m: 2.9 }), obstacle({ distance_m: null })])).text).toBe(
+      "In the way: person very close, and 1 more",
+    );
+  });
+  it("gives no distance a camera on the floor would misread as very far", () => {
+    // The trolley 2.7 m away, seen from the ground: the backend's hover-height estimate reads 62.5 m.
+    expect(pathAheadLine(withObstacles([obstacle({ kind: "object", distance_m: 62.5, lateral_m: 3.75 })]))).toEqual({
+      verdict: "warn",
+      text: "In the way: object ahead",
+    });
+    expect(pathAheadLine(withObstacles([obstacle({ distance_m: 8 })])).text).toBe("In the way: person about 8.0 m ahead");
+  });
+  it("info when the backend does not report it, or without live video", () => {
+    expect(pathAheadLine(withObstacles(undefined))).toEqual({
+      verdict: "info",
+      text: "Not reported by this backend. Check the corridor by eye.",
+    });
+    const noVideo = withObstacles([]);
+    noVideo.link = { ...noVideo.link, video_live: false };
+    expect(pathAheadLine(noVideo)).toEqual({ verdict: "info", text: "Not known without live video" });
+  });
+  it("on the real drone: only people, and only with the person check on", () => {
+    const real = withObstacles([], { mode: "real" });
+    expect(pathAheadLine(real)).toEqual({
+      verdict: "pass",
+      text: "No person in the way. Objects are not detected on this drone: check by eye.",
+    });
+    real.vision = { ...real.vision, person: { ...real.vision.person, enabled: false } };
+    expect(pathAheadLine(real)).toEqual({
+      verdict: "info",
+      text: "Not checked: the person check is off. Check the corridor by eye.",
+    });
+    expect(pathAheadLine(withObstacles([obstacle({})], { mode: "real" })).text).toBe("In the way: person about 2.6 m ahead");
+  });
+  it("is never a fail and never claims safety", () => {
+    for (const obstacles of [undefined, [], [obstacle({})], [obstacle({ distance_m: null })]]) {
+      const v = pathAheadLine(withObstacles(obstacles));
+      expect(v.verdict).not.toBe("fail");
+      expect(v.text.toLowerCase()).not.toMatch(/safe|deliver|prevent/);
+    }
+  });
+});
+
 describe("connections", () => {
   it("backs off up to 3 s", () => {
     expect([0, 1, 2, 3, 4, 10].map(reconnectDelayMs)).toEqual([500, 1000, 2000, 3000, 3000, 3000]);
-  });
-  it("derives ws URLs from the API base", () => {
-    expect(wsUrlFrom("http://localhost:8010", "/ws/status")).toBe("ws://localhost:8010/ws/status");
-    expect(wsUrlFrom("https://example.test/base", "/ws/control")).toBe("wss://example.test/base/ws/control");
   });
 });

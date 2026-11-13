@@ -19,6 +19,20 @@ export type StatusSocketState = "connecting" | "open" | "closed";
 
 export const POLL_INTERVAL_MS = 2000;
 
+/**
+ * One status-stream message as a value. The Python backend sends JSON text, which is parsed; the in-page simulator
+ * may hand over the object itself (a plain object), which is taken as it is. Anything else (a binary frame, a
+ * class instance) throws, so the link ignores it as malformed.
+ */
+export function statusMessageValue(data: unknown): unknown {
+  if (typeof data === "string") return JSON.parse(data);
+  if (typeof data === "object" && data !== null) {
+    const proto: unknown = Object.getPrototypeOf(data);
+    if (proto === Object.prototype || proto === null) return data;
+  }
+  throw new Error("A status message must be JSON text or a plain object");
+}
+
 /** Handlers the link gives to a new socket. */
 export interface SocketHandlers {
   onOpen: () => void;

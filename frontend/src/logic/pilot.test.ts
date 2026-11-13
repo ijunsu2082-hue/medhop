@@ -470,6 +470,29 @@ describe("automatic run: result card", () => {
     );
     expect(autoResultView(mission({ state: "aborted", automatic: true, reason: "brand_new" }))?.text).toContain("(code: brand_new)");
   });
+  it("path blocked: landed where it was, or not (SPEC 11.4)", () => {
+    expect(autoResultView(mission({ state: "aborted", automatic: true, reason: "path_blocked", last_landing: "safe_landing" }))).toEqual({
+      tone: "warn",
+      text: "Stopped early: the way stayed blocked for 25 seconds. The land command was sent where it was: check that it has landed.",
+    });
+    // Without evidence that it was flying the run sends nothing: never say it landed.
+    const notLanded = autoResultView(mission({ state: "aborted", automatic: true, reason: "path_blocked", last_landing: null }))?.text ?? "";
+    expect(notLanded).toBe(
+      "Stopped early: the way stayed blocked for 25 seconds. If it is still in the air, land it with T or the emergency stop.",
+    );
+    expect(notLanded).not.toMatch(/landed where it was/);
+  });
+  it("an object in the lane during the countdown: it never took off", () => {
+    expect(autoResultView(mission({ state: "aborted", automatic: true, reason: "obstacle_in_view" }))).toEqual({
+      tone: "warn",
+      text: "Stopped early: something was in the drone's path before takeoff, so it did not take off.",
+    });
+  });
+  it("an object in the lane refuses an automatic start", () => {
+    expect(autoBlockerTexts(mission({ auto_blockers: ["obstacle_in_view"], can_start_auto: false }), true)).toEqual([
+      "Something is in the drone's path. Clear the corridor first.",
+    ]);
+  });
 });
 
 describe("automatic run: ready for the next dose", () => {

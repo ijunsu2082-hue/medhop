@@ -54,11 +54,28 @@ export interface PersonCheck {
   age_s: number | null;
 }
 
+/** Revision 4 (SPEC 11.1, 11.6). Simulator: simulated people and objects. Real drone: people from the person check only. */
+export type ObstacleKind = "person" | "object";
+
+/** One thing seen in the newest frame, with the backend's ESTIMATES (hover-height camera). */
+export interface Obstacle {
+  kind: ObstacleKind | string;
+  /** [x1, y1, x2, y2] as fractions of the frame */
+  box: [number, number, number, number];
+  /** metres along the line of flight; null: nearer than the camera can measure (about 2.5 m) */
+  distance_m: number | null;
+  /** metres sideways, + = right of the line of flight; null when very close */
+  lateral_m: number | null;
+  in_lane: boolean;
+}
+
 export interface VisionStatus {
   marker: MarkerObservation | null;
   person: PersonCheck;
   brightness: number | null;
   dark: boolean;
+  /** Revision 4. Optional: an older backend does not send it. Empty when the newest frame is older than 1 s. */
+  obstacles?: Obstacle[];
 }
 
 export type MissionState =
@@ -85,7 +102,8 @@ export type BlockerCode =
   | "marker_not_visible"
   | "no_pilot_link"
   | "drone_flying"
-  | "recent_toggle";
+  | "recent_toggle"
+  | "obstacle_in_view";
 
 export type AbortReason =
   | "marker_not_found"
@@ -101,7 +119,28 @@ export type AbortReason =
   | "unexpected_descent"
   | "takeoff_refused"
   | "not_lined_up"
-  | "already_at_station";
+  | "already_at_station"
+  | "path_blocked"
+  | "obstacle_in_view";
+
+/** Revision 4 (SPEC 11.5): wait for people and obstacles ("hold") or not ("off"). */
+export type AvoidMode = "off" | "hold";
+
+/** Revision 4 (SPEC 11.3). */
+export type AvoidState = "clear" | "slow" | "hold" | "blocked";
+
+/** Status `mission.avoid`: the setting, and what the current (or last) run that had it on is doing. */
+export interface MissionAvoid {
+  mode: AvoidMode | string;
+  /** null before any run with avoidance on */
+  state: AvoidState | string | null;
+  /** what it is reacting to */
+  kind: ObstacleKind | string | null;
+  /** ESTIMATED metres to it; null when very close (or nothing) */
+  distance_m: number | null;
+  /** seconds held in that run */
+  held_s: number;
+}
 
 /** Experimental drift assist (SPEC section 6, Revision 2). Roll values are stick fractions. */
 export interface DriftAssist {
@@ -152,6 +191,8 @@ export interface MissionStatus {
   alignment?: MissionAlignment | null;
   /** the latest run that arrived: where it ended up; null before one arrives, missing from an older backend */
   last_arrival?: MissionLastArrival | null;
+  /** Revision 4. Obstacle avoidance; missing from an older backend, and then its controls are hidden. */
+  avoid?: MissionAvoid | null;
 }
 
 /** Live line-up numbers while the mission is "aligning". Every field may be missing from a partial backend. */
@@ -214,6 +255,26 @@ export interface CareStatus {
   next_due_id: string | null;
 }
 
+/** Revision 4 (SPEC 11.1). Names of the simulator's corridor scenarios. */
+export type SimScenarioName = "empty" | "crossing" | "standing" | "cart" | "blocked";
+
+/** Where a simulated person or object is now (simulator truth). Metres. */
+export interface SimActor {
+  kind: ObstacleKind | string;
+  /** footprint centre along the wall */
+  x_m: number;
+  /** footprint centre from the wall */
+  distance_m: number;
+  width_m: number;
+  depth_m: number;
+  height_m: number;
+}
+
+export interface SimStatus {
+  scenario: SimScenarioName | string;
+  actors: SimActor[];
+}
+
 export interface Status {
   server_time: number;
   mode: Mode;
@@ -225,6 +286,8 @@ export interface Status {
   mission: MissionStatus;
   hover_test: HoverTest | null;
   care: CareStatus;
+  /** Revision 4. Simulator only; null on the real drone, missing from an older backend. */
+  sim?: SimStatus | null;
 }
 
 // ---- REST bodies ----
@@ -257,6 +320,22 @@ export interface MissionSettingsBody {
   land_on_arrival?: boolean;
   drift_assist?: boolean;
   auto_fly?: boolean;
+  /** Revision 4: any other value is a 422 */
+  avoid?: AvoidMode;
+}
+
+/** The full settings object `PUT /api/mission/settings` returns. */
+export interface MissionSettings {
+  land_on_arrival: boolean;
+  drift_assist: boolean;
+  auto_fly: boolean;
+  /** missing from an older backend */
+  avoid?: AvoidMode;
+}
+
+/** `POST /api/sim/scenario` on success. */
+export interface SimScenarioResponse extends SimStatus {
+  ok: true;
 }
 
 export interface BlockersResponse {

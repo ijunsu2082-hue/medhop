@@ -19,6 +19,7 @@ import {
 } from "../../logic/pilot";
 import { blockerText, missionStateText } from "../../text/wording";
 import { IconChevron } from "../Icons";
+import { AvoidLine, AvoidSwitch, CorridorSelect } from "./Avoidance";
 import { HoldButton } from "./HoldButton";
 
 interface Props {
@@ -207,6 +208,7 @@ export function AutoRun({ status, controlOpen }: Props) {
             ) : (
               <strong>{missionStateText(m.state)}</strong>
             )}
+            <AvoidLine avoid={m.avoid} />
             {liveLine && <span>{liveLine}</span>}
             {runDose && <span>For: {runDose.label}</span>}
           </div>
@@ -265,6 +267,8 @@ export function AutoRun({ status, controlOpen }: Props) {
               ))}
             </select>
           </div>
+
+          <CorridorSelect status={status} runActive={running} id="auto-corridor" />
 
           {blockers.length > 0 && (
             <div className="msg msg-warn blockers" id="auto-blockers">
@@ -352,6 +356,8 @@ export function AutoRun({ status, controlOpen }: Props) {
             ))}
         </div>
       )}
+
+      <AvoidSwitch status={status} runActive={running} view="auto" />
 
       <button
         type="button"

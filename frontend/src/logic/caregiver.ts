@@ -2,7 +2,8 @@
 // events, "Last run result" limited to today, and the dose time on reminder rows. Tested in logic.test.ts.
 
 import type { CareEvent, DoseToday } from "../api/types";
-import { abortText, blockerText, doseStatusLine } from "../text/wording";
+import { runAbortedText } from "../text/avoidWording";
+import { blockerText, doseStatusLine } from "../text/wording";
 import { formatClock } from "./time";
 
 /** Event types that describe a flight (a station run or a hover test). */
@@ -56,7 +57,8 @@ function skipReason(code: string): string {
 /** Extra text for an event row. reminder_due / needs_attention show the dose time: "due 08:00, logged 14:30". */
 export function eventDetailText(e: CareEvent): string | null {
   const d = e.detail ?? {};
-  if (e.type === "run_aborted") return abortText(typeof d.reason === "string" ? d.reason : null);
+  // The reason, with whether the run sent the drone down where it was (path_blocked's words depend on it).
+  if (e.type === "run_aborted") return runAbortedText(d);
   if (e.type === "run_started" && d.automatic === true) return "Automatic";
   if (e.type === "auto_run_skipped") {
     const codes = Array.isArray(d.blockers) ? d.blockers.map(String).filter((c) => c.trim()) : [];
@@ -84,8 +86,7 @@ export function lastRunResult(events: CareEvent[] | null, today: string): string
   const when = date ? `${ev.time_local} on ${date} (not today)` : ev.time_local;
   const sim = simulatorSuffix(ev);
   if (ev.type === "arrived_at_station") return `Arrived at station at ${when}${sim}`;
-  const reason = typeof ev.detail?.reason === "string" ? ev.detail.reason : null;
-  return `Stopped early at ${when}${sim}: ${abortText(reason)}`;
+  return `Stopped early at ${when}${sim}: ${runAbortedText(ev.detail)}`;
 }
 
 /**

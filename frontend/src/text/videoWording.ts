@@ -19,6 +19,8 @@ export function videoOverlayText(
   kind: VideoOverlayKind,
   mode: "sim" | "real" | null | undefined,
   frameAgeS: number | null | undefined,
+  /** "canvas": the simulator's view drawn in this page (a browser build), where there is no stream to open. */
+  feed: "mjpeg" | "canvas" = "mjpeg",
 ): VideoOverlayText {
   switch (kind) {
     case "unreachable":
@@ -26,7 +28,9 @@ export function videoOverlayText(
     case "waiting":
       return { title: "No video", detail: "Waiting for status from the backend.", age: null };
     case "connecting":
-      return { title: "Connecting", detail: "Opening the video stream.", age: null };
+      return feed === "canvas"
+        ? { title: "Connecting", detail: CANVAS_CONNECTING_DETAIL, age: null }
+        : { title: "Connecting", detail: "Opening the video stream.", age: null };
     case "interrupted":
       return { title: "Video stream interrupted", detail: "Reconnecting to the stream.", age: null };
     case "no_video":
@@ -43,6 +47,14 @@ export function videoOverlayText(
       };
   }
 }
+
+/** The "connecting" detail for the drawing made in this page: there is no stream, only a first frame to wait for. */
+export const CANVAS_CONNECTING_DETAIL = "Waiting for the first picture from the simulator in this page.";
+
+/** What the drawing made in this page shows, for people who cannot see it. It is never called a camera view. */
+export const CANVAS_VIEW_LABEL =
+  "Line drawing made by the simulator in this page, from the drone's position: the room, the station sign, " +
+  "the simulated people and objects, an outline round the tracked sign and a box round each obstacle";
 
 export function videoAlt(mode: "sim" | "real" | null | undefined): string {
   return mode === "sim"

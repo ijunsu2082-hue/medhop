@@ -8,7 +8,8 @@ export const BLOCKER_TEXT: Record<BlockerCode, string> = {
   no_video: "There is no live video from the drone.",
   estop_active: "Emergency stop is active. Press Reset before starting.",
   already_running: "A station run or hover test is already in progress.",
-  person_in_view: "The advisory person check sees a person. Clear the corridor first.",
+  // Revision 4: a simulated person counts too, with the person check off, so this names no source.
+  person_in_view: "A person is in view of the camera. Clear the corridor first.",
   battery_low: "The battery reading is low (raw, unverified units). Land and change the battery.",
   marker_too_close: "The station sign already looks arrival-sized. Move the drone back from it first.",
   confirm_airborne_required: "Confirm that the drone is hovering before starting. The run never takes off by itself.",
@@ -16,6 +17,7 @@ export const BLOCKER_TEXT: Record<BlockerCode, string> = {
   no_pilot_link: "Open the Pilot page and keep it open: a run needs a pilot connected.",
   drone_flying: "The drone is already in the air. Land it first, or use Step by step.",
   recent_toggle: "Takeoff or landing was pressed a moment ago. Wait a few seconds.",
+  obstacle_in_view: "Something is in the drone's path. Clear the corridor first.",
 };
 
 export const ABORT_TEXT: Record<AbortReason, string> = {
@@ -25,7 +27,7 @@ export const ABORT_TEXT: Record<AbortReason, string> = {
   video_stale: "The video stopped updating, so the run was stopped.",
   timeout: "The run took longer than the 45 second limit.",
   pilot_took_over: "The pilot gave manual input, so the run handed control back.",
-  person_in_view: "The advisory person check saw a person during the run.",
+  person_in_view: "A person came into view of the camera during the run.",
   battery_low: "The battery reading went low (raw, unverified units).",
   estop: "Emergency stop was pressed.",
   pilot_link_lost: "The Pilot page lost its control link, so the run was stopped. Reopen the Pilot page and land by hand.",
@@ -34,6 +36,9 @@ export const ABORT_TEXT: Record<AbortReason, string> = {
   takeoff_refused: "The takeoff command was not accepted.",
   not_lined_up: "It got close to the sign but could not line up in front of it.",
   already_at_station: "It was already at the sign after takeoff. Put it back on its start spot.",
+  // The first sentence is the reason alone: a message that says how it ended uses only that (see avoidWording.ts).
+  path_blocked: "The way stayed blocked for 25 seconds. The drone landed where it was: clear the corridor and send it again.",
+  obstacle_in_view: "Something was in the drone's path before takeoff, so it did not take off.",
 };
 
 export const MISSION_STATE_TEXT: Record<MissionState, string> = {

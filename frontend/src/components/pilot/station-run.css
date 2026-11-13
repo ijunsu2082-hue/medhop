@@ -112,6 +112,26 @@
   min-width: 3ch;
 }
 
+/* Waiting for people and obstacles: the same switch and hint as the automatic-flight setting above it. */
+.pilot .avoid-setting {
+  margin-top: var(--s-5);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+}
+
+.pilot .avoid-setting .hint {
+  margin: var(--s-1) 0 0;
+}
+
+/* Locked during a run: the knob keeps its grey on the pale track, so "On" still reads as on. */
+.pilot .avoid-setting input:disabled:checked + .switch-track::after {
+  background: var(--mid);
+}
+
+.pilot .run-options .avoid-setting {
+  margin-top: var(--s-3);
+}
+
 .pilot .run-steps > .disclosure,
 .pilot .run-step-body > .disclosure {
   display: flex;

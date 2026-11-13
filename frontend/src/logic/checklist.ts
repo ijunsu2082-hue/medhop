@@ -1,4 +1,5 @@
-import type { Status, Telemetry } from "../api/types";
+import type { Obstacle, Status, Telemetry } from "../api/types";
+import { obstacleNoun } from "../text/avoidWording";
 
 /** "info": shown without a pass/fail judgement (e.g. the battery check is off on the backend). */
 export type Verdict = "pass" | "warn" | "fail" | "info";
@@ -36,6 +37,52 @@ export function batteryLine(t: Telemetry | null): { verdict: Verdict; text: stri
   }
   if (checkOff) return { verdict: "info", text: `${raw}. ${BATTERY_CHECK_OFF_TEXT}` };
   return { verdict: t.battery_low ? "fail" : "pass", text: `${t.battery_low ? "Low: " : ""}${raw}` };
+}
+
+/**
+ * The backend estimates obstacle distances for a camera at hover height. A camera sitting on the floor sees a base
+ * just under the horizon, which reads as very far (SPEC 11.4 uses the same 8 m limit), so a longer estimate is
+ * not shown as a distance.
+ */
+export const PATH_DISTANCE_MAX_M = 8;
+
+/** "object about 2.7 m ahead", "person very close" (distance null), or "object ahead" when the estimate is not usable. */
+function pathItem(o: Obstacle): string {
+  const noun = obstacleNoun(o.kind);
+  const d = o.distance_m;
+  if (d === null) return `${noun} very close`;
+  if (Number.isFinite(d) && d >= 0 && d <= PATH_DISTANCE_MAX_M) return `${noun} about ${d.toFixed(1)} m ahead`;
+  return `${noun} ahead`;
+}
+
+/** Nearest first: very close (null) before any measured distance. */
+function nearer(a: Obstacle, b: Obstacle): number {
+  const da = a.distance_m ?? -1;
+  const db = b.distance_m ?? -1;
+  return da - db;
+}
+
+/**
+ * The "Path ahead" line, from `vision.obstacles` (SPEC 11.6). Info without the field (older backend), without live
+ * video, or on the real drone with the person check off (nothing can be seen then). On the real drone only people
+ * are detected, and the text says so.
+ */
+export function pathAheadLine(s: Pick<Status, "mode" | "link" | "vision">): { verdict: Verdict; text: string } {
+  const obstacles = s.vision.obstacles;
+  if (!Array.isArray(obstacles)) return { verdict: "info", text: "Not reported by this backend. Check the corridor by eye." };
+  if (!s.link.video_live) return { verdict: "info", text: "Not known without live video" };
+  const real = s.mode === "real";
+  if (real && !s.vision.person.enabled) {
+    return { verdict: "info", text: "Not checked: the person check is off. Check the corridor by eye." };
+  }
+  const inLane = obstacles.filter((o) => o.in_lane).sort(nearer);
+  if (inLane.length === 0) {
+    return real
+      ? { verdict: "pass", text: "No person in the way. Objects are not detected on this drone: check by eye." }
+      : { verdict: "pass", text: "Nothing in the way" };
+  }
+  const more = inLane.length - 1;
+  return { verdict: "warn", text: `In the way: ${pathItem(inLane[0]!)}${more > 0 ? `, and ${more} more` : ""}` };
 }
 
 /** Pre-flight checklist, derived only from the status snapshot. */
@@ -86,6 +133,8 @@ export function preflightChecklist(s: Status): CheckRow[] {
   } else {
     rows.push({ id: "person", label: "Advisory person check", verdict: "pass", text: "Clear (advisory only, not a safety system)" });
   }
+
+  rows.push({ id: "path", label: "Path ahead", ...pathAheadLine(s) });
 
   const b = s.vision.brightness;
   rows.push(

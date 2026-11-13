@@ -14,7 +14,8 @@ import {
 import { countItems, dayCounts, dayHeadline, splitStatusLine } from "../logic/caregiverSummary";
 import { batteryLine } from "../logic/checklist";
 import { formatDateWords } from "../logic/dateWords";
-import { abortText, eventText, missionStateText } from "../text/wording";
+import { abortTextFor } from "../text/avoidWording";
+import { eventText, missionStateText } from "../text/wording";
 import { ScheduleEditor } from "../components/caregiver/ScheduleEditor";
 import "./caregiver.css";
 
@@ -269,7 +270,9 @@ function DroneSummary({ status, lastRun, stale }: { status: Status; lastRun: str
         <dt>Station run now</dt>
         <dd>
           {missionStateText(status.mission.state)}
-          {status.mission.state === "aborted" ? `: ${abortText(status.mission.reason)}` : ""}
+          {status.mission.state === "aborted"
+            ? `: ${abortTextFor(status.mission.reason, status.mission.last_landing === "safe_landing")}`
+            : ""}
         </dd>
       </div>
       <div>

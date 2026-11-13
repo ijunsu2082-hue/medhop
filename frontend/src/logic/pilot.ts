@@ -2,6 +2,7 @@
 // server acks/errors to the command they answer, and the drone-link line. Unit-tested in pilot.test.ts.
 
 import type { ControlServerMessage, MissionAlignment, MissionStatus, Status } from "../api/types";
+import { abortReasonOnly } from "../text/avoidWording";
 import { LAST_LANDING_TEXT, abortText, blockerText, controlErrorText } from "../text/wording";
 
 // ---------------------------------------------------------------- emergency stop banner
@@ -402,11 +403,14 @@ export function autoResultView(m: MissionStatus): AutoResultView | null {
     };
   }
   if (m.state === "aborted") {
-    const reason = asClause(abortText(m.reason));
+    // Not landed by the run: path_blocked's text says it landed where it was, so only its reason is used here.
+    const reason = asClause(abortReasonOnly(m.reason));
     if (m.last_landing === "safe_landing") {
       // Only the reason's first sentence: some reasons go on with "land by hand", which no longer applies.
       return { tone: "warn", text: `Stopped early: ${asClause(firstSentence(abortText(m.reason)))}. The land command was sent where it was: check that it has landed.` };
     }
+    // Stopped during the countdown, before any takeoff toggle: its text already says it did not take off.
+    if (m.reason === "obstacle_in_view") return { tone: "warn", text: `Stopped early: ${reason}.` };
     return {
       tone: "warn",
       text: `Stopped early: ${reason}. If it is still in the air, land it with T or the emergency stop.`,

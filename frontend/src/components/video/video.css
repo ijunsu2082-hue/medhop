@@ -1,0 +1,6 @@
+/* The canvas feed's drawing is hidden until its first frame, as the MJPEG picture is hidden while it has none:
+   the overlay explains the state, and the drawing's label is not announced over an empty frame. */
+
+.video-frame .video-img--empty {
+  visibility: hidden;
+}

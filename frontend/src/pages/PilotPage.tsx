@@ -15,7 +15,7 @@ import { releaseOnLinkChange } from "../control/release";
 import { preflightChecklist } from "../logic/checklist";
 import type { StreamState } from "../logic/streamController";
 import { videoHealth } from "../logic/videoHealth";
-import { checklistSummary, videoRailTone, videoRailValue } from "../text/pilotWording";
+import { checklistSummary, modeChangedText, videoRailTone, videoRailValue } from "../text/pilotWording";
 import "./pilot.css";
 import {
   ACK_NOTE_MS,
@@ -30,10 +30,12 @@ import {
 const RUN_OR_HOVER = new Set(["countdown", "taking_off", "searching", "approaching", "aligning", "arrived", "landing", "hover_test"]);
 
 export function PilotPage() {
-  const { status: rawStatus, reachable } = useStatus();
+  const { status: rawStatus, reachable, modeChange } = useStatus();
   // Never show stale numbers as live: with the backend down, the instrument panel shows nothing.
   const status = reachable === false ? null : rawStatus;
-  const control = useControlSocket();
+  // Mode guard (logic/modeGuard.ts): once the backend's mode has changed under this page, the control link is
+  // closed for good, which disables every flight control, until the page is reloaded.
+  const control = useControlSocket(modeChange === null);
   const controlOpen = control.state === "open";
 
   // sentAt null: pressed while the control link was down, nothing went out.
@@ -242,6 +244,11 @@ export function PilotPage() {
       </div>
 
       <div className="container pilot-body">
+        {modeChange && (
+          <div className="banner banner-fail" role="alert">
+            {modeChangedText(modeChange)}
+          </div>
+        )}
         {control.state === "refused" && (
           <div className="banner banner-fail" role="alert">
             Another pilot window is connected. This window cannot fly the drone. Close the other window; this one

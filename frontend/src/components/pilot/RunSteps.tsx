@@ -2,9 +2,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { api, blockersFrom, errorText } from "../../api/client";
 import type { MissionState, Status } from "../../api/types";
-import { alignmentLine, doneMessage } from "../../logic/pilot";
-import { abortText, blockerText, missionStateText } from "../../text/wording";
+import { alignmentLine, autoResultView, doneMessage } from "../../logic/pilot";
+import { abortReasonOnly } from "../../text/avoidWording";
+import { blockerText, missionStateText } from "../../text/wording";
 import { IconChevron } from "../Icons";
+import { AvoidLine, AvoidSwitch, CorridorSelect } from "./Avoidance";
 import { DriftAssistControl } from "./DriftAssist";
 import { HoldButton, type Hold } from "./HoldButton";
 
@@ -127,6 +129,9 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
   const liveLine = takeoffBlocked ?? takeoffNote?.text ?? "";
   const trackIndex = TRACK.findIndex((t) => t.state === m.state);
   const alignLine = m.state === "aligning" ? alignmentLine(m.alignment) : null;
+  // An automatic run that ended without needing a pilot (it landed where it was, or never took off) keeps its own
+  // words here: "Take manual control and land" is for a step-by-step run, which never lands by itself.
+  const autoEnded = m.state === "aborted" && m.automatic === true && m.needs_pilot !== true ? autoResultView(m) : null;
 
   const step = (n: number, title: string, body: ReactNode) => (
     <li className={`run-step${current === n ? " run-step-current" : ""}`} aria-current={current === n ? "step" : undefined}>
@@ -210,6 +215,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                 </ol>
                 <div className="run-state" aria-live="polite" aria-atomic="true">
                   <strong>{missionStateText(m.state)}</strong>
+                  <AvoidLine avoid={m.avoid} />
                   {alignLine && <span>{alignLine}</span>}
                   <span>Elapsed {m.elapsed_s.toFixed(1)} s</span>
                   <span>
@@ -244,12 +250,18 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                       <span>Elapsed {m.elapsed_s.toFixed(1)} s</span>
                       {runDose && <span>For: {runDose.label}</span>}
                     </div>
-                    <div className="msg msg-fail" role="alert">
-                      <p>
-                        <strong>Take manual control and land</strong>
-                      </p>
-                      <p>The run stopped and will not land the drone for you. {abortText(m.reason)}</p>
-                    </div>
+                    {autoEnded ? (
+                      <div className="msg msg-warn" role="alert">
+                        <p>{autoEnded.text}</p>
+                      </div>
+                    ) : (
+                      <div className="msg msg-fail" role="alert">
+                        <p>
+                          <strong>Take manual control and land</strong>
+                        </p>
+                        <p>The run stopped and will not land the drone for you. {abortReasonOnly(m.reason)}</p>
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -279,6 +291,8 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                     ))}
                   </select>
                 </div>
+
+                <CorridorSelect status={status} runActive={active} id="run-corridor" />
 
                 {allBlockers.length > 0 && (
                   <div className="msg msg-warn blockers" id="run-blockers">
@@ -351,6 +365,7 @@ export function RunSteps({ status, controlOpen, hold, takeoffBlocked, takeoffNot
                   <span className="hint block"> When off, you land by hand.</span>
                 </span>
               </label>
+              <AvoidSwitch status={status} runActive={active} view="steps" />
               {m.drift_assist && <DriftAssistControl da={m.drift_assist} trim={status.trim} runActive={active} />}
             </div>
           </>,

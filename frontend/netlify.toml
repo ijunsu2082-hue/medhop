@@ -1,5 +1,7 @@
 [build]
-  command = "npm run build"
+  # The hosted site can never reach a MedHop backend, so it runs the simulator in the page (vite.config.ts refuses
+  # any other build on Netlify).
+  command = "npm run build:browser"
   publish = "dist"
 
 [build.environment]

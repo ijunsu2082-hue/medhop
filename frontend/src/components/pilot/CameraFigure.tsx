@@ -4,6 +4,7 @@ import type { StreamState } from "../../logic/streamController";
 import { videoHealth } from "../../logic/videoHealth";
 import { cameraCaption, headReadout, signValue, videoRailTone, videoRailValue, type FrameSize } from "../../text/pilotWording";
 import { missionStateText } from "../../text/wording";
+import { getTransport } from "../../transport";
 import { VideoFeed } from "../VideoFeed";
 
 interface Props {
@@ -18,7 +19,8 @@ interface Props {
 
 /**
  * The camera: a heading with the measured readout, the picture with nothing drawn over it in normal operation,
- * and three states under it. The caption is mode-aware and never calls the simulator picture the drone's stream.
+ * and three states under it. The caption is mode-aware and never calls the simulator picture the drone's stream;
+ * in a browser build it says the picture is a drawing made in this page and that no image is analysed.
  */
 export function CameraFigure({ status, backendReachable, streamState, onStreamState }: Props) {
   const [frame, setFrame] = useState<FrameSize | null>(null);
@@ -77,7 +79,7 @@ export function CameraFigure({ status, backendReachable, streamState, onStreamSt
             Waiting for status.
           </p>
         )}
-        <figcaption className="camera-caption">{cameraCaption(mode, shownFrame).join(" ")}</figcaption>
+        <figcaption className="camera-caption">{cameraCaption(mode, shownFrame, getTransport().kind).join(" ")}</figcaption>
       </figure>
     </section>
   );

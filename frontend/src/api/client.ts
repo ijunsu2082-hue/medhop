@@ -1,4 +1,4 @@
-import { apiUrl } from "./config";
+import { getTransport, type Transport, type TransportResponse } from "../transport";
 import type {
   BlockersResponse,
   EventsResponse,
@@ -22,35 +22,31 @@ export class ApiError extends Error {
 
 const TIMEOUT_MS = 4000;
 
-async function request<T>(method: string, path: string, body?: unknown, timeoutMs = TIMEOUT_MS): Promise<T> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+/**
+ * One call through `transport`. An answer outside 200-299 becomes an ApiError with its status and body; a backend
+ * that cannot be reached (the transport rejects, or throws) becomes an ApiError with status 0.
+ */
+export async function requestVia<T>(
+  transport: Pick<Transport, "request">,
+  method: string,
+  path: string,
+  body?: unknown,
+  timeoutMs = TIMEOUT_MS,
+): Promise<T> {
+  let res: TransportResponse;
   try {
-    const res = await fetch(apiUrl(path), {
-      method,
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal: ctrl.signal,
-    });
-    const text = await res.text();
-    let parsed: unknown = null;
-    if (text) {
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        parsed = text;
-      }
-    }
-    if (!res.ok) {
-      throw new ApiError(res.status, parsed, `${method} ${path} failed with HTTP ${res.status}`);
-    }
-    return parsed as T;
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
+    res = await transport.request(method, path, body, timeoutMs);
+  } catch {
     throw new ApiError(0, null, "Backend not reachable");
-  } finally {
-    clearTimeout(timer);
   }
+  if (!(res.status >= 200 && res.status <= 299)) {
+    throw new ApiError(res.status, res.body, `${method} ${path} failed with HTTP ${res.status}`);
+  }
+  return res.body as T;
+}
+
+function request<T>(method: string, path: string, body?: unknown, timeoutMs = TIMEOUT_MS): Promise<T> {
+  return requestVia<T>(getTransport(), method, path, body, timeoutMs);
 }
 
 /** Pull a blockers list out of a 409 body, if present. */
@@ -96,6 +92,12 @@ export const api = {
   calibrateArrival: () => request<unknown>("POST", "/api/mission/calibrate-arrival"),
   /** Send only the setting(s) being changed: `{"land_on_arrival": bool}`, `{"drift_assist": bool}` and/or `{"auto_fly": bool}`. */
   missionSettings: (body: MissionSettingsBody) => request<unknown>("PUT", "/api/mission/settings", body),
+  /** Waiting for people and obstacles (SPEC 11.5), through the settings call: "hold" or "off". Returns the full settings. */
+  setAvoid: (avoid: NonNullable<MissionSettingsBody["avoid"]>) =>
+    request<import("./types").MissionSettings>("PUT", "/api/mission/settings", { avoid } satisfies MissionSettingsBody),
+  /** Simulator only (SPEC 11.6): who and what is in the corridor. 409 with blockers on the real drone or during a run. */
+  setSimScenario: (name: import("./types").SimScenarioName) =>
+    request<import("./types").SimScenarioResponse>("POST", "/api/sim/scenario", { name }),
   hoverTestStart: () => request<unknown>("POST", "/api/hover-test/start"),
   getSchedule: () => request<ScheduleResponse>("GET", "/api/schedule"),
   addDose: (d: ScheduleDoseInput) =>

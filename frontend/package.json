@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:browser": "vite --mode browser",
     "build": "tsc -b && vite build",
+    "build:browser": "tsc -b && vite build --mode browser",
     "preview": "vite preview",
     "test": "vitest run"
   },
