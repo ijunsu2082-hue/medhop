@@ -1,30 +1,23 @@
-// Wording for the app shell (masthead, backend banner). Strings in wording.ts stay untouched; shell-only text lives here.
+// Wording for the app shell: the mode label beside the site name and the backend banner.
 
-/** True when a hostname points at this computer. */
-export function isLocalHost(hostname: string): boolean {
-  const h = hostname.trim().toLowerCase();
-  return h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "::1" || h.endsWith(".localhost");
+import type { BackendKind } from "../transport/kind";
+
+export const BACKEND_DOWN = "Backend not reachable. Retrying every 2 seconds.";
+
+export interface ModeLabel {
+  text: string;
+  /** "sim": a simulator, nothing real moves. "real": a real drone. "down": nothing is connected. "wait": not known yet. */
+  tone: "sim" | "real" | "down" | "wait";
 }
-
-function hostnameOf(url: string): string | null {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-}
-
-export const BACKEND_DOWN_LOCAL = "Backend not reachable. Retrying every 2 seconds.";
-
-export const BACKEND_DOWN_REMOTE_PAGE =
-  "This page is only the interface. It needs the MedHop backend running on this computer: start it with Start simulator.command, then open http://localhost:5180.";
 
 /**
- * Text for the "backend not reachable" banner. When the page itself is served from somewhere else (for example a
- * hosted preview) but the API base still points at this computer, retrying will never help, so say what to do instead.
+ * What this page is connected to, always shown beside the site name.
+ * `reachable` is null until the first answer; `mode` is the backend's own report ("sim" or "real").
  */
-export function backendDownText(pageHostname: string, apiBase: string): string {
-  const apiHost = hostnameOf(apiBase);
-  if (!isLocalHost(pageHostname) && apiHost !== null && isLocalHost(apiHost)) return BACKEND_DOWN_REMOTE_PAGE;
-  return BACKEND_DOWN_LOCAL;
+export function modeLabel(kind: BackendKind, reachable: boolean | null, mode: "sim" | "real" | null): ModeLabel {
+  if (kind === "browser") return { text: "Browser simulator", tone: "sim" };
+  if (reachable === false) return { text: "Not connected", tone: "down" };
+  if (reachable === null || mode === null) return { text: "Connecting", tone: "wait" };
+  if (mode === "real") return { text: "Real drone", tone: "real" };
+  return { text: "Python simulator", tone: "sim" };
 }

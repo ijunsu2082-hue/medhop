@@ -1,0 +1,312 @@
+/* The landing page. Everything here is scoped under .landing. */
+
+.landing .hero {
+  padding-block: var(--s-8) var(--s-7);
+}
+
+.landing .hero-title {
+  max-width: 21ch;
+  margin: 0 0 var(--s-4);
+  font: var(--t-display);
+  letter-spacing: -0.02em;
+}
+
+.landing .hero-lead {
+  max-width: 56ch;
+  margin: 0 0 var(--s-6);
+  font: var(--t-lead);
+  color: var(--mid);
+}
+
+.landing figure {
+  margin: 0;
+}
+
+.landing figcaption {
+  margin-top: var(--s-2);
+  font: var(--t-small);
+  color: var(--mid);
+}
+
+/* ---------------------------------------------------------------- The demo */
+
+.landing .demo-actions {
+  gap: var(--s-5);
+  margin-bottom: var(--s-5);
+}
+
+.landing .demo-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-5);
+  align-items: start;
+}
+
+.landing .demo-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.landing .demo-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s-5);
+  align-items: start;
+}
+
+.landing .demo-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing .demo-steps li {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--mid);
+}
+
+.landing .demo-steps li:last-child {
+  border-bottom: 0;
+}
+
+.landing .demo-steps li::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.landing .demo-steps li[data-state="done"],
+.landing .demo-steps li[data-state="now"] {
+  color: var(--ink);
+}
+
+.landing .demo-steps li[data-state="done"]::before,
+.landing .demo-steps li[data-state="now"]::before {
+  background: currentColor;
+}
+
+.landing .demo-steps li[data-state="now"] {
+  font-weight: 600;
+}
+
+.landing .demo-honest {
+  max-width: 84ch;
+  margin: var(--s-5) 0 0;
+  font: var(--t-small);
+  color: var(--mid);
+}
+
+@media (min-width: 960px) {
+  .landing .demo-grid {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+
+  .landing .demo-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------------------------------------------------------------- Sections */
+
+.landing .band {
+  padding-block: var(--s-7);
+  border-top: 1px solid var(--line);
+}
+
+.landing .band-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-5);
+}
+
+.landing .band h2 {
+  margin: 0;
+  font: var(--t-title);
+  letter-spacing: -0.01em;
+}
+
+@media (min-width: 960px) {
+  .landing .band-grid {
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: var(--s-7);
+  }
+}
+
+.landing .loop {
+  display: grid;
+  gap: var(--s-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing .loop-n {
+  display: block;
+  margin-bottom: var(--s-2);
+  font: var(--t-small);
+  color: var(--mid);
+}
+
+.landing .loop h3 {
+  margin: 0 0 var(--s-2);
+  font: var(--t-heading);
+}
+
+.landing .loop p {
+  margin: 0;
+  color: var(--mid);
+}
+
+.landing .figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-5);
+  margin: 0 0 var(--s-6);
+}
+
+/* The number is read first, so it is shown first; in the markup the label comes first, as a term should. */
+.landing .figures > div {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--ink);
+}
+
+.landing .figures dd {
+  margin: 0;
+  font: 600 28px/34px var(--font);
+  letter-spacing: -0.01em;
+}
+
+.landing .figures dt {
+  margin-top: var(--s-1);
+  font: var(--t-small);
+  color: var(--mid);
+}
+
+.landing .hop {
+  display: grid;
+  gap: var(--s-6);
+  align-items: start;
+}
+
+.landing .plain-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing .plain-list li {
+  max-width: 68ch;
+  padding: var(--s-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.landing .plain-list li:first-child {
+  padding-top: 0;
+}
+
+.landing .plain-list li:last-child {
+  border-bottom: 0;
+}
+
+.landing .sign-figure {
+  max-width: 180px;
+}
+
+.landing .results h3 {
+  margin-top: 0;
+}
+
+.landing .results p {
+  max-width: 68ch;
+}
+
+.landing .build {
+  margin: 0;
+}
+
+.landing .build > div {
+  display: grid;
+  gap: var(--s-1);
+  padding: var(--s-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.landing .build > div:first-child {
+  padding-top: 0;
+}
+
+.landing .build > div:last-child {
+  border-bottom: 0;
+}
+
+.landing .build dt {
+  font: var(--t-subhead);
+}
+
+.landing .build dd {
+  max-width: 68ch;
+  margin: 0;
+}
+
+.landing .closing-text {
+  margin: 0 0 var(--s-5);
+  font: var(--t-title);
+  letter-spacing: -0.01em;
+}
+
+.landing .footer {
+  margin-top: 0;
+}
+
+@media (min-width: 640px) {
+  .landing .loop {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .landing .figures {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .landing .hop {
+    grid-template-columns: minmax(0, 1fr) 180px;
+  }
+
+  .landing .build > div {
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: var(--s-5);
+  }
+}
+
+@media (max-width: 639px) {
+  .landing .hero {
+    padding-block: var(--s-7) var(--s-6);
+  }
+
+  .landing .landing-nav-extra {
+    display: none;
+  }
+
+  .landing .masthead-inner {
+    flex-wrap: nowrap;
+  }
+
+  .landing .nav {
+    flex: none;
+    margin-left: auto;
+  }
+}

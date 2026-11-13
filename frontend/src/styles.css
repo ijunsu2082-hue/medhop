@@ -1,106 +1,32 @@
-/* MedHop design system: "Ruled paper, ink console".
-   One light theme. Warm paper ground, near-black ink, sections separated by printed rules (no cards, no shadows),
-   three typefaces with separate jobs, and colour only where something has a state. The only dark surfaces are the
-   Pilot page's instruments (the command strip and the camera figure), built with `.on-console`.
+/* MedHop base styles.
+   White page, near-black text, three greys, and one red that is used only for the emergency stop and for faults.
+   One typeface (Atkinson Hyperlegible Next), two weights (400 and 600).
 
-   Token naming
-     Raw tokens        --paper, --ink, --console, --pass ...   the palette. Hex literals live only in :root.
-     Contextual        --c-*                                   what shared primitives read; `.on-console` remaps them.
-     Spacing           --s-1 .. --s-8                          the only values for padding, margin and gap.
-     Radii             --r-0, --r-1, --r-2                     nothing else.
-     Type roles        --t-*                                   full font shorthands: `font: var(--t-body)`.
-     Families          --font-display, --font-body, --font-data, --font-care.
+   Tokens
+     Colour    --bg, --fill, --line, --mid, --ink, --red. Hex values live only in :root.
+     Spacing   --s-1 .. --s-9.
+     Radii     --r for boxes, --r-round for the switch and round marks.
+     Type      --t-* are full font shorthands: `font: var(--t-body)`.
 
-   Breakpoints: exactly 640px and 960px. Write `max-width: 639px` and `min-width: 960px`.
-   This file holds tokens, base, utilities, shared primitives and the shell. Page CSS lives in the page files
-   (src/pages/*.css and their component CSS), scoped under the page's root class. */
+   Breakpoints: 640px and 960px. Write `max-width: 639px` and `min-width: 960px`.
+   This file holds tokens, base elements, shared controls and the app shell. Page styles live beside the pages. */
 
 /* ===================================================================================== Tokens */
 
 :root {
   color-scheme: light;
 
-  /* Paper side */
-  --paper: #F3F0E8;
-  --sheet: #FCFBF7;
-  --sunken: #E8E4D9;
-  --ink: #14130F;
-  --ink-hover: #2B2A25;
-  --ink-2: #3D3B34;
-  --ink-3: #5C594F;
-  --border: #77736A;
-  --rule: #CFC9BA;
+  --bg: #FFFFFF;
+  --fill: #F4F4F4;
+  --line: #DADADA;
+  --mid: #6B6B6B;
+  --ink: #111111;
+  --red: #C8102E;
 
-  /* Console side */
-  --console: #14130F;
-  --console-2: #24231F;
-  --console-inset: #0C0C0A;
-  --console-rule: #45433C;
-  --console-border: #8C887C;
-  --on-console: #F3F0E8;
-  --on-console-2: #B9B5A8;
+  /* Glyphs drawn by CSS. */
+  --icon-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9.5l6 6 6-6' fill='none' stroke='%23111111' stroke-width='2'/%3E%3C/svg%3E");
+  --icon-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5.5 12.5 10 17l8.5-9.5' fill='none' stroke='%23FFFFFF' stroke-width='2.5'/%3E%3C/svg%3E");
 
-  /* State */
-  --pass: #1A5C38;
-  --warn: #7A4A00;
-  --fail: #7E1B12;
-  --on-fail: #FFFFFF;
-  --pass-on-console: #62D394;
-  --warn-on-console: #F5B841;
-  --fail-on-console: #FF9482;
-
-  /* Signal: links, current step, axis fill. Hold-progress sweeps. Focus. */
-  --signal: #1F3FD1;
-  --signal-hover: #17309F;
-  --signal-on-console: #9DB2FF;
-  --sweep-on-ink: #3D5BF0;
-  --sweep-on-light: #6880F2;
-  --focus: #1F3FD1;
-  --focus-on-console: #9DB2FF;
-
-  /* Amber: the real-drone mode stamp and the video-delayed tag only. */
-  --amber: #F5B301;
-
-  /* Emergency stop family: the e-stop button and its key legend only. */
-  --estop: #D4210B;
-  --estop-hover: #B31B08;
-  --estop-deep: #941505;
-  --estop-text: #FFFFFF;
-
-  /* Icons drawn by CSS (masks and control glyphs). */
-  --icon-lock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 11V7.5a4 4 0 0 1 8 0V11' fill='none' stroke='black' stroke-width='2.25'/%3E%3Cpath fill-rule='evenodd' d='M4.5 10h15v12h-15zM11 14h2v4h-2z' fill='black'/%3E%3C/svg%3E");
-  --icon-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' fill='black' d='M3 3h18v18H3zM12 10.23 16 6.23 17.77 8 13.77 12l4 4L16 17.77l-4-4-4 4L6.23 16l4-4-4-4L8 6.23z'/%3E%3C/svg%3E");
-  --icon-select-ink: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9.5l6 6 6-6' fill='none' stroke='%2314130F' stroke-width='2' stroke-linecap='square'/%3E%3C/svg%3E");
-  --icon-select-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9.5l6 6 6-6' fill='none' stroke='%23F3F0E8' stroke-width='2' stroke-linecap='square'/%3E%3C/svg%3E");
-  --icon-check-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5.5 12 10 16.5l8.5-9' fill='none' stroke='%23F3F0E8' stroke-width='2.5' stroke-linecap='square'/%3E%3C/svg%3E");
-  --icon-check-ink: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5.5 12 10 16.5l8.5-9' fill='none' stroke='%2314130F' stroke-width='2.5' stroke-linecap='square'/%3E%3C/svg%3E");
-
-  /* Contextual aliases: shared primitives read these, so they work on paper and inside `.on-console`. */
-  --c-ground: var(--paper);
-  --c-fg: var(--ink);
-  --c-fg-2: var(--ink-2);
-  --c-fg-3: var(--ink-3);
-  --c-rule: var(--rule);
-  --c-border: var(--border);
-  --c-pass: var(--pass);
-  --c-warn: var(--warn);
-  --c-fail: var(--fail);
-  --c-signal: var(--signal);
-  --c-signal-hover: var(--signal-hover);
-  --c-focus: var(--focus);
-  --c-disabled-fill: var(--sunken);
-  --c-disabled-border: var(--border);
-  --c-disabled-fg: var(--ink-2);
-  --c-field: var(--sheet);
-  --c-hover-fill: var(--sunken);
-  --c-primary: var(--ink);
-  --c-primary-hover: var(--ink-hover);
-  --c-on-primary: var(--paper);
-  --c-track: var(--sunken);
-  --c-select-icon: var(--icon-select-ink);
-  --c-check-icon: var(--icon-check-paper);
-
-  /* Spacing */
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
@@ -109,54 +35,38 @@
   --s-6: 32px;
   --s-7: 48px;
   --s-8: 64px;
+  --s-9: 96px;
 
-  /* Radii */
-  --r-0: 0;
-  --r-1: 2px;
-  --r-2: 4px;
+  --r: 6px;
+  --r-round: 999px;
 
-  /* Families (self-hosted, see fonts.css) */
-  --font-display: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
-  --font-body: "Schibsted Grotesk Variable", "Helvetica Neue", Arial, sans-serif;
-  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --font-care: "Atkinson Hyperlegible Next Variable", Verdana, "Segoe UI", sans-serif;
+  --font: "Atkinson Hyperlegible Next Variable", system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
 
-  /* Type roles. Display roles also need letter-spacing, 'opsz' and lining-nums, set where they are used. */
-  --t-display: 600 40px/44px var(--font-display); /* letter-spacing -0.015em, opsz 72 */
-  --t-title: 600 28px/34px var(--font-display); /* letter-spacing -0.01em, opsz 36 */
-  --t-heading: 700 20px/28px var(--font-body);
-  --t-subhead: 700 16px/24px var(--font-body);
-  --t-body: 400 16px/24px var(--font-body);
-  --t-label: 600 14px/20px var(--font-body);
-  --t-caption: 400 14px/20px var(--font-body); /* colour ink-2 */
-  --t-action: 700 18px/24px var(--font-body);
-  --t-sub: 400 13px/18px var(--font-body);
-  --t-data: 500 14px/20px var(--font-data); /* tabular-nums */
-  --t-data-lg: 500 20px/24px var(--font-data);
-  --t-stamp: 600 12px/20px var(--font-data); /* uppercase, letter-spacing 0.06em */
+  --t-display: 600 56px/60px var(--font);
+  --t-title: 600 28px/34px var(--font);
+  --t-heading: 600 20px/28px var(--font);
+  --t-subhead: 600 16px/24px var(--font);
+  --t-lead: 400 20px/30px var(--font);
+  --t-body: 400 16px/24px var(--font);
+  --t-label: 600 14px/20px var(--font);
+  --t-small: 400 14px/20px var(--font);
+  --t-action: 600 16px/24px var(--font);
 
-  /* Motion: colour and background transitions only. */
+  --page: 1120px;
   --t-fast: 120ms;
-  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (max-width: 959px) {
+  :root {
+    --t-display: 600 44px/48px var(--font);
+  }
 }
 
 @media (max-width: 639px) {
   :root {
-    --t-display: 600 30px/36px var(--font-display);
+    --t-display: 600 34px/38px var(--font);
+    --t-lead: 400 18px/28px var(--font);
   }
-}
-
-/* The Care route sets its body face to Atkinson Hyperlegible Next, designed for low-vision readers. The roles are
-   restated because a custom property resolves its var() references where it is declared. */
-:root:has(.app--care) {
-  --font-body: var(--font-care);
-  --t-heading: 700 20px/28px var(--font-care);
-  --t-subhead: 700 16px/24px var(--font-care);
-  --t-body: 400 16px/24px var(--font-care);
-  --t-label: 600 14px/20px var(--font-care);
-  --t-caption: 400 14px/20px var(--font-care);
-  --t-action: 700 18px/24px var(--font-care);
-  --t-sub: 400 13px/18px var(--font-care);
 }
 
 /* ===================================================================================== Base */
@@ -176,18 +86,16 @@ body {
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  background: var(--paper);
+  background: var(--bg);
 }
 
 body {
   font: var(--t-body);
   color: var(--ink);
-  background: var(--paper);
-  font-kerning: normal;
-  font-synthesis: style;
+  background: var(--bg);
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
 }
 
 [hidden] {
@@ -197,8 +105,6 @@ body {
 h1 {
   font: var(--t-title);
   letter-spacing: -0.01em;
-  font-variation-settings: "opsz" 36;
-  font-variant-numeric: lining-nums;
   margin: 0 0 var(--s-2);
 }
 
@@ -217,15 +123,13 @@ p {
 }
 
 a {
-  color: var(--c-signal);
+  color: var(--ink);
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
-  transition: color var(--t-fast) var(--ease);
 }
 
 a:hover {
-  color: var(--c-signal-hover);
   text-decoration-thickness: 2px;
 }
 
@@ -238,7 +142,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 3px solid var(--c-focus);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
@@ -246,37 +150,9 @@ textarea {
 
 .container {
   width: 100%;
-  max-width: 1264px;
+  max-width: calc(var(--page) + 2 * var(--s-5));
   margin-inline: auto;
-  padding-inline: var(--s-6);
-}
-
-.on-console {
-  background: var(--console);
-  color: var(--on-console);
-  --c-ground: var(--console);
-  --c-fg: var(--on-console);
-  --c-fg-2: var(--on-console-2);
-  --c-fg-3: var(--on-console-2);
-  --c-rule: var(--console-rule);
-  --c-border: var(--console-border);
-  --c-pass: var(--pass-on-console);
-  --c-warn: var(--warn-on-console);
-  --c-fail: var(--fail-on-console);
-  --c-signal: var(--signal-on-console);
-  --c-signal-hover: var(--on-console);
-  --c-focus: var(--focus-on-console);
-  --c-disabled-fill: var(--console-2);
-  --c-disabled-border: var(--console-border);
-  --c-disabled-fg: var(--on-console-2);
-  --c-field: var(--console-2);
-  --c-hover-fill: var(--console-2);
-  --c-primary: var(--on-console);
-  --c-primary-hover: var(--sheet);
-  --c-on-primary: var(--ink);
-  --c-track: var(--console-2);
-  --c-select-icon: var(--icon-select-paper);
-  --c-check-icon: var(--icon-check-ink);
+  padding-inline: var(--s-5);
 }
 
 .sr-only {
@@ -298,22 +174,13 @@ textarea {
   z-index: 100;
   padding: var(--s-2) var(--s-3);
   background: var(--ink);
-  color: var(--paper);
-  border-radius: var(--r-1);
+  color: var(--bg);
+  border-radius: var(--r);
   font: var(--t-label);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .skip-link:focus {
   top: var(--s-2);
-  color: var(--paper);
-}
-
-/* Care chrome is 18px or more, the skip link included: keyboard users there are the low-vision audience. */
-.app--care .skip-link {
-  font: 600 18px/28px var(--font-body);
-  padding: var(--s-3) var(--s-4);
 }
 
 .row {
@@ -327,82 +194,75 @@ textarea {
   display: block;
 }
 
-.small {
-  font: var(--t-caption);
-  color: var(--c-fg-2);
+.small,
+.hint {
+  font: var(--t-small);
+  color: var(--mid);
 }
 
 .muted {
-  color: var(--c-fg-2);
+  color: var(--mid);
 }
 
-.hint {
-  font: var(--t-caption);
-  color: var(--c-fg-2);
-}
-
-.data,
-.mono {
-  font: var(--t-data);
-  font-variant-numeric: tabular-nums;
-}
-
-.tone-pass {
-  color: var(--c-pass);
-}
-
+/* A state is a word. The mark beside it is filled when things are fine, hollow when they are not yet, red on a fault. */
+.tone-pass,
 .tone-warn {
-  color: var(--c-warn);
-}
-
-.tone-fail {
-  color: var(--c-fail);
+  color: var(--ink);
 }
 
 .tone-info {
-  color: var(--c-fg-2);
+  color: var(--mid);
 }
 
-.tone-signal {
-  color: var(--c-signal);
+.tone-fail {
+  color: var(--red);
+}
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.tone-warn > .dot,
+.tone-info > .dot,
+.dot--hollow {
+  background: transparent;
+  border: 1.5px solid currentColor;
 }
 
 /* ===================================================================================== Sections */
 
-/* A section is a 2px rule, a 12px gap, a heading row, then content directly on the ground. */
 .section {
   min-width: 0;
-  border-top: 2px solid var(--c-fg);
-  padding-top: var(--s-3);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--line);
 }
 
 .section-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 10px;
-  margin-bottom: var(--s-3);
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
 }
 
 .section-head h2 {
   margin: 0;
 }
 
-.section-index {
-  font: 500 13px/20px var(--font-data);
-  font-variant-numeric: tabular-nums;
-  color: var(--c-fg-3);
-}
-
 .section-summary {
   margin-left: auto;
-  font: var(--t-data);
-  font-variant-numeric: tabular-nums;
-  color: var(--c-fg-2);
-}
-
-.ruled > * + * {
-  border-top: 1px solid var(--c-rule);
+  font: var(--t-small);
+  color: var(--mid);
 }
 
 /* ===================================================================================== Buttons */
@@ -412,28 +272,24 @@ textarea {
   align-items: center;
   justify-content: center;
   gap: var(--s-2);
-  min-height: 48px;
+  min-height: 44px;
   padding: 0 var(--s-4);
   margin: 0;
-  background: transparent;
-  color: var(--c-fg);
-  border: 1px solid var(--c-fg);
-  border-radius: var(--r-2);
-  font: 600 16px/24px var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: var(--r);
+  font: var(--t-action);
   text-align: center;
   text-decoration: none;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    background-color var(--t-fast) var(--ease),
-    color var(--t-fast) var(--ease),
-    border-color var(--t-fast) var(--ease);
+  transition: background-color var(--t-fast), opacity var(--t-fast);
 }
 
 .btn:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--c-hover-fill);
-  color: var(--c-fg);
+  background: var(--fill);
 }
 
 .btn > svg {
@@ -441,27 +297,39 @@ textarea {
 }
 
 .btn-primary {
-  background: var(--c-primary);
-  color: var(--c-on-primary);
-  border-color: var(--c-primary);
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.btn-danger {
+  background: var(--red);
+  color: var(--bg);
+  border-color: var(--red);
 }
 
 .btn-primary:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--c-primary-hover);
-  border-color: var(--c-primary-hover);
-  color: var(--c-on-primary);
+  background: var(--ink);
+  opacity: 0.85;
+}
+
+.btn-danger:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--red);
+  opacity: 0.85;
 }
 
 .btn-quiet,
 .btn-danger-quiet {
   min-height: 36px;
-  padding: 0 var(--s-1);
+  padding: 0;
   background: transparent;
-  border: 0;
-  color: var(--c-fg);
+  border-color: transparent;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
+}
+
+.btn-danger-quiet {
+  color: var(--red);
 }
 
 .btn-quiet:hover:not(:disabled):not([aria-disabled="true"]),
@@ -470,39 +338,16 @@ textarea {
   text-decoration-thickness: 2px;
 }
 
-.btn-danger {
-  background: var(--fail);
-  color: var(--on-fail);
-  border-color: var(--fail);
-}
-
-.btn-danger:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--fail);
-  color: var(--on-fail);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.on-console .btn-danger {
-  border-color: var(--c-fail);
-}
-
-/* Quiet in the fail tone: the same text-with-underline look as .btn-quiet, without needing both classes. */
-.btn-danger-quiet,
-.btn-danger-quiet:hover:not(:disabled):not([aria-disabled="true"]) {
-  color: var(--c-fail);
-}
-
 .btn-sm {
   min-height: 36px;
   padding: 0 var(--s-3);
-  font: 600 14px/20px var(--font-body);
+  font: var(--t-label);
 }
 
 .btn-lg {
-  min-height: 64px;
+  min-height: 56px;
   padding: 0 var(--s-5);
-  font: var(--t-action);
+  font: 600 18px/24px var(--font);
 }
 
 .btn-block {
@@ -518,13 +363,11 @@ textarea {
   }
 }
 
-/* The disabled recipe, one everywhere: flat fill, dashed edge, legible label, a padlock, and a reason nearby. */
 .btn:disabled,
 .btn[aria-disabled="true"] {
-  background: var(--c-disabled-fill);
-  color: var(--c-disabled-fg);
-  border: 1px dashed var(--c-disabled-border);
-  text-decoration: none;
+  background: var(--fill);
+  color: var(--mid);
+  border-color: var(--line);
   cursor: not-allowed;
 }
 
@@ -532,18 +375,9 @@ textarea {
 .btn-quiet[aria-disabled="true"],
 .btn-danger-quiet:disabled,
 .btn-danger-quiet[aria-disabled="true"] {
-  padding: 0 var(--s-3);
-}
-
-.btn:disabled:not([aria-busy="true"])::before,
-.btn[aria-disabled="true"]:not([aria-busy="true"])::before {
-  content: "";
-  flex: none;
-  width: 16px;
-  height: 16px;
-  background: currentColor;
-  -webkit-mask: var(--icon-lock) center / 16px 16px no-repeat;
-  mask: var(--icon-lock) center / 16px 16px no-repeat;
+  background: transparent;
+  border-color: transparent;
+  text-decoration: none;
 }
 
 /* ===================================================================================== Forms */
@@ -555,10 +389,8 @@ textarea {
   margin-bottom: var(--s-4);
 }
 
-.field > label,
-.field-label-text {
+.field > label {
   font: var(--t-label);
-  color: var(--c-fg);
 }
 
 input:not([type]),
@@ -575,129 +407,84 @@ select,
 .input {
   appearance: none;
   -webkit-appearance: none;
-  height: 48px;
-  min-height: 48px;
+  height: 44px;
   max-width: 100%;
   padding: 0 var(--s-3);
   margin: 0;
-  background-color: var(--c-field);
-  color: var(--c-fg);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-1);
-  font: 400 16px/24px var(--font-body);
-  transition: border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease);
+  background-color: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--mid);
+  border-radius: var(--r);
+  font: var(--t-body);
 }
 
 input::placeholder,
 .input::placeholder {
-  color: var(--c-fg-3);
+  color: var(--mid);
   opacity: 1;
-}
-
-input:not([type]):focus-visible,
-input[type="text"]:focus-visible,
-input[type="search"]:focus-visible,
-input[type="email"]:focus-visible,
-input[type="url"]:focus-visible,
-input[type="tel"]:focus-visible,
-input[type="password"]:focus-visible,
-input[type="number"]:focus-visible,
-input[type="time"]:focus-visible,
-input[type="date"]:focus-visible,
-select:focus-visible,
-.input:focus-visible {
-  border: 2px solid var(--c-signal);
-  padding-inline: 11px;
-  outline: 3px solid var(--c-focus);
-  outline-offset: 2px;
 }
 
 input[aria-invalid="true"],
 select[aria-invalid="true"],
 .input[aria-invalid="true"] {
-  border: 2px solid var(--c-fail);
-  padding-inline: 11px;
+  border-color: var(--red);
 }
 
 select {
   padding-right: 40px;
   cursor: pointer;
   text-overflow: ellipsis;
-  background-image: var(--c-select-icon);
+  background-image: var(--icon-chevron);
   background-repeat: no-repeat;
   background-position: right var(--s-3) center;
   background-size: 18px 18px;
 }
 
-select:focus-visible {
-  padding-right: 39px;
-}
-
 input:disabled,
 select:disabled,
 .input:disabled {
-  background-color: var(--c-disabled-fill);
-  color: var(--c-disabled-fg);
-  border: 1px dashed var(--c-disabled-border);
+  background-color: var(--fill);
+  color: var(--mid);
+  border-color: var(--line);
   cursor: not-allowed;
 }
 
 .field-error {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-2);
-  color: var(--c-fail);
-  font: 600 14px/20px var(--font-body);
+  color: var(--red);
+  font: var(--t-label);
 }
 
-.field-error:not(:has(svg))::before {
-  content: "";
-  flex: none;
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-  background: currentColor;
-  -webkit-mask: var(--icon-cross) center / 16px 16px no-repeat;
-  mask: var(--icon-cross) center / 16px 16px no-repeat;
-}
-
-/* Checkbox (every checkbox that is not a switch) */
 input[type="checkbox"]:not([role="switch"]) {
   appearance: none;
   -webkit-appearance: none;
   flex: none;
-  width: 24px;
-  height: 24px;
-  margin: 0;
-  background-color: var(--c-field);
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  background-color: var(--bg);
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 20px 20px;
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-1);
+  background-size: 16px 16px;
+  border: 1px solid var(--mid);
+  border-radius: var(--r);
   cursor: pointer;
-  transition: background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
-}
-
-input[type="checkbox"]:not([role="switch"]):hover:not(:disabled) {
-  border-color: var(--c-fg);
 }
 
 input[type="checkbox"]:not([role="switch"]):checked {
-  background-color: var(--c-fg);
-  background-image: var(--c-check-icon);
-  border-color: var(--c-fg);
+  background-color: var(--ink);
+  background-image: var(--icon-tick);
+  border-color: var(--ink);
 }
 
 input[type="checkbox"]:not([role="switch"]):disabled {
-  background-color: var(--c-disabled-fill);
-  border: 1px dashed var(--c-disabled-border);
+  background-color: var(--fill);
+  border-color: var(--line);
   cursor: not-allowed;
 }
 
 input[type="checkbox"]:not([role="switch"]):disabled:checked {
-  background-color: var(--c-disabled-fg);
-  background-image: var(--c-check-icon);
+  background-color: var(--mid);
+  border-color: var(--mid);
 }
 
 .check-field {
@@ -705,20 +492,17 @@ input[type="checkbox"]:not([role="switch"]):disabled:checked {
   align-items: flex-start;
   gap: var(--s-3);
   margin: var(--s-2) 0 var(--s-3);
-  font: var(--t-body);
-  color: var(--c-fg);
   cursor: pointer;
 }
 
-/* Switch: a square thumb in a square track. The thumb jumps; only colour transitions. */
+/* Switch: the real input sits invisibly over a drawn track. */
 .switch-field {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--s-3);
   min-height: 44px;
-  font: 600 16px/24px var(--font-body);
-  color: var(--c-fg);
+  font: var(--t-subhead);
   cursor: pointer;
 }
 
@@ -726,7 +510,7 @@ input[type="checkbox"]:not([role="switch"]):disabled:checked {
   position: absolute;
   left: 0;
   top: 50%;
-  width: 44px;
+  width: 40px;
   height: 24px;
   margin: -12px 0 0;
   opacity: 0;
@@ -736,55 +520,57 @@ input[type="checkbox"]:not([role="switch"]):disabled:checked {
 .switch-track {
   position: relative;
   flex: none;
-  width: 44px;
+  width: 40px;
   height: 24px;
-  background: var(--c-field);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-1);
-  transition: background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+  background: var(--bg);
+  border: 1px solid var(--mid);
+  border-radius: var(--r-round);
+  transition: background-color var(--t-fast);
 }
 
 .switch-track::after {
   content: "";
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  background: var(--c-fg);
-  transition: background-color var(--t-fast) var(--ease);
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--mid);
+  transition: left var(--t-fast), background-color var(--t-fast);
 }
 
 .switch-field input:checked + .switch-track {
-  background: var(--c-fg);
-  border-color: var(--c-fg);
+  background: var(--ink);
+  border-color: var(--ink);
 }
 
 .switch-field input:checked + .switch-track::after {
-  left: 22px;
-  background: var(--c-ground);
+  left: 19px;
+  background: var(--bg);
 }
 
 .switch-field input:focus-visible + .switch-track {
-  outline: 3px solid var(--c-focus);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
-.switch-field input:disabled,
-.switch-field:has(input:disabled) {
+.switch-field:has(input:disabled),
+.switch-field input:disabled {
+  color: var(--mid);
   cursor: not-allowed;
 }
 
 .switch-field input:disabled + .switch-track {
-  background: var(--c-disabled-fill);
-  border: 1px dashed var(--c-disabled-border);
+  background: var(--fill);
+  border-color: var(--line);
 }
 
-.switch-field input:disabled + .switch-track::after {
-  background: var(--c-disabled-fg);
+.switch-word {
+  font: var(--t-small);
+  color: var(--mid);
 }
 
-/* Range: a 4px track and a 20px square ink thumb. */
 input[type="range"] {
   appearance: none;
   -webkit-appearance: none;
@@ -796,43 +582,31 @@ input[type="range"] {
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 4px;
-  background: var(--c-border);
-  border-radius: var(--r-0);
+  height: 2px;
+  background: var(--mid);
 }
 
 input[type="range"]::-moz-range-track {
-  height: 4px;
-  background: var(--c-border);
-  border-radius: var(--r-0);
-}
-
-input[type="range"]::-moz-range-progress {
-  height: 4px;
-  background: var(--c-signal);
+  height: 2px;
+  background: var(--mid);
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   margin-top: -8px;
-  background: var(--c-fg);
+  background: var(--ink);
   border: 0;
-  border-radius: var(--r-0);
+  border-radius: 50%;
 }
 
 input[type="range"]::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  background: var(--c-fg);
+  width: 18px;
+  height: 18px;
+  background: var(--ink);
   border: 0;
-  border-radius: var(--r-0);
-}
-
-input[type="range"]:focus-visible {
-  outline: 3px solid var(--c-focus);
-  outline-offset: 2px;
+  border-radius: 50%;
 }
 
 input[type="range"]:disabled {
@@ -840,127 +614,44 @@ input[type="range"]:disabled {
 }
 
 input[type="range"]:disabled::-webkit-slider-thumb {
-  background: var(--c-disabled-fg);
+  background: var(--mid);
 }
 
 input[type="range"]:disabled::-moz-range-thumb {
-  background: var(--c-disabled-fg);
+  background: var(--mid);
 }
 
-/* Progress: 8px, sunken track, signal fill. */
 progress {
   appearance: none;
   -webkit-appearance: none;
   display: block;
   width: 100%;
-  height: 8px;
+  height: 4px;
   border: 0;
-  border-radius: var(--r-0);
-  background: var(--c-track);
-  color: var(--c-signal);
+  background: var(--line);
+  color: var(--ink);
 }
 
 progress::-webkit-progress-bar {
-  background: var(--c-track);
+  background: var(--line);
 }
 
 progress::-webkit-progress-value {
-  background: var(--c-signal);
+  background: var(--ink);
 }
 
 progress::-moz-progress-bar {
-  background: var(--c-signal);
-}
-
-/* ===================================================================================== Status and tags */
-
-.status-line {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  white-space: nowrap;
-}
-
-.status-sq {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  background: currentColor;
-}
-
-.status-sq--hollow {
-  background: transparent;
-  border: 1px solid currentColor;
-}
-
-.stamp {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1);
-  height: 22px;
-  padding: 0 var(--s-2);
-  background: transparent;
-  color: var(--c-fg);
-  border: 1px solid currentColor;
-  border-radius: var(--r-1);
-  font: var(--t-stamp);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  vertical-align: middle;
-}
-
-.stamp > svg {
-  flex: none;
-}
-
-.stamp--pass {
-  color: var(--c-pass);
-}
-
-.stamp--warn {
-  color: var(--c-warn);
-}
-
-.stamp--info {
-  color: var(--c-fg-2);
-}
-
-.stamp--fail {
-  background: var(--fail);
-  color: var(--on-fail);
-  border-color: var(--fail);
-}
-
-.on-console .stamp--fail {
-  border-color: var(--c-fail);
-}
-
-.stamp--amber {
-  background: var(--amber);
-  color: var(--ink);
-  border-color: var(--ink);
-}
-
-/* On the Care route a stamp is sentence case in the body face, at the Care chrome size. */
-.app--care .stamp {
-  height: auto;
-  min-height: 32px;
-  padding: 0 var(--s-2);
-  font: 500 18px/28px var(--font-body);
-  letter-spacing: 0;
-  text-transform: none;
+  background: var(--ink);
 }
 
 /* ===================================================================================== Messages */
 
-/* Callout: no fill, a 6px bar in the tone, icon and bold state word supplied by the markup, text in ink. */
+/* A message is a line of text with a thin bar. Grey when it is a note, black when it needs reading, red on a fault. */
 .msg {
   margin: var(--s-3) 0;
-  padding: var(--s-1) 0 var(--s-1) var(--s-4);
-  border-left: 6px solid var(--c-fg-2);
-  color: var(--c-fg);
-  font: var(--t-body);
+  padding-left: var(--s-3);
+  border-left: 2px solid var(--line);
+  color: var(--mid);
 }
 
 .msg p {
@@ -972,94 +663,70 @@ progress::-moz-progress-bar {
   padding-left: var(--s-5);
 }
 
-.msg-pass {
-  border-left-color: var(--c-pass);
-}
-
+.msg-pass,
 .msg-warn {
-  border-left-color: var(--c-warn);
+  border-left-color: var(--ink);
+  color: var(--ink);
 }
 
 .msg-fail {
-  border-left-color: var(--c-fail);
+  border-left-color: var(--red);
+  color: var(--red);
 }
 
 .banner {
   display: flex;
   align-items: flex-start;
   gap: var(--s-3);
-  margin: var(--s-3) 0;
-  padding: var(--s-2) 0 var(--s-2) var(--s-4);
-  border-left: 6px solid var(--c-fg-2);
-  color: var(--c-fg);
-  font: 600 18px/26px var(--font-body);
+  margin: var(--s-4) 0;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--ink);
+  border-radius: var(--r);
+  font: var(--t-subhead);
 }
 
 .banner > svg {
   flex: none;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 .banner-fail,
 .banner-attention {
-  border-left-color: var(--c-fail);
+  border-color: var(--red);
+  color: var(--red);
 }
 
-.banner-fail > svg,
-.banner-attention > svg {
-  color: var(--c-fail);
-}
-
-/* The shell's backend banner sits inside the container geometry, just under the masthead. */
 .app > .banner {
-  width: calc(100% - 2 * var(--s-6));
-  max-width: calc(1264px - 2 * var(--s-6));
+  width: calc(100% - 2 * var(--s-5));
+  max-width: var(--page);
   margin: var(--s-4) auto 0;
 }
 
 /* ===================================================================================== Data */
 
-/* Stacked definition list: label above value, a hairline between items. */
 .kv {
   margin: 0;
 }
 
+.kv > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.kv > div:last-child {
+  border-bottom: 0;
+}
+
 .kv dt {
-  padding-top: var(--s-3);
-  font: var(--t-caption);
-  color: var(--c-fg-2);
+  color: var(--mid);
 }
 
 .kv dd {
   margin: 0;
-  padding-bottom: var(--s-3);
-  font: var(--t-body);
-  color: var(--c-fg);
-}
-
-.kv dd + dt {
-  border-top: 1px solid var(--c-rule);
-}
-
-.kv > dt:first-child {
-  padding-top: 0;
-}
-
-.kv > div {
-  padding: var(--s-3) 0;
-}
-
-.kv > div + div {
-  border-top: 1px solid var(--c-rule);
-}
-
-.kv > div:first-child,
-.kv > div > dt {
-  padding-top: 0;
-}
-
-.kv > div > dd {
-  padding-bottom: 0;
+  text-align: right;
 }
 
 .table-wrap {
@@ -1071,24 +738,22 @@ progress::-moz-progress-bar {
   width: 100%;
   margin: 0;
   border-collapse: collapse;
-  font: var(--t-body);
-  color: var(--c-fg);
 }
 
 .table th {
   padding: 0 var(--s-3) var(--s-2);
   text-align: left;
   vertical-align: bottom;
-  font: var(--t-label);
-  color: var(--c-fg);
-  border-bottom: 1px solid var(--c-border);
+  font: var(--t-small);
+  color: var(--mid);
+  border-bottom: 1px solid var(--line);
 }
 
 .table td {
   padding: var(--s-3);
   text-align: left;
   vertical-align: middle;
-  border-bottom: 1px solid var(--c-rule);
+  border-bottom: 1px solid var(--line);
 }
 
 .table tr:last-child td {
@@ -1105,7 +770,6 @@ progress::-moz-progress-bar {
   padding-right: 0;
 }
 
-/* Key cap: a physical key, the same on paper and on the console. */
 kbd {
   display: inline-flex;
   align-items: center;
@@ -1113,13 +777,11 @@ kbd {
   min-width: 24px;
   height: 24px;
   padding: 0 6px;
-  background: var(--sheet);
+  background: var(--bg);
   color: var(--ink);
-  border: 1px solid var(--ink);
-  border-bottom-width: 3px;
-  border-radius: var(--r-1);
-  font: 600 13px/1 var(--font-data);
-  letter-spacing: 0;
+  border: 1px solid var(--mid);
+  border-radius: var(--r);
+  font: 600 12px/1 var(--font);
   white-space: nowrap;
   vertical-align: middle;
 }
@@ -1135,8 +797,8 @@ kbd {
   margin: 0;
   background: none;
   border: 0;
-  color: var(--c-fg);
-  font: 600 16px/24px var(--font-body);
+  color: var(--ink);
+  font: var(--t-subhead);
   text-align: left;
   cursor: pointer;
 }
@@ -1148,6 +810,7 @@ kbd {
 
 .disclosure-chevron {
   flex: none;
+  transition: transform var(--t-fast);
 }
 
 [aria-expanded="true"] > .disclosure-chevron,
@@ -1159,64 +822,37 @@ kbd {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-5);
-  border-bottom: 1px solid var(--c-rule);
+  border-bottom: 1px solid var(--line);
 }
 
-/* The pressed tab is 700, the others 400. Each tab reserves its bold width so the labels never shift:
-   a hidden bold copy of the label when the tab carries data-label (as the masthead links do); without it,
-   every tab is set at 600 and the pressed one is told apart by ink colour and the 3px underline alone. */
 .tabs > button,
 .tabs > a,
 .tabs [role="tab"] {
   display: inline-flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  min-height: 48px;
+  min-height: 44px;
   padding: 0;
   margin: 0 0 -1px;
   background: none;
   border: 0;
-  border-bottom: 3px solid transparent;
-  color: var(--c-fg-2);
-  font: 600 16px/24px var(--font-body);
+  border-bottom: 2px solid transparent;
+  color: var(--mid);
+  font: var(--t-subhead);
   text-decoration: none;
   cursor: pointer;
-  transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
-}
-
-.tabs > [data-label],
-.tabs [role="tab"][data-label] {
-  font-weight: 400;
-}
-
-.tabs > [data-label]::before,
-.tabs [role="tab"][data-label]::before {
-  content: attr(data-label);
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
-  font-weight: 700;
 }
 
 .tabs > button:hover,
 .tabs > a:hover,
 .tabs [role="tab"]:hover {
-  color: var(--c-fg);
+  color: var(--ink);
 }
 
 .tabs [aria-pressed="true"],
 .tabs [aria-selected="true"],
 .tabs [aria-current="page"] {
-  color: var(--c-fg);
-  border-bottom-color: var(--c-fg);
-}
-
-.tabs > [data-label][aria-pressed="true"],
-.tabs > [data-label][aria-selected="true"],
-.tabs > [data-label][aria-current="page"],
-.tabs [role="tab"][data-label][aria-selected="true"] {
-  font-weight: 700;
+  color: var(--ink);
+  border-bottom-color: var(--ink);
 }
 
 /* ===================================================================================== Shell */
@@ -1226,179 +862,95 @@ kbd {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--paper);
-  color: var(--ink);
 }
 
 main {
   flex: 1;
   width: 100%;
   min-width: 0;
-  padding: 0;
 }
 
 main:focus {
   outline: none;
 }
 
-/* Masthead: paper, 56px including its 2px ink rule. */
 .masthead {
-  position: relative;
-  z-index: 30;
-  background: var(--paper);
-  border-bottom: 2px solid var(--ink);
+  border-bottom: 1px solid var(--line);
 }
 
-/* Gaps are tighter between 640 and 959px so brand, links, mode stamp and status always share one row. */
 .masthead-inner {
   display: flex;
-  align-items: stretch;
-  gap: var(--s-5);
-  height: 54px;
+  align-items: center;
+  gap: var(--s-4);
+  min-height: 56px;
 }
 
 .brand {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  color: var(--ink);
-}
-
-/* The mark's ink starts 2px into its 24px box; pull it back so the ink meets the container edge. */
-.brand-mark {
-  flex: none;
-  display: block;
-  margin-left: -2px;
-}
-
-.brand-name {
-  font: 600 26px/1 var(--font-display);
-  font-variation-settings: "opsz" 72;
-  font-variant-numeric: lining-nums;
+  font: 600 18px/24px var(--font);
   letter-spacing: -0.01em;
   color: var(--ink);
-  /* Newsreader's capitals sit high in the em box: this centres the capitals on the mark. */
-  transform: translateY(3px);
+  text-decoration: none;
 }
 
-.masthead-nav {
-  display: flex;
-  align-items: stretch;
+.brand:hover {
+  text-decoration: none;
 }
 
-.masthead-nav ul {
+.mode {
+  font: var(--t-small);
+  color: var(--mid);
+  white-space: nowrap;
+}
+
+.mode--real {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mode--down {
+  color: var(--red);
+}
+
+.nav {
+  margin-left: auto;
+}
+
+.nav ul {
   display: flex;
-  align-items: stretch;
-  gap: var(--s-4);
+  align-items: center;
+  gap: var(--s-5);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-@media (min-width: 960px) {
-  .masthead-inner {
-    gap: var(--s-6);
-  }
-
-  .masthead-nav ul {
-    gap: var(--s-5);
-  }
-}
-
-.masthead-nav li {
-  display: flex;
-}
-
-.masthead-nav a,
-.pagelinks a {
-  position: relative;
+.nav a {
   display: inline-flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  color: var(--ink-2);
+  min-height: 44px;
+  color: var(--mid);
   text-decoration: none;
-  transition: color var(--t-fast) var(--ease);
 }
 
-/* Shares the wordmark's baseline. The 8px side padding (cancelled by the margin) gives the focus ring room. */
-.masthead-nav a {
-  padding: 6px var(--s-2) 0;
-  margin-inline: calc(-1 * var(--s-2));
-  font: 400 16px/24px var(--font-body);
-}
-
-/* The link fills the masthead from the viewport top to the rule, so its focus ring is drawn inside the box:
-   all four sides stay visible and none of it overprints the masthead rule. */
-.masthead-nav a:focus-visible {
-  outline-offset: -3px;
-}
-
-/* Reserve the bold width so the active link does not shift its neighbours. */
-.masthead-nav a::before,
-.pagelinks a::before {
-  content: attr(data-label);
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
-  font-weight: 700;
-}
-
-.masthead-nav a:hover {
+.nav a:hover {
   color: var(--ink);
 }
 
-.masthead-nav a.active {
+.nav a.active {
   color: var(--ink);
-  font-weight: 700;
+  font-weight: 600;
 }
 
-/* The active underline sits on the masthead rule: its bottom edge is the rule's bottom edge. */
-.masthead-nav a.active::after {
-  content: "";
-  position: absolute;
-  left: var(--s-2);
-  right: var(--s-2);
-  bottom: -2px;
-  height: 4px;
-  background: var(--ink);
-}
-
-/* Between 640 and 959px the row is tight: when the mode stamp and a long status ('Backend not reachable')
-   do not fit side by side, they stack as two right-aligned lines (22 + 4 + 20px inside the 54px row)
-   instead of running past the gutter. Each item stays on one line. */
-.masthead-status {
-  display: flex;
-  flex: 0 1 auto;
-  flex-wrap: wrap;
-  align-content: center;
-  white-space: nowrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--s-1) var(--s-4);
-  margin-left: auto;
-  font: 500 14px/20px var(--font-body);
-  color: var(--ink);
-}
-
-@media (min-width: 960px) {
-  .masthead-status {
-    flex: none;
-    flex-wrap: nowrap;
-  }
-}
-
-.masthead-status .status-line {
-  font: 500 14px/20px var(--font-body);
+.nav a.btn,
+.nav a.btn:hover {
+  color: var(--bg);
 }
 
 .not-found {
   padding-block: var(--s-7);
 }
 
-/* Page links after main: only on the Care route, where the header stays quiet. */
+/* Page links after the content: only on the Care page, where the header stays quiet. */
 .pagelinks {
   margin-top: var(--s-7);
 }
@@ -1413,68 +965,26 @@ main:focus {
 }
 
 .pagelinks a {
+  display: inline-flex;
+  align-items: center;
   min-height: 48px;
-  font: 400 18px/28px var(--font-body);
-  color: var(--ink);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 5px;
-}
-
-.pagelinks a:hover {
-  text-decoration-thickness: 2px;
+  font: 400 18px/28px var(--font);
 }
 
 .pagelinks a.active {
-  font-weight: 700;
-  text-decoration-thickness: 3px;
+  font-weight: 600;
 }
 
-/* Footer: the prototype notice under a hairline, left-aligned to the container. */
 .footer {
   margin-top: var(--s-8);
-  padding-bottom: var(--s-6);
-  font: var(--t-caption);
-  color: var(--ink-2);
-}
-
-.footer > .container::before {
-  content: "";
-  display: block;
-  margin-bottom: var(--s-4);
-  border-top: 1px solid var(--rule);
+  padding-block: var(--s-5) var(--s-6);
+  border-top: 1px solid var(--line);
+  font: var(--t-small);
+  color: var(--mid);
 }
 
 .pagelinks + .footer {
   margin-top: var(--s-5);
-}
-
-/* Care chrome: a 64px header with only the wordmark, mode and status, everything at 18px or more. */
-.app--care .masthead-inner {
-  height: 62px;
-}
-
-.app--care .masthead-status,
-.app--care .masthead-status .status-line {
-  font: 500 18px/28px var(--font-body);
-}
-
-.app--care .status-sq {
-  width: 10px;
-  height: 10px;
-}
-
-.app--care .pagelinks > .container,
-.app--care .footer > .container {
-  max-width: calc(800px + 2 * var(--s-6));
-}
-
-.app--care .footer {
-  font: 400 18px/28px var(--font-body);
-}
-
-.app--care > .banner {
-  max-width: 800px;
 }
 
 @media (max-width: 639px) {
@@ -1486,108 +996,19 @@ main:focus {
     width: calc(100% - 2 * var(--s-4));
   }
 
-  .app--care .pagelinks > .container,
-  .app--care .footer > .container {
-    max-width: calc(800px + 2 * var(--s-4));
-  }
-
-  /* Two deliberate rows: wordmark, mode and status; then three equal-width page links.
-     The status group's base width is its widest item (width: min-content), so it sits beside the wordmark
-     whenever its longest line fits there and otherwise takes a line of its own (320px with 'Backend not
-     reachable'). Either way its right edge is the gutter. */
   .masthead-inner {
-    display: flex;
     flex-wrap: wrap;
-    align-items: stretch;
     gap: 0 var(--s-3);
-    height: auto;
-  }
-
-  .brand {
-    order: 1;
-    min-height: 44px;
-    gap: var(--s-2);
-  }
-
-  .brand-mark {
-    width: 20px;
-    height: 20px;
-  }
-
-  .brand-name {
-    font-size: 22px;
-  }
-
-  .masthead-status {
-    order: 2;
-    flex: 1 0 auto;
-    width: min-content;
-    min-height: 44px;
-    gap: var(--s-1) var(--s-3);
     padding-block: var(--s-2);
   }
 
-  .masthead-nav {
-    order: 3;
-    flex: 0 0 calc(100% + 2 * var(--s-4));
-    margin-inline: calc(-1 * var(--s-4));
-    padding-inline: var(--s-4);
-    border-top: 1px solid var(--rule);
+  .nav {
+    flex: 0 0 100%;
+    margin-left: 0;
   }
 
-  .masthead-nav ul {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0;
-    width: 100%;
-  }
-
-  .masthead-nav a {
-    width: 100%;
-    height: 48px;
-    padding: 0;
-    margin-inline: 0;
-  }
-
-  .masthead-nav a.active::after {
-    left: 0;
-    right: 0;
-  }
-
-  /* Care on a phone: two fixed rows that keep their height in every status, so the reminder below never
-     moves when the link drops. Row 1: wordmark and mode stamp (fits from 320px). Row 2, under a hairline:
-     the backend status on its own, left-aligned ('Backend not reachable' at 18px fits from 320px). */
-  .app--care .masthead-inner {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: 48px 44px;
-    gap: 0 var(--s-3);
-    height: auto;
-  }
-
-  .app--care .brand {
-    grid-row: 1;
-    grid-column: 1;
-    min-height: 0;
-  }
-
-  .app--care .masthead-status {
-    display: contents;
-  }
-
-  .app--care .masthead-status .stamp {
-    grid-row: 1;
-    grid-column: 2;
-    justify-self: end;
-    align-self: center;
-  }
-
-  .app--care .masthead-status .status-line {
-    grid-row: 2;
-    grid-column: 1 / -1;
-    margin-inline: calc(-1 * var(--s-4));
-    padding-inline: var(--s-4);
-    border-top: 1px solid var(--rule);
+  .nav ul {
+    gap: var(--s-4);
   }
 }
 

@@ -1,0 +1,83 @@
+/* The plan view and the printed-sign drawing. Both are SVG, coloured from the page tokens. */
+
+.plan {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.plan-wall {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.plan-sign {
+  stroke: var(--ink);
+  stroke-width: 7;
+}
+
+.plan-axis {
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.plan-spot {
+  fill: none;
+  stroke: var(--mid);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 3;
+}
+
+.plan-track {
+  fill: none;
+  stroke: var(--mid);
+  stroke-width: 1.5;
+}
+
+.plan-view {
+  fill: var(--fill);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.plan-drone {
+  fill: var(--ink);
+}
+
+.plan-scale {
+  stroke: var(--mid);
+  stroke-width: 1.5;
+}
+
+.plan-text {
+  font: 400 11px/1 var(--font);
+  fill: var(--mid);
+}
+
+.sign-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sign-sheet {
+  fill: var(--bg);
+  stroke: var(--mid);
+  stroke-width: 1;
+}
+
+.sign-ink {
+  fill: var(--ink);
+}
+
+.sign-paper {
+  fill: var(--bg);
+}
+
+.sign-caption {
+  font: 600 13px/1 var(--font);
+  fill: var(--ink);
+}

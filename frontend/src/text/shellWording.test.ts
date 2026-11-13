@@ -1,34 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { BACKEND_DOWN_LOCAL, BACKEND_DOWN_REMOTE_PAGE, backendDownText, isLocalHost } from "./shellWording";
+import { BACKEND_DOWN, modeLabel } from "./shellWording";
 
-describe("isLocalHost", () => {
-  it("accepts this computer's names", () => {
-    for (const h of ["localhost", "127.0.0.1", "[::1]", "::1", "medhop.localhost", "LOCALHOST"]) {
-      expect(isLocalHost(h)).toBe(true);
-    }
+describe("modeLabel", () => {
+  it("names the browser simulator whatever the status says", () => {
+    expect(modeLabel("browser", null, null)).toEqual({ text: "Browser simulator", tone: "sim" });
+    expect(modeLabel("browser", true, "sim")).toEqual({ text: "Browser simulator", tone: "sim" });
+    expect(modeLabel("browser", false, null).text).toBe("Browser simulator");
   });
-  it("rejects other hosts", () => {
-    for (const h of ["example.com", "medhop.netlify.app", "192.168.1.20", "localhost.example.com", ""]) {
-      expect(isLocalHost(h)).toBe(false);
-    }
+
+  it("follows the Python backend's own report", () => {
+    expect(modeLabel("python", true, "sim")).toEqual({ text: "Python simulator", tone: "sim" });
+    expect(modeLabel("python", true, "real")).toEqual({ text: "Real drone", tone: "real" });
+  });
+
+  it("never names a mode it has not been told", () => {
+    expect(modeLabel("python", null, null)).toEqual({ text: "Connecting", tone: "wait" });
+    expect(modeLabel("python", true, null)).toEqual({ text: "Connecting", tone: "wait" });
+    expect(modeLabel("python", false, "real")).toEqual({ text: "Not connected", tone: "down" });
+    expect(modeLabel("python", false, "sim")).toEqual({ text: "Not connected", tone: "down" });
   });
 });
 
-describe("backendDownText", () => {
-  it("keeps the retry sentence when the page runs on this computer", () => {
-    expect(backendDownText("localhost", "http://localhost:8010")).toBe(
-      "Backend not reachable. Retrying every 2 seconds.",
-    );
-    expect(backendDownText("127.0.0.1", "http://127.0.0.1:8010")).toBe(BACKEND_DOWN_LOCAL);
-  });
-  it("explains the setup when a hosted page points at a local backend", () => {
-    expect(backendDownText("medhop.netlify.app", "http://localhost:8010")).toBe(
-      "This page is only the interface. It needs the MedHop backend running on this computer: start it with Start simulator.command, then open http://localhost:5180.",
-    );
-    expect(backendDownText("medhop.netlify.app", "http://127.0.0.1:8010")).toBe(BACKEND_DOWN_REMOTE_PAGE);
-  });
-  it("keeps the retry sentence when the API itself is remote or unparseable", () => {
-    expect(backendDownText("medhop.netlify.app", "https://api.example.com")).toBe(BACKEND_DOWN_LOCAL);
-    expect(backendDownText("medhop.netlify.app", "not a url")).toBe(BACKEND_DOWN_LOCAL);
+describe("the backend banner", () => {
+  it("says what is wrong and what happens next, and names no file to run", () => {
+    expect(BACKEND_DOWN).toBe("Backend not reachable. Retrying every 2 seconds.");
+    expect(BACKEND_DOWN).not.toMatch(/\.command|localhost/);
   });
 });
