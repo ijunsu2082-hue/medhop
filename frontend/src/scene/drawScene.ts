@@ -1,6 +1,7 @@
-// Draws the simulator's camera view as a plain line drawing: the room, the station sign with its real marker
-// pattern, the simulated people and objects, and what the flight logic made of the picture: an outline round
-// the tracked sign, and a box with a short label round each obstacle. Pure canvas 2D, no images.
+// Draws the simulator's camera view as a flat, coloured drawing of a hospital corridor: the room, the station sign
+// with its real marker pattern (black on white, as printed), the simulated people and objects, and what the flight
+// logic made of the picture: a green outline round the tracked sign, and an amber box with a short label round each
+// obstacle. Pure canvas 2D, no images. The colours are the --scene-* tokens of styles.css, read by SceneCanvas.
 //
 // The geometry is the engine's. engine/camera/projection.ts projects (the simulator's own pinhole model, the
 // one the sign detector projects through), and engine/drone/simActors.ts gives each actor's silhouette and
@@ -64,17 +65,41 @@ export interface SceneFrame {
   readonly landingSpot: number | null;
 }
 
+/**
+ * The colours the picture is painted in. Four are page tokens (the sign's paper and print, its sheet's edge, and the
+ * landing spot in the page accent); the rest are the scene's own --scene-* tokens.
+ */
 export interface SceneTheme {
   bg: string;
-  fill: string;
-  line: string;
-  mid: string;
   ink: string;
+  mid: string;
+  accent: string;
+  wall: string;
+  wallSide: string;
+  ceiling: string;
+  floor: string;
+  floorLine: string;
+  rail: string;
+  door: string;
+  doorEdge: string;
+  picture: string;
+  cloth1: string;
+  cloth2: string;
+  cloth3: string;
+  skin: string;
+  trolley: string;
+  trolleyEdge: string;
+  outline: string;
+  tracking: string;
+  obstacle: string;
   fontFamily: string;
 }
 
-/** A page colour token, by name; the painter looks it up in the theme. */
-export type Tone = "bg" | "fill" | "line" | "mid" | "ink";
+/** A colour of the theme, by name; the painter looks it up. */
+export type Tone = Exclude<keyof SceneTheme, "fontFamily">;
+
+/** What a person wears, by their index among the actors: three colours in turn. */
+export const CLOTHES: readonly Tone[] = ["cloth1", "cloth2", "cloth3"];
 
 /** A point on the canvas, in frame pixels with the origin at the frame's top-left corner. */
 export type Pt = readonly [x: number, y: number];
@@ -284,28 +309,23 @@ function flat(y: number, x0: number, x1: number, z0: number, z1: number): Vec3[]
 }
 
 function wallThing(out: Shape[], camera: Camera, on: (r: Span) => Vec3[], r: WallRect): void {
-  quad(out, "room", camera, on(r), { fill: "bg", stroke: "mid" });
   const w = r.a1 - r.a0;
   if (r.kind === "door") {
-    // Two recessed panels and a handle.
-    quad(out, "room", camera, on({ a0: r.a0 + 0.14, a1: r.a1 - 0.14, y0: 1.15, y1: r.y1 - 0.16 }), { stroke: "line", width: 1 });
-    quad(out, "room", camera, on({ a0: r.a0 + 0.14, a1: r.a1 - 0.14, y0: 0.2, y1: 0.95 }), { stroke: "line", width: 1 });
-    quad(out, "room", camera, on({ a0: r.a0 + w * 0.82, a1: r.a0 + w * 0.92, y0: 1.0, y1: 1.04 }), { fill: "mid" });
+    // A wooden door: two recessed panels and a handle.
+    quad(out, "room", camera, on(r), { fill: "door", stroke: "doorEdge", width: 1.5 });
+    quad(out, "room", camera, on({ a0: r.a0 + 0.14, a1: r.a1 - 0.14, y0: 1.15, y1: r.y1 - 0.16 }), { stroke: "doorEdge", width: 1 });
+    quad(out, "room", camera, on({ a0: r.a0 + 0.14, a1: r.a1 - 0.14, y0: 0.2, y1: 0.95 }), { stroke: "doorEdge", width: 1 });
+    quad(out, "room", camera, on({ a0: r.a0 + w * 0.82, a1: r.a0 + w * 0.92, y0: 1.0, y1: 1.04 }), { fill: "outline" });
   } else if (r.kind === "print") {
-    quad(out, "room", camera, on({ a0: r.a0 + 0.06, a1: r.a1 - 0.06, y0: r.y0 + 0.06, y1: r.y1 - 0.06 }), {
-      fill: "fill",
-      stroke: "line",
-      width: 1,
-    });
+    // A framed picture.
+    quad(out, "room", camera, on(r), { fill: "bg", stroke: "outline", width: 1 });
+    quad(out, "room", camera, on({ a0: r.a0 + 0.06, a1: r.a1 - 0.06, y0: r.y0 + 0.06, y1: r.y1 - 0.06 }), { fill: "picture" });
   } else {
-    // A noticeboard with a few sheets pinned to it.
+    // A corkboard with a few sheets pinned to it.
+    quad(out, "room", camera, on(r), { fill: "door", stroke: "doorEdge", width: 1 });
     for (let i = 0; i < 3; i += 1) {
       const a0 = r.a0 + 0.1 + (i * (w - 0.2)) / 3;
-      quad(out, "room", camera, on({ a0, a1: a0 + (w - 0.2) / 3 - 0.08, y0: r.y0 + 0.14, y1: r.y1 - 0.14 }), {
-        fill: "fill",
-        stroke: "line",
-        width: 1,
-      });
+      quad(out, "room", camera, on({ a0, a1: a0 + (w - 0.2) / 3 - 0.08, y0: r.y0 + 0.14, y1: r.y1 - 0.14 }), { fill: "bg" });
     }
   }
 }
@@ -313,13 +333,13 @@ function wallThing(out: Shape[], camera: Camera, on: (r: Span) => Vec3[], r: Wal
 function roomShapes(out: Shape[], camera: Camera): void {
   const { x0, x1, z0, z1, height: h } = ROOM;
 
-  // Floor (the darkest plane, with board joints), then the ceiling with its light panels.
-  quad(out, "room", camera, flat(0, x0, x1, z0, z1), { fill: "line" });
-  for (let x = x0 + 0.5; x < x1; x += 0.5) segment(out, camera, [x, 0, z0], [x, 0, z1], "fill");
-  quad(out, "room", camera, flat(h, x0, x1, z0, z1), { fill: "bg" });
+  // Floor (sea-green vinyl with seams), then the ceiling with its light panels.
+  quad(out, "room", camera, flat(0, x0, x1, z0, z1), { fill: "floor" });
+  for (let x = x0 + 0.5; x < x1; x += 0.5) segment(out, camera, [x, 0, z0], [x, 0, z1], "floorLine");
+  quad(out, "room", camera, flat(h, x0, x1, z0, z1), { fill: "ceiling" });
   for (const lx of LIGHTS_X) {
     for (const lz of LIGHTS_Z) {
-      quad(out, "room", camera, flat(h, lx - 0.3, lx + 0.3, lz - 0.3, lz + 0.3), { fill: "fill", stroke: "line", width: 1 });
+      quad(out, "room", camera, flat(h, lx - 0.3, lx + 0.3, lz - 0.3, lz + 0.3), { fill: "bg", stroke: "wallSide", width: 1 });
     }
   }
 
@@ -334,16 +354,16 @@ function roomShapes(out: Shape[], camera: Camera): void {
     [x1, 0, z0],
     [x0, 0, z0],
   ];
-  quad(out, "room", camera, back, { fill: "fill", stroke: "mid" });
-  for (const [on, a0, a1] of [
-    [leftWall, z0, z1],
-    [rightWall, z0, z1],
-    [front, x0, x1],
+  quad(out, "room", camera, back, { fill: "wallSide", stroke: "outline", width: 1 });
+  for (const [on, a0, a1, fill] of [
+    [leftWall, z0, z1, "wallSide"],
+    [rightWall, z0, z1, "wallSide"],
+    [front, x0, x1, "wall"],
   ] as const) {
-    quad(out, "room", camera, on(whole(a0, a1)), { fill: "fill", stroke: "mid" });
-    // A white skirting board, and a rail at 0.9 m.
-    quad(out, "room", camera, on({ a0, a1, y0: 0, y1: 0.1 }), { fill: "bg", stroke: "mid", width: 1 });
-    quad(out, "room", camera, on({ a0, a1, y0: 0.88, y1: 0.92 }), { fill: "bg", stroke: "line", width: 1 });
+    quad(out, "room", camera, on(whole(a0, a1)), { fill, stroke: "outline", width: 1 });
+    // A skirting board, and a handrail at 0.9 m.
+    quad(out, "room", camera, on({ a0, a1, y0: 0, y1: 0.1 }), { fill: "rail" });
+    quad(out, "room", camera, on({ a0, a1, y0: 0.88, y1: 0.92 }), { fill: "rail" });
   }
 
   for (const r of LEFT_WALL) wallThing(out, camera, leftWall, r);
@@ -357,7 +377,7 @@ function landingShapes(out: Shape[], camera: Camera, distance: number): void {
     const a = (i / 40) * Math.PI * 2;
     ring.push([0.15 * Math.cos(a), 0, -distance + 0.15 * Math.sin(a)]);
   }
-  quad(out, "landing", camera, ring, { stroke: "mid", width: 1.5, dash: [6, 5] });
+  quad(out, "landing", camera, ring, { stroke: "accent", width: 2.5, dash: [7, 5] });
 }
 
 /** The marker square on the wall: TL, TR, BR, BL as printed (the order of the detector's corners). */
@@ -492,16 +512,18 @@ function actorShapes(out: Shape[], camera: Camera, actors: readonly Actor[]): vo
     if (hull.length < 3) continue; // too little of it in front of the camera: the simulator draws nothing either
     if (actor.kind === "person") {
       const figure = personFigure(boundsOf(hull));
-      poly(out, "actor", figure.body, { fill: "mid", stroke: "ink", width: 2, index: i });
-      poly(out, "actor", figure.head, { fill: "mid", stroke: "ink", width: 2, index: i });
-      poly(out, "actor", figure.legs, { stroke: "ink", width: 2, index: i }, false);
+      const clothes = CLOTHES[i % CLOTHES.length]!;
+      poly(out, "actor", figure.body, { fill: clothes, stroke: "outline", width: 2, index: i });
+      poly(out, "actor", figure.head, { fill: "skin", stroke: "outline", width: 2, index: i });
+      poly(out, "actor", figure.legs, { stroke: "outline", width: 2, index: i }, false);
     } else {
-      poly(out, "actor", hull, { fill: "mid", index: i });
+      // A steel trolley: the box's faces edged in a darker steel, the whole shape in the outline colour.
+      poly(out, "actor", hull, { fill: "trolley", index: i });
       for (const face of visibleFaces(actor, camera.position)) {
         const pts = project(camera, face);
-        if (pts.length >= 3) poly(out, "actor", pts, { stroke: "ink", width: 1.5, index: i });
+        if (pts.length >= 3) poly(out, "actor", pts, { stroke: "trolleyEdge", width: 1.5, index: i });
       }
-      poly(out, "actor", hull, { stroke: "ink", width: 2, index: i });
+      poly(out, "actor", hull, { stroke: "outline", width: 2, index: i });
     }
   }
 }
@@ -553,7 +575,7 @@ function obstacleShapes(
     const width = (o.in_lane ? OVERLAY.boxHeavyPx : OVERLAY.boxThinPx) * ui;
     const flightBox: Rect = { x0: x1 * FRAME_W + 0.5, y0: y1 * FRAME_H + 0.5, x1: x2 * FRAME_W + 0.5, y1: y2 * FRAME_H + 0.5 };
     const drawn = grow(flightBox, OVERLAY.boxOutsetPx * ui + width / 2);
-    poly(out, "obstacle", rectPoints(drawn), { stroke: "ink", width, index: i });
+    poly(out, "obstacle", rectPoints(drawn), { stroke: "obstacle", width, index: i });
     return { drawn: grow(drawn, width / 2), label: obstacleLabel(o) };
   });
 
@@ -567,7 +589,7 @@ function obstacleShapes(
     const h = lineBox + 2 * padY;
     const plate = placeLabel(drawn, w, h, placed);
     placed.push(plate);
-    poly(out, "label", rectPoints(plate), { fill: "bg", index: i });
+    poly(out, "label", rectPoints(plate), { fill: "obstacle", index: i });
     out.push({
       type: "text",
       part: "label",
@@ -576,7 +598,7 @@ function obstacleShapes(
       y: plate.y0 + padY + lineBox / 2 + 0.36 * size,
       size,
       weight: OVERLAY.labelWeight,
-      tone: "ink",
+      tone: "outline",
       align: "left",
       maxWidth: null,
       transform: null,
@@ -605,7 +627,7 @@ export function buildScene(frame: SceneFrame, options: LayoutOptions = {}): Shap
   if (frame.marker && frame.marker.length === 4) {
     const width = OVERLAY.trackingPx * ui;
     const ring = trackingRing(frame.marker, OVERLAY.trackingGapPx * ui + width / 2);
-    poly(out, "tracking", ring, { stroke: "ink", width });
+    poly(out, "tracking", ring, { stroke: "tracking", width });
     keepClear.push(grow(boundsOf(ring), OVERLAY.clearPx * ui));
   }
   obstacleShapes(out, frame.obstacles, ui, measure, keepClear);

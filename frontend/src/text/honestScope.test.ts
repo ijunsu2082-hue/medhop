@@ -91,7 +91,8 @@ describe("honest scope", () => {
 
   it("mentions a safety system or an interlock only to say it is not one", () => {
     const strong = ALL.filter((r) => STRONG_CLAIM.test(r.text));
-    expect(strong.length).toBeGreaterThanOrEqual(2);
+    // The scan must see at least the landing page's denial, so this check is never vacuous.
+    expect(strong.map((r) => r.text)).toContain(HOSPITAL.note);
     expect(offenders(strong, (t) => !DENIAL.test(t))).toEqual([]);
   });
 
@@ -99,8 +100,8 @@ describe("honest scope", () => {
     expect(offenders(ALL, (t) => AI.test(t) && SIGN.test(t) && !DENIAL.test(t))).toEqual([]);
   });
 
-  it("mentions AI only to deny it, or to say who wrote the code", () => {
-    expect(offenders(ALL, (t) => AI.test(t) && !DENIAL.test(t) && !/coding agents/.test(t))).toEqual([]);
+  it("mentions AI only to deny it", () => {
+    expect(offenders(ALL, (t) => AI.test(t) && !DENIAL.test(t))).toEqual([]);
   });
 
   it("never says medicine was taken", () => {
@@ -111,31 +112,27 @@ describe("honest scope", () => {
 describe("the landing page", () => {
   const hospital = stringsIn(HOSPITAL);
 
-  it("says arrived at the station, and that pickup is the person's own report", () => {
-    expect(LOOP[1]?.body).toMatch(/arrived at the station/);
-    expect(LOOP[2]?.body).toMatch(/person's own report/);
-    expect(LOOP[2]?.body).toMatch(/nothing here confirms/);
+  it("says the drone lands at the station, and that pickup is the person's own word", () => {
+    expect(LOOP[1]?.body).toMatch(/lands in front of it/);
+    expect(LOOP[2]?.body).toMatch(/person's own word/);
+    expect(LOOP[2]?.body).toMatch(/not a check that the medicine was taken/);
   });
 
-  it("labels the hospital figures as simulator results", () => {
-    expect(HOSPITAL.figuresNote).toMatch(/simulator/i);
+  it("labels the results as simulator results, and keeps them apart from the real drone", () => {
     expect(RESULTS.simTitle).toMatch(/simulator/i);
-    expect(RESULTS.simNote).toMatch(/simulator/i);
     // No simulator figure is repeated under the real drone's heading.
-    expect(RESULTS.real.join(" ")).not.toMatch(/\d+ of \d+/);
-    for (const figure of HOSPITAL.figures) expect(figure.value).toMatch(/^\d/);
-    // The boxes in the simulator are the simulator's own: the page must not read as if a detector found them.
-    expect(HOSPITAL.points[0]?.body).toMatch(/perfect detector, which no real one is/);
-    expect(HOSPITAL.lead).toMatch(/simulator only/);
+    expect(RESULTS.real).not.toMatch(/\d+ of \d+/);
+    expect(RESULTS.figures).toHaveLength(3);
+    for (const figure of RESULTS.figures) expect(figure.value).toMatch(/^\d+ of \d+$/);
+    expect(HOSPITAL.note).toMatch(/simulator only/);
   });
 
   it("says what waiting for people cannot do", () => {
-    const cannot = HOSPITAL.cannot.join(" ");
-    expect(cannot).toMatch(/cannot go around/i);
-    expect(cannot).toMatch(/simulator only/i);
-    expect(cannot).toMatch(/not a safety system/i);
-    expect(cannot).toMatch(/never been flown near people/i);
-    expect(LIMITS.join(" ")).toMatch(/simulator only\. It is not a safety system/);
+    expect(HOSPITAL.note).toMatch(/cannot go around/i);
+    expect(HOSPITAL.note).toMatch(/simulator only/i);
+    expect(HOSPITAL.note).toMatch(/not a safety system/i);
+    expect(LIMITS.join(" ")).toMatch(/never flies near people/i);
+    expect(LIMITS.join(" ")).toMatch(/Not a medical device/);
   });
 
   it("makes no claim that it prevents a collision or is safe", () => {
@@ -143,8 +140,14 @@ describe("the landing page", () => {
   });
 
   it("does not claim a clean real flight", () => {
-    const real = RESULTS.real.join(" ");
-    expect(real).toMatch(/no footage/i);
-    expect(real).toMatch(/do not yet record a real run that went cleanly/i);
+    expect(RESULTS.real).toMatch(/no footage/i);
+    expect(RESULTS.real).toMatch(/no clean run from takeoff to landing is on record yet/i);
+  });
+
+  it("does not say who wrote the code, and has no section on the hop's internals", () => {
+    const all = stringsIn(landingWording).join(" ");
+    expect(all).not.toMatch(/coding agents|Who wrote it|pill organiser/);
+    expect(Object.keys(landingWording)).not.toEqual(expect.arrayContaining(["HOP_FIGURES"]));
+    expect(Object.keys(landingWording)).not.toEqual(expect.arrayContaining(["HOP_POINTS"]));
   });
 });

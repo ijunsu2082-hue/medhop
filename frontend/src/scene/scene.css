@@ -1,15 +1,21 @@
-/* The plan view and the printed-sign drawing. Both are SVG, coloured from the page tokens. */
+/* The plan view and the printed-sign drawing. Both are SVG. The plan view is coloured from the --scene-* tokens (the
+   same corridor as the camera view) and the page accent for the drone; the sign is black on white, as printed. */
 
 .plan {
   display: block;
   width: 100%;
   height: auto;
+  background: var(--bg);
   border: 1px solid var(--line);
   border-radius: var(--r);
 }
 
+.plan-floor {
+  fill: var(--scene-floor-plan);
+}
+
 .plan-wall {
-  stroke: var(--ink);
+  stroke: var(--scene-outline);
   stroke-width: 2;
 }
 
@@ -19,50 +25,70 @@
 }
 
 .plan-axis {
-  stroke: var(--line);
+  stroke: var(--scene-floor-line);
   stroke-width: 1;
   stroke-dasharray: 3 4;
 }
 
 .plan-spot {
   fill: none;
-  stroke: var(--mid);
-  stroke-width: 1.25;
+  stroke: var(--accent);
+  stroke-width: 1.75;
   stroke-dasharray: 4 3;
 }
 
 .plan-track {
   fill: none;
-  stroke: var(--mid);
-  stroke-width: 1.5;
+  stroke: var(--accent);
+  stroke-width: 1.75;
 }
 
-/* Two faint bands: the camera's view (a wedge) and the lane the drone needs (parallel, dashed edges). */
+/* Two faint bands: the camera's view (a wedge) and the lane the drone needs (a soft blue, dashed edges). */
 .plan-band {
-  fill: var(--fill);
+  fill: none;
+}
+
+.plan-band--lane {
+  fill: var(--accent-soft);
 }
 
 .plan-view {
   fill: none;
-  stroke: var(--line);
+  stroke: var(--scene-floor-line);
   stroke-width: 1;
 }
 
 .plan-lane {
   fill: none;
-  stroke: var(--mid);
+  stroke: var(--accent);
   stroke-width: 1;
   stroke-dasharray: 4 3;
 }
 
 .plan-actor {
-  fill: var(--mid);
-  stroke: var(--ink);
+  stroke: var(--scene-outline);
   stroke-width: 1.5;
 }
 
+.plan-cloth-1 {
+  fill: var(--scene-cloth-1);
+}
+
+.plan-cloth-2 {
+  fill: var(--scene-cloth-2);
+}
+
+.plan-cloth-3 {
+  fill: var(--scene-cloth-3);
+}
+
+.plan-object {
+  fill: var(--scene-trolley);
+  stroke: var(--scene-trolley-edge);
+}
+
 .plan-drone {
-  fill: var(--ink);
+  fill: var(--accent);
 }
 
 .plan-scale {

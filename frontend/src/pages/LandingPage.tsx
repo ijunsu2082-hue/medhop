@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Brand } from "../components/Layout";
 import { SignFigure } from "../components/landing/SignFigure";
-import { BUILD, HERO, HOP_FIGURES, HOP_POINTS, HOSPITAL, LIMITS, LOOP, RESULTS, SECTIONS } from "../text/landingWording";
+import { BUILD, HERO, HOSPITAL, LIMITS, LOOP, RESULTS, SECTIONS, SIGN_CAPTION } from "../text/landingWording";
 import { FOOTER_TEXT } from "../text/wording";
 import "./landing.css";
 
@@ -84,61 +84,17 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="band" id="hospital" aria-labelledby="h-hospital">
+        <section className="band band--tint" id="hospital" aria-labelledby="h-hospital">
           <div className="container band-grid">
             <h2 id="h-hospital">{SECTIONS.hospital}</h2>
             <div>
               <p className="band-lead">{HOSPITAL.lead}</p>
-              <ul className="points">
-                {HOSPITAL.points.map((point) => (
-                  <li key={point.title}>
-                    <h3>{point.title}</h3>
-                    <p>{point.body}</p>
-                  </li>
-                ))}
-              </ul>
-              <p className="figures-note">{HOSPITAL.figuresNote}</p>
-              <dl className="figures figures-three">
-                {HOSPITAL.figures.map((f) => (
-                  <div key={f.label}>
-                    <dt>{f.label}</dt>
-                    <dd>{f.value}</dd>
-                  </div>
-                ))}
-              </dl>
-              <h3 className="cannot-title">{HOSPITAL.cannotTitle}</h3>
               <ul className="plain-list">
-                {HOSPITAL.cannot.map((p) => (
+                {HOSPITAL.points.map((p) => (
                   <li key={p}>{p}</li>
                 ))}
               </ul>
-            </div>
-          </div>
-        </section>
-
-        <section className="band" aria-labelledby="h-hop">
-          <div className="container band-grid">
-            <h2 id="h-hop">{SECTIONS.hop}</h2>
-            <div>
-              <dl className="figures">
-                {HOP_FIGURES.map((f) => (
-                  <div key={f.label}>
-                    <dt>{f.label}</dt>
-                    <dd>{f.value}</dd>
-                  </div>
-                ))}
-              </dl>
-              <div className="hop">
-                <ul className="plain-list">
-                  {HOP_POINTS.map((p) => (
-                    <li key={p}>{p}</li>
-                  ))}
-                </ul>
-                <figure className="sign-figure">
-                  <SignFigure />
-                  <figcaption>The station sign, as printed.</figcaption>
-                </figure>
-              </div>
+              <p className="band-note">{HOSPITAL.note}</p>
             </div>
           </div>
         </section>
@@ -148,19 +104,22 @@ export function LandingPage() {
             <h2 id="h-results">{SECTIONS.results}</h2>
             <div className="results">
               <div>
-                <h3>{RESULTS.simTitle}</h3>
-                <p>{RESULTS.simNote}</p>
-                <ul className="plain-list">
-                  {RESULTS.sim.map((p) => (
-                    <li key={p}>{p}</li>
+                <h3>
+                  {RESULTS.simTitle} <span className="results-note">{RESULTS.simNote}</span>
+                </h3>
+                <dl className="figures">
+                  {RESULTS.figures.map((f) => (
+                    <div key={f.label}>
+                      <dt>{f.label}</dt>
+                      <dd>{f.value}</dd>
+                    </div>
                   ))}
-                </ul>
+                </dl>
+                <p>{RESULTS.closest}</p>
               </div>
               <div>
                 <h3>{RESULTS.realTitle}</h3>
-                {RESULTS.real.map((p) => (
-                  <p key={p}>{p}</p>
-                ))}
+                <p>{RESULTS.real}</p>
               </div>
             </div>
           </div>
@@ -180,30 +139,19 @@ export function LandingPage() {
         <section className="band" aria-labelledby="h-build">
           <div className="container band-grid">
             <h2 id="h-build">{SECTIONS.build}</h2>
-            <dl className="build">
-              {BUILD.map((b) => (
-                <div key={b.term}>
-                  <dt>{b.term}</dt>
-                  <dd>{b.detail}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </section>
-
-        <section className="band band--last" aria-label="Open the app">
-          <div className="container closing">
-            <p className="closing-text">The whole app runs here too.</p>
-            <div className="row">
-              <Link className="btn btn-primary btn-lg" to="/pilot">
-                Fly the drone
-              </Link>
-              <Link className="btn btn-lg" to="/care">
-                Care page
-              </Link>
-              <Link className="btn btn-lg" to="/caregiver">
-                Caregiver page
-              </Link>
+            <div className="hardware">
+              <dl className="build">
+                {BUILD.map((b) => (
+                  <div key={b.term}>
+                    <dt>{b.term}</dt>
+                    <dd>{b.detail}</dd>
+                  </div>
+                ))}
+              </dl>
+              <figure className="sign-figure">
+                <SignFigure />
+                <figcaption>{SIGN_CAPTION}</figcaption>
+              </figure>
             </div>
           </div>
         </section>

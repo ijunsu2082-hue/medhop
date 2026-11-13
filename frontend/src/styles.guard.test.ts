@@ -35,25 +35,62 @@ function contrast(a: string, b: string): number {
 
 const tokens = rootTokens(css);
 
-/** The six colours: white page, two light greys, a grey for secondary text, near-black ink, and one red. */
-const EXPECTED: Record<string, string> = {
+/**
+ * The page colours: white page, two light greys, a grey for secondary text, near-black ink, one blue accent (with a
+ * darker hover and a soft tint), one amber for waiting (with a soft tint), and one red for the emergency stop and faults.
+ */
+const PAGE: Record<string, string> = {
   "--bg": "#FFFFFF",
   "--fill": "#F4F4F4",
   "--line": "#DADADA",
   "--mid": "#6B6B6B",
   "--ink": "#111111",
+  "--accent": "#1F5BD8",
+  "--accent-strong": "#1747AD",
+  "--accent-soft": "#E8EFFC",
+  "--warn": "#8A5300",
+  "--warn-soft": "#FBEFD9",
   "--red": "#C8102E",
 };
+
+/** The simulated corridor's own colours: the camera view (scene/SceneCanvas.tsx) and the plan view (scene/scene.css). */
+const SCENE: Record<string, string> = {
+  "--scene-wall": "#F1ECE2",
+  "--scene-wall-side": "#E2DBCD",
+  "--scene-ceiling": "#F8F6F1",
+  "--scene-floor": "#B9CFCB",
+  "--scene-floor-line": "#9DB9B4",
+  "--scene-floor-plan": "#EAF1EF",
+  "--scene-rail": "#7C9A95",
+  "--scene-door": "#C99A64",
+  "--scene-door-edge": "#9C7443",
+  "--scene-picture": "#5B8DB8",
+  "--scene-cloth-1": "#2E8B7A",
+  "--scene-cloth-2": "#C2573A",
+  "--scene-cloth-3": "#474E57",
+  "--scene-skin": "#D9A781",
+  "--scene-trolley": "#A7B0B8",
+  "--scene-trolley-edge": "#5F6C77",
+  "--scene-outline": "#2B2F33",
+  "--scene-tracking": "#12B886",
+  "--scene-obstacle": "#E8890C",
+};
+
+const EXPECTED: Record<string, string> = { ...PAGE, ...SCENE };
+
+/** The only files that may name a --scene-* token: where they are defined, and the two drawings of the corridor. */
+const SCENE_FILES = ["styles.css", "scene/scene.css", "scene/SceneCanvas.tsx"];
+const SCENE_TOKEN = /--scene-[a-z0-9-]+/;
 
 /** Tokens of the earlier designs. None may be defined or read anywhere. */
 const OLD_TOKENS = [
   "--paper", "--sheet", "--sunken", "--ink-hover", "--ink-2", "--ink-3", "--border", "--rule", "--console",
   "--console-2", "--console-inset", "--console-rule", "--console-border", "--on-console", "--on-console-2", "--pass",
-  "--warn", "--fail", "--on-fail", "--pass-on-console", "--warn-on-console", "--fail-on-console", "--signal",
+  "--fail", "--on-fail", "--pass-on-console", "--warn-on-console", "--fail-on-console", "--signal",
   "--signal-hover", "--signal-on-console", "--sweep-on-ink", "--sweep-on-light", "--focus", "--focus-on-console",
   "--amber", "--estop", "--estop-hover", "--estop-deep", "--estop-text", "--font-display", "--font-body", "--font-data",
   "--font-care", "--t-data", "--t-data-lg", "--t-caption", "--t-stamp", "--t-sub", "--r-0", "--r-1", "--r-2", "--r-pill",
-  "--ease", "--icon-lock", "--surface", "--text", "--muted", "--accent", "--shadow", "--radius", "--sans", "--mono",
+  "--ease", "--icon-lock", "--surface", "--text", "--muted", "--shadow", "--radius", "--sans", "--mono",
 ];
 const oldToken = (name: string) => new RegExp(`(?<![\\w-])${name}(?![\\w-])`);
 /** The --c-* contextual aliases of the old console/paper split. */
@@ -63,12 +100,13 @@ const C_ALIAS = /(?<![\w-])--c-[a-z]/;
 const OLD_CLASSES = ["stamp", "section-index", "on-console", "status-sq"];
 
 describe("styles.css tokens", () => {
-  it("defines exactly the six colours, with their values", () => {
+  it("defines exactly the page colours and the scene colours, with their values", () => {
     expect(tokens).toEqual(EXPECTED);
+    expect(Object.keys(tokens).filter((name) => !name.startsWith("--scene-")).sort()).toEqual(Object.keys(PAGE).sort());
   });
 
   it("meets the contrast floors", () => {
-    const t = (name: keyof typeof EXPECTED) => EXPECTED[name]!;
+    const t = (name: string) => EXPECTED[name]!;
     const floors: [string, string, string, number][] = [
       ["ink on bg", t("--ink"), t("--bg"), 4.5],
       ["mid on bg", t("--mid"), t("--bg"), 4.5],
@@ -76,13 +114,31 @@ describe("styles.css tokens", () => {
       ["mid on fill", t("--mid"), t("--fill"), 4.5],
       ["white on red (emergency stop)", t("--bg"), t("--red"), 4.5],
       ["red on bg (faults)", t("--red"), t("--bg"), 4.5],
-      ["white on ink (primary buttons)", t("--bg"), t("--ink"), 4.5],
-      ["white on mid (the hold sweep under a primary label)", t("--bg"), t("--mid"), 4.5],
+      ["white on accent (primary buttons)", t("--bg"), t("--accent"), 4.5],
+      ["white on accent-strong (hover, and the hold sweep under a primary label)", t("--bg"), t("--accent-strong"), 4.5],
+      ["accent on bg (links, done states)", t("--accent"), t("--bg"), 4.5],
+      ["accent on accent-soft (the tinted band)", t("--accent"), t("--accent-soft"), 4.5],
+      ["ink on accent-soft", t("--ink"), t("--accent-soft"), 4.5],
+      ["mid on accent-soft", t("--mid"), t("--accent-soft"), 4.5],
+      ["warn on bg (waiting)", t("--warn"), t("--bg"), 4.5],
+      ["warn on warn-soft", t("--warn"), t("--warn-soft"), 4.5],
+      ["ink on warn-soft", t("--ink"), t("--warn-soft"), 4.5],
       ["ink on line (the hold sweep under an outlined label)", t("--ink"), t("--line"), 4.5],
+      ["obstacle label text on its amber plate", t("--scene-outline"), t("--scene-obstacle"), 4.5],
     ];
     for (const [what, fg, bg, floor] of floors) {
       expect(contrast(fg, bg), what).toBeGreaterThanOrEqual(floor);
     }
+  });
+
+  it("keeps the scene colours to the two drawings of the corridor", () => {
+    for (const file of [...STYLESHEETS, ...COMPONENTS]) {
+      if (SCENE_FILES.includes(file)) continue;
+      expect(SCENE_TOKEN.test(read(file)), `${file} names a --scene-* token`).toBe(false);
+    }
+    // In styles.css the scene colours are defined in :root and read nowhere.
+    const outsideRoot = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(?:^|\n):root\s*\{[\s\S]*?\n\}/, "");
+    expect(SCENE_TOKEN.test(outsideRoot)).toBe(false);
   });
 
   it("breaks none of the CSS rules", () => {

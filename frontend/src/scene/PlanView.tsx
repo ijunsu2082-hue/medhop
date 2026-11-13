@@ -1,6 +1,6 @@
 // The room from above: the station wall, the sign, the landing spot, the people and objects in the corridor,
 // the drone with the lane it needs, its view and where it has been. This shows the simulator's truth, not
-// what the camera sees.
+// what the camera sees. People wear the same colours as in the camera view (drawScene.ts CLOTHES), by index.
 
 import { useId } from "react";
 
@@ -76,11 +76,12 @@ export function PlanView({ x, distance, heading, track, landingSpot, actors, cla
           <rect x={0} y={TOP} width={W} height={H - TOP} />
         </clipPath>
       </defs>
+      <rect className="plan-floor" x={0} y={TOP} width={W} height={H - TOP} />
       <line className="plan-axis" x1={px(0)} y1={TOP} x2={px(0)} y2={H} />
       {/* Both faint bands first, then their edges, so neither hides the other's. */}
       <g clipPath={`url(#${clipId})`}>
         <polygon className="plan-band" points={view} />
-        <polygon className="plan-band" points={lane} />
+        <polygon className="plan-band plan-band--lane" points={lane} />
         <polygon className="plan-view" points={view} />
         <polygon className="plan-lane" points={lane} />
       </g>
@@ -88,11 +89,17 @@ export function PlanView({ x, distance, heading, track, landingSpot, actors, cla
       {track.length > 1 && <polyline className="plan-track" points={pts(track.map((p) => [px(p.x), py(p.distance)]))} />}
       {actors.map((a, i) =>
         a.kind === "person" ? (
-          <circle key={i} className="plan-actor" cx={px(a.x_m)} cy={py(a.distance_m)} r={(Math.max(a.width_m, a.depth_m) / 2) * SCALE} />
+          <circle
+            key={i}
+            className={`plan-actor plan-person plan-cloth-${(i % 3) + 1}`}
+            cx={px(a.x_m)}
+            cy={py(a.distance_m)}
+            r={(Math.max(a.width_m, a.depth_m) / 2) * SCALE}
+          />
         ) : (
           <rect
             key={i}
-            className="plan-actor"
+            className="plan-actor plan-object"
             x={px(a.x_m - a.width_m / 2)}
             y={py(a.distance_m - a.depth_m / 2)}
             width={a.width_m * SCALE}

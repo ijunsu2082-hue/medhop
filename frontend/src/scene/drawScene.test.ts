@@ -9,6 +9,7 @@ import { Actor, actorBox, actorDrawOrder } from "../engine/drone/simActors";
 import { signCorners } from "../engine/vision/detector";
 import {
   buildScene,
+  CLOTHES,
   FRAME_H,
   FRAME_W,
   LENS,
@@ -165,17 +166,22 @@ describe("people and objects", () => {
     expect(figure.y1).toBeCloseTo(box[3] * FRAME_H + 0.5, 6);
   });
 
-  it("are filled in the mid grey and outlined in ink", () => {
+  it("people wear a colour by their index, objects are steel, and all are outlined", () => {
     const actors = [
       new Actor({ kind: "person", x_m: -0.5, distance_m: 1.5 }),
       new Actor({ kind: "object", x_m: 0.6, distance_m: 1.2, width_m: 0.6, depth_m: 0.4, height_m: 0.9 }),
+      new Actor({ kind: "person", x_m: 0.1, distance_m: 2.2 }),
+      new Actor({ kind: "person", x_m: -1.0, distance_m: 2.6 }),
     ];
-    const shapes = paths(buildScene(frame(view(3.5, 0, 0, actors))), "actor");
-    for (const index of [0, 1]) {
-      const mine = shapes.filter((s) => s.index === index);
-      expect(mine.some((s) => s.fill === "mid")).toBe(true);
-      expect(mine.some((s) => s.stroke === "ink")).toBe(true);
-      expect(mine.every((s) => s.fill === null || s.fill === "mid")).toBe(true);
+    const shapes = paths(buildScene(frame(view(3.6, 0, 0, actors))), "actor");
+    const fills = (index: number) => new Set(shapes.filter((s) => s.index === index && s.fill !== null).map((s) => s.fill));
+    expect(fills(0)).toEqual(new Set(["cloth1", "skin"]));
+    expect(fills(1)).toEqual(new Set(["trolley"]));
+    expect(fills(2)).toEqual(new Set(["cloth3", "skin"]));
+    expect(fills(3)).toEqual(new Set(["cloth1", "skin"]));
+    expect(CLOTHES).toEqual(["cloth1", "cloth2", "cloth3"]);
+    for (const index of [0, 1, 2, 3]) {
+      expect(shapes.filter((s) => s.index === index).some((s) => s.stroke === "outline"), `actor ${index}`).toBe(true);
     }
   });
 
@@ -195,7 +201,11 @@ describe("the flight logic's marks", () => {
     ];
     const marks = paths(buildScene(frame(view(3.5), { obstacles }), { uiScale: 1 }), "obstacle");
     expect(marks.map((s) => s.index)).toEqual([0, 1]);
-    expect(marks.every((s) => s.stroke === "ink" && s.fill === null && s.closed)).toBe(true);
+    expect(marks.every((s) => s.stroke === "obstacle" && s.fill === null && s.closed)).toBe(true);
+    // Each label sits on an amber plate in the outline colour, so it reads on any part of the room.
+    const shapes = buildScene(frame(view(3.5), { obstacles }), { uiScale: 1 });
+    expect(paths(shapes, "label").every((s) => s.fill === "obstacle")).toBe(true);
+    expect(texts(shapes, "label").every((t) => t.tone === "outline")).toBe(true);
     expect(marks[1]!.width).toBeGreaterThan(marks[0]!.width);
     obstacles.forEach((o, i) => {
       const drawn = box(marks[i]!);
@@ -213,6 +223,9 @@ describe("the flight logic's marks", () => {
     const shapes = buildScene(frame(v, { marker: corners }));
     const ring = paths(shapes, "tracking");
     expect(ring).toHaveLength(1);
+    expect(ring[0]!.stroke).toBe("tracking");
+    // The sign itself stays black on white, as printed.
+    expect(paths(shapes, "marker")[0]!.fill).toBe("ink");
     const marker = bounds(paths(shapes, "marker")[0]!.points);
     const outline = bounds(ring[0]!.points);
     expect(outline.x0).toBeLessThan(marker.x0);

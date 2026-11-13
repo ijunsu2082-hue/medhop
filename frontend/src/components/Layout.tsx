@@ -39,7 +39,7 @@ export function Brand() {
   return (
     <>
       <Link className="brand" to="/">
-        MedHop
+        Med<span className="brand-hop">Hop</span>
       </Link>
       <span className={`mode mode--${mode.tone}`}>
         <span className="sr-only">Connected to: </span>

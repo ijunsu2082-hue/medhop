@@ -26,10 +26,10 @@ const EVENTS_SHOWN = 8;
 /** Events about the person's dose: bold ink titles. The others describe drone runs and recede. */
 const CARE_EVENTS = new Set(["reminder_due", "arrived_at_station", "pickup_acknowledged", "needs_attention"]);
 
-/** The mark beside a dose's state: filled once it arrived or was picked up, hollow while waiting, red when late. */
+/** The mark beside a dose's state: blue once it arrived or was picked up, amber while it is due, red when late. */
 const DOSE_TONE: Record<DoseStatus, string> = {
   upcoming: "tone-info",
-  due: "tone-warn",
+  due: "tone-wait",
   arrived: "tone-pass",
   acknowledged: "tone-pass",
   needs_attention: "tone-fail",

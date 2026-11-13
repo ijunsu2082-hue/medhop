@@ -4,7 +4,7 @@
 
 export const HERO = {
   title: "MedHop reminds an older adult when a dose is due, and flies a toy drone to the medicine station.",
-  lead: "A student prototype. The simulator below runs in your browser: nothing to install, and no real drone moves. Choose what is in the corridor and run it.",
+  lead: "A student prototype. Pick what is in the corridor, press Run, and watch it fly in your browser. No real drone moves.",
   /** The build that talks to the Python backend on this computer shows no in-page simulator. */
   leadLocal:
     "A student prototype. This copy of the site talks to the MedHop backend on this computer, so there is no simulator on this page: the drone, real or simulated, is flown from the Pilot page.",
@@ -16,11 +16,10 @@ export const HERO = {
 
 export const DEMO = {
   cameraLabel: "The simulated drone's camera view of the room and the station sign",
-  cameraCaption:
-    "What the simulated drone's camera faces, drawn 15 times a second and about half a second late, like the real camera's picture.",
-  planCaption: "From above. The dashed circle is where it lands.",
+  cameraCaption: "The drone's camera view, about half a second behind, like the real one.",
+  planCaption: "From above. It lands on the dashed circle.",
   honest:
-    "On the real drone the sign is found in the camera picture with OpenCV. In this browser simulator its position comes from the simulator's own geometry, with noise and dropped frames added. The flight logic that uses it is a TypeScript port of the Python that flies the real drone, checked against it step by step.",
+    "This is a simulator. It runs the same flight logic as the real drone, but it works out where the sign is instead of finding it in a camera picture.",
   steps: ["Dose is due", "Count down", "Take off", "Find the sign", "Fly to it", "Line up", "Land"],
   carePanel: "What the person sees",
   caregiverPanel: "What the caregiver sees",
@@ -43,53 +42,24 @@ export interface LoopStep {
 }
 
 export const LOOP: readonly LoopStep[] = [
+  { title: "A dose comes due", body: "The Care page shows what to take and can read it out loud." },
+  { title: "The drone flies to the station", body: "It takes off, finds a printed sign on the wall and lands in front of it." },
   {
-    title: "A dose comes due",
-    body: "The Care page is one large, plain screen. It says what is due, can read it aloud, and has one button.",
-  },
-  {
-    title: "The drone hops to the station",
-    body: "It takes off, turns until its camera sees a printed sign on the wall, flies to it, lines up and lands in front of it. The Care page then says it arrived at the station.",
-  },
-  {
-    title: "The person says they picked it up",
-    body: "One press of “I picked it up”. The caregiver's page shows it as acknowledged. That is the person's own report: nothing here confirms that medicine was taken.",
+    title: "The person taps “I picked it up”",
+    body: "Their caregiver sees it. That is the person's own word, not a check that the medicine was taken.",
   },
 ];
 
-/** The hospital scenario: what the drone does about people and objects in its way. Figures are simulator results. */
+/** The hospital scenario: what the drone does about people and objects in its way. Simulator only. */
 export const HOSPITAL = {
-  lead: "The same hop could take a dose from a nurses' station to a station by a patient's bed. Corridors have people in them, so the flight logic now waits for whatever is in its way. So far this works in the simulator only.",
+  lead: "A nurse could send a dose from the nurses' station to a patient's bedside. Corridors have people in them, so the drone waits for them.",
   points: [
-    {
-      title: "It judges how far away things are",
-      body: "In the simulator every camera frame comes with a box around each simulated person or object: a perfect detector, which no real one is. The flight logic judges how far away each one is from where its box meets the floor in the picture.",
-    },
-    {
-      title: "It slows, then waits",
-      body: "Something in its lane within 3 m slows it down. Once it is too near for the camera to measure, about 2.5 m, the drone stops and holds its position. When the lane has been clear for a second, it carries on to the station.",
-    },
-    {
-      title: "It lands if the way stays blocked",
-      body: "After 25 seconds of waiting it lands where it is and reports that the path is blocked, so someone can clear the corridor and send it again.",
-    },
-    {
-      title: "It will not take off into an obstacle",
-      body: "If something is already standing in its lane, the run is refused before the motors start.",
-    },
+    "Slows down when someone is within 3 m.",
+    "Stops and waits when they get close, then carries on once the way is clear.",
+    "Lands and reports a blocked path after waiting 25 seconds.",
+    "Will not take off if something is already in the way.",
   ],
-  figuresNote: "In the Python simulator, 20 runs of each kind of corridor:",
-  figures: [
-    { value: "20 of 20", label: "reached the station after waiting for a person to cross" },
-    { value: "40 of 40", label: "landed and reported when one person or three stayed in the way" },
-    { value: "1.1 m", label: "the closest the drone came to anyone" },
-  ],
-  cannotTitle: "What it cannot do",
-  cannot: [
-    "It cannot go around an obstacle. Its one small forward camera cannot judge distance to anything nearer than about 2.5 m, so stepping around a trolley was built, tested and removed: it reached the station in 1 of 20 simulated runs.",
-    "On the real drone this is switched off unless the pilot turns it on. Only people can be detected there, and only with an optional detector running: with waiting off, a person that detector sees stops the run, and without the detector nothing on the drone notices people.",
-    "All of it is tested in the simulator only. It is not a safety system, and the real drone has never been flown near people and must not be.",
-  ],
+  note: "So far this runs in the simulator only. The drone can wait, but it cannot go around things, and it is not a safety system.",
 } as const;
 
 export interface Figure {
@@ -97,72 +67,38 @@ export interface Figure {
   label: string;
 }
 
-export const HOP_FIGURES: readonly Figure[] = [
-  { value: "0.45 m", label: "where it lands, measured from the sign" },
-  { value: "4 cm", label: "how close to the sign's centre line it tries to be before landing" },
-  { value: "1 s", label: "how long it holds that before landing" },
-  { value: "45 s", label: "limit for the flight, not counting time spent waiting, after which it stops" },
-];
-
-export const HOP_POINTS: readonly string[] = [
-  "The sign is an ArUco marker, 180 mm square, printed on a sheet of A4. Finding it is classical computer vision, not machine learning.",
-  "The pilot always wins. Any touch of the controls hands the drone back, and the space bar sends the emergency stop, a command to cut the motors.",
-  "The camera picture arrives about half a second after each command, so the steering allows for turns it has ordered but cannot see yet.",
-  "If the sign drops out of view for a moment, the drone coasts on its last course for up to half a second instead of stopping.",
-];
-
 export const RESULTS = {
   simTitle: "In the simulator",
-  simNote:
-    "Twenty runs of each kind in the Python simulator, which draws the camera picture and finds the sign in it with the same code as the real drone. Every run had a sideways drift of 8 cm a second.",
-  sim: [
-    "Empty corridor, starting 2.5 m from the sign: 20 of 20 landed in front of it, 0.35 to 0.50 m away and within 4 cm of its centre line. A run took 27 to 37 seconds.",
-    "A person walks across, starting 4.2 m away: 20 of 20 waited for them and then reached the station.",
-    "A person, or three people, stay in the way: 40 of 40 waited 25 seconds, then landed where they were and reported the path blocked.",
-  ],
+  simNote: "20 runs of each.",
+  figures: [
+    { value: "20 of 20", label: "landed in front of the sign in an empty corridor, in 27 to 37 seconds" },
+    { value: "20 of 20", label: "waited for a person to walk across, then reached the station" },
+    { value: "40 of 40", label: "landed and reported it when people stayed in the way" },
+  ] as readonly Figure[],
+  closest: "The closest it came to a person was 1.1 m.",
   realTitle: "On the real drone",
-  real: [
-    "The drone has flown station runs for real. There is no footage of them.",
-    "In one run the drone hovered and did not land. In another it found the sign from about 4 m away and then stalled on the approach, because the sign was missing from about 45% of the camera frames.",
-    "Both faults were fixed in the flight logic, and the fixes were tested in the simulator. The project's notes do not yet record a real run that went cleanly from takeoff to landing.",
-  ],
+  real: "It has flown, but no clean run from takeoff to landing is on record yet. One run hovered and never landed. Another lost sight of the sign on the way in. Both problems are fixed in the code, and the fixes are tested in the simulator. There is no footage.",
 } as const;
 
 export const LIMITS: readonly string[] = [
-  "It is a prototype built for student hackathons, using demo data only.",
-  "It is not a medical device, and it never confirms that medicine was taken.",
-  "The drone never carries real medicine and is never flown near people. Every real flight is supervised, with a pilot at the controls.",
-  "Waiting for people and obstacles is tested in the simulator only. It is not a safety system.",
-  "For most people a pill organiser or a phone reminder would be simpler, cheaper and more reliable. Whether the drone leg is worth having is unproven.",
+  "A student hackathon prototype. All the data is made up for the demo.",
+  "Not a medical device. It cannot tell whether medicine was taken.",
+  "The drone never carries real medicine and never flies near people. A pilot is always at the controls, and the space bar is the emergency stop.",
 ];
 
 export const BUILD: readonly { term: string; detail: string }[] = [
-  {
-    term: "Drone",
-    detail:
-      "A toy camera drone sold as the AXNEN i1. No GPS and no official programming interface; MedHop talks to it through the open-source turbodrone project.",
-  },
-  {
-    term: "Camera",
-    detail: "640 by 360 pixels at about 15 frames a second, arriving 0.4 to 0.5 seconds after each command.",
-  },
-  {
-    term: "Software",
-    detail:
-      "A Python backend (FastAPI, OpenCV) flies the real drone. This site is React and TypeScript, and carries its own copy of the flight logic for the browser simulator.",
-  },
-  {
-    term: "Who wrote it",
-    detail:
-      "Almost all of the code was written by AI coding agents. The idea, the requirements, the hardware, the flying and the decisions are the author's.",
-  },
+  { term: "Drone", detail: "AXNEN i1, a toy camera drone with no GPS." },
+  { term: "Camera", detail: "640 × 360 pixels, about 15 frames a second, half a second behind." },
+  { term: "Sign", detail: "A printed ArUco marker, 18 cm wide. Finding it is ordinary computer vision, not AI." },
+  { term: "Software", detail: "Python flies the real drone. This site is React and TypeScript." },
 ];
+
+export const SIGN_CAPTION = "The station sign, as printed.";
 
 export const SECTIONS = {
   how: "How it works",
-  hospital: "In a hospital corridor",
-  hop: "The hop, in detail",
-  results: "Results so far",
-  limits: "What it is not",
-  build: "Hardware and build",
+  hospital: "In a hospital",
+  results: "Results",
+  limits: "Limits",
+  build: "Hardware",
 } as const;

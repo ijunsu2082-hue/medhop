@@ -110,9 +110,9 @@
   min-height: 104px;
   margin: 0;
   padding: var(--s-3) var(--s-5);
-  background: var(--ink);
+  background: var(--accent);
   color: var(--bg);
-  border: 2px solid var(--ink);
+  border: 2px solid var(--accent);
   border-radius: var(--r);
   font: 600 32px/40px var(--font);
   cursor: pointer;
@@ -120,7 +120,8 @@
 }
 
 .care .care-ack:hover:not(:disabled) {
-  opacity: 0.88;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 
 .care .care-ack:focus-visible,

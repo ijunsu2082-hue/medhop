@@ -78,11 +78,30 @@
   margin-left: auto;
 }
 
-/* One sentence about what is happening. It keeps its height when it is empty, so nothing below it moves. */
+/* One sentence about what is happening. It keeps its height when it is empty, so nothing below it moves. Its mark is
+   blue while the drone goes, amber while it waits; the line is tinted while it waits and once it has arrived. */
 .landing .demo-line {
   display: flex;
-  min-height: 24px;
+  min-height: 40px;
   margin: 0 0 var(--s-4);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r);
+}
+
+.landing .demo-line.tone-go {
+  color: var(--ink);
+}
+
+.landing .demo-line.tone-go .dot {
+  background: var(--accent);
+}
+
+.landing .demo-line.tone-wait {
+  background: var(--warn-soft);
+}
+
+.landing .demo-line.tone-pass {
+  background: var(--accent-soft);
 }
 
 .landing .demo-grid {
@@ -128,27 +147,37 @@
   border-bottom: 0;
 }
 
+/* Not yet: a grey ring. Done: a blue disc with a tick. Now: a blue disc, and the step in blue. */
 .landing .demo-steps li::before {
   content: "";
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 16px;
+  height: 16px;
   border: 1.5px solid currentColor;
   border-radius: 50%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12px 12px;
 }
 
-.landing .demo-steps li[data-state="done"],
-.landing .demo-steps li[data-state="now"] {
+.landing .demo-steps li[data-state="done"] {
   color: var(--ink);
 }
 
-.landing .demo-steps li[data-state="done"]::before,
-.landing .demo-steps li[data-state="now"]::before {
-  background: currentColor;
+.landing .demo-steps li[data-state="done"]::before {
+  background-color: var(--accent);
+  background-image: var(--icon-tick);
+  border-color: var(--accent);
 }
 
 .landing .demo-steps li[data-state="now"] {
+  color: var(--accent);
   font-weight: 600;
+}
+
+.landing .demo-steps li[data-state="now"]::before {
+  background-color: var(--accent);
+  border-color: var(--accent);
 }
 
 .landing .demo-panels {
@@ -160,15 +189,19 @@
 
 .landing .demo-panel {
   min-height: 176px;
-  padding: var(--s-4) var(--s-5) var(--s-5);
+  overflow: hidden;
+  padding: 0 var(--s-5) var(--s-5);
   border: 1px solid var(--line);
   border-radius: var(--r);
 }
 
+/* The panel's name on a pale blue strip across its top. */
 .landing .demo-panel h3 {
-  margin: 0 0 var(--s-3);
+  margin: 0 calc(-1 * var(--s-5)) var(--s-4);
+  padding: var(--s-2) var(--s-5);
+  background: var(--accent-soft);
   font: var(--t-label);
-  color: var(--mid);
+  color: var(--ink);
 }
 
 .landing .demo-panel p {
@@ -213,6 +246,16 @@
   border-top: 1px solid var(--line);
 }
 
+/* The hospital section: the one tinted band on the page. */
+.landing .band--tint {
+  background: var(--accent-soft);
+  border-top-color: var(--accent-soft);
+}
+
+.landing .band--tint + .band {
+  border-top-color: transparent;
+}
+
 .landing .band-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -240,11 +283,18 @@
   list-style: none;
 }
 
+/* The step number in a blue disc. */
 .landing .loop-n {
-  display: block;
-  margin-bottom: var(--s-2);
-  font: var(--t-small);
-  color: var(--mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: var(--s-3);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  font: var(--t-label);
 }
 
 .landing .loop h3 {
@@ -257,77 +307,17 @@
   color: var(--mid);
 }
 
-.landing .figures {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--s-5);
-  margin: 0 0 var(--s-6);
-}
-
-/* The number is read first, so it is shown first; in the markup the label comes first, as a term should. */
-.landing .figures > div {
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-end;
-  padding-top: var(--s-3);
-  border-top: 1px solid var(--ink);
-}
-
-.landing .figures dd {
-  margin: 0;
-  font: 600 28px/34px var(--font);
-  letter-spacing: -0.01em;
-}
-
-.landing .figures dt {
-  margin-top: var(--s-1);
-  font: var(--t-small);
-  color: var(--mid);
-}
-
-.landing .figures.figures-three {
-  margin-bottom: var(--s-7);
-}
-
-.landing .figures-note {
-  margin: 0 0 var(--s-3);
-  font: var(--t-small);
-  color: var(--mid);
-}
-
 .landing .band-lead {
   max-width: 62ch;
-  margin: 0 0 var(--s-6);
+  margin: 0 0 var(--s-5);
   font: var(--t-lead);
 }
 
-.landing .points {
-  display: grid;
-  gap: var(--s-5) var(--s-6);
-  margin: 0 0 var(--s-7);
-  padding: 0;
-  list-style: none;
-}
-
-.landing .points h3 {
-  margin: 0 0 var(--s-2);
-  font: var(--t-heading);
-}
-
-.landing .points p {
-  margin: 0;
+.landing .band-note {
+  max-width: 68ch;
+  margin: var(--s-5) 0 0;
+  font: var(--t-small);
   color: var(--mid);
-}
-
-.landing .cannot-title {
-  margin: 0 0 var(--s-4);
-  font: var(--t-heading);
-}
-
-.landing .hop {
-  display: grid;
-  gap: var(--s-6);
-  align-items: start;
 }
 
 .landing .plain-list {
@@ -350,25 +340,59 @@
   border-bottom: 0;
 }
 
-.landing .sign-figure {
-  max-width: 180px;
-}
-
 .landing .results > div + div {
   margin-top: var(--s-7);
 }
 
 .landing .results h3 {
-  margin: 0 0 var(--s-3);
+  margin: 0 0 var(--s-4);
   font: var(--t-heading);
 }
 
-.landing .results .plain-list {
-  margin-top: var(--s-4);
+.landing .results-note {
+  margin-left: var(--s-2);
+  font: var(--t-small);
+  color: var(--mid);
 }
 
 .landing .results p {
   max-width: 68ch;
+  margin: 0;
+}
+
+.landing .figures {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-5);
+  margin: 0 0 var(--s-5);
+}
+
+/* The number is read first, so it is shown first; in the markup the label comes first, as a term should. */
+.landing .figures > div {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+}
+
+.landing .figures dd {
+  margin: 0;
+  font: 600 36px/42px var(--font);
+  letter-spacing: -0.01em;
+  color: var(--accent);
+}
+
+.landing .figures dt {
+  margin-top: var(--s-1);
+  font: var(--t-small);
+  color: var(--mid);
+}
+
+.landing .hardware {
+  display: grid;
+  gap: var(--s-6);
+  align-items: start;
 }
 
 .landing .build {
@@ -399,10 +423,8 @@
   margin: 0;
 }
 
-.landing .closing-text {
-  margin: 0 0 var(--s-5);
-  font: var(--t-title);
-  letter-spacing: -0.01em;
+.landing .sign-figure {
+  max-width: 180px;
 }
 
 .landing .footer {
@@ -419,23 +441,15 @@
   }
 
   .landing .figures {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .landing .figures.figures-three {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .landing .points {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .landing .hop {
+  .landing .hardware {
     grid-template-columns: minmax(0, 1fr) 180px;
   }
 
   .landing .build > div {
-    grid-template-columns: 160px minmax(0, 1fr);
+    grid-template-columns: 120px minmax(0, 1fr);
     gap: var(--s-5);
   }
 }

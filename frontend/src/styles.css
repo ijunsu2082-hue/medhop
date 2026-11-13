@@ -1,9 +1,12 @@
 /* MedHop base styles.
-   White page, near-black text, three greys, and one red that is used only for the emergency stop and for faults.
-   One typeface (Atkinson Hyperlegible Next), two weights (400 and 600).
+   White page, near-black text, three greys, one blue accent for primary actions, links and things that are done,
+   one amber for waiting (a drone holding for a person, a dose that is due), and one red that is used only for the
+   emergency stop and for faults. One typeface (Atkinson Hyperlegible Next), two weights (400 and 600).
 
    Tokens
-     Colour    --bg, --fill, --line, --mid, --ink, --red. Hex values live only in :root.
+     Colour    --bg, --fill, --line, --mid, --ink, --accent, --accent-strong, --accent-soft, --warn, --warn-soft,
+               --red. Hex values live only in :root.
+     Scene     --scene-*: the simulated camera view and the plan view only (scene/), never page chrome.
      Spacing   --s-1 .. --s-9.
      Radii     --r for boxes, --r-round for the switch and round marks.
      Type      --t-* are full font shorthands: `font: var(--t-body)`.
@@ -21,7 +24,33 @@
   --line: #DADADA;
   --mid: #6B6B6B;
   --ink: #111111;
+  --accent: #1F5BD8;
+  --accent-strong: #1747AD;
+  --accent-soft: #E8EFFC;
+  --warn: #8A5300;
+  --warn-soft: #FBEFD9;
   --red: #C8102E;
+
+  /* The simulated corridor: flat illustration colours, read by scene/SceneCanvas.tsx and scene/scene.css only. */
+  --scene-wall: #F1ECE2;
+  --scene-wall-side: #E2DBCD;
+  --scene-ceiling: #F8F6F1;
+  --scene-floor: #B9CFCB;
+  --scene-floor-line: #9DB9B4;
+  --scene-floor-plan: #EAF1EF;
+  --scene-rail: #7C9A95;
+  --scene-door: #C99A64;
+  --scene-door-edge: #9C7443;
+  --scene-picture: #5B8DB8;
+  --scene-cloth-1: #2E8B7A;
+  --scene-cloth-2: #C2573A;
+  --scene-cloth-3: #474E57;
+  --scene-skin: #D9A781;
+  --scene-trolley: #A7B0B8;
+  --scene-trolley-edge: #5F6C77;
+  --scene-outline: #2B2F33;
+  --scene-tracking: #12B886;
+  --scene-obstacle: #E8890C;
 
   /* Glyphs drawn by CSS. */
   --icon-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9.5l6 6 6-6' fill='none' stroke='%23111111' stroke-width='2'/%3E%3C/svg%3E");
@@ -123,13 +152,14 @@ p {
 }
 
 a {
-  color: var(--ink);
+  color: var(--accent);
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
 a:hover {
+  color: var(--accent-strong);
   text-decoration-thickness: 2px;
 }
 
@@ -204,10 +234,18 @@ textarea {
   color: var(--mid);
 }
 
-/* A state is a word. The mark beside it is filled when things are fine, hollow when they are not yet, red on a fault. */
-.tone-pass,
+/* A state is a word. The mark beside it is filled when things are fine (blue), hollow when they are not yet, amber
+   while something waits (tone-wait: a drone holding for a person, a dose that is due), red on a fault. */
+.tone-pass {
+  color: var(--accent);
+}
+
 .tone-warn {
   color: var(--ink);
+}
+
+.tone-wait {
+  color: var(--warn);
 }
 
 .tone-info {
@@ -297,8 +335,9 @@ textarea {
 }
 
 .btn-primary {
-  background: var(--ink);
+  background: var(--accent);
   color: var(--bg);
+  border-color: var(--accent);
 }
 
 .btn-danger {
@@ -308,8 +347,8 @@ textarea {
 }
 
 .btn-primary:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--ink);
-  opacity: 0.85;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 
 .btn-danger:hover:not(:disabled):not([aria-disabled="true"]) {
@@ -471,9 +510,9 @@ input[type="checkbox"]:not([role="switch"]) {
 }
 
 input[type="checkbox"]:not([role="switch"]):checked {
-  background-color: var(--ink);
+  background-color: var(--accent);
   background-image: var(--icon-tick);
-  border-color: var(--ink);
+  border-color: var(--accent);
 }
 
 input[type="checkbox"]:not([role="switch"]):disabled {
@@ -541,8 +580,8 @@ input[type="checkbox"]:not([role="switch"]):disabled:checked {
 }
 
 .switch-field input:checked + .switch-track {
-  background: var(--ink);
-  border-color: var(--ink);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .switch-field input:checked + .switch-track::after {
@@ -667,6 +706,10 @@ progress::-moz-progress-bar {
 .msg-warn {
   border-left-color: var(--ink);
   color: var(--ink);
+}
+
+.msg-pass {
+  border-left-color: var(--accent);
 }
 
 .msg-fail {
@@ -852,7 +895,7 @@ kbd {
 .tabs [aria-selected="true"],
 .tabs [aria-current="page"] {
   color: var(--ink);
-  border-bottom-color: var(--ink);
+  border-bottom-color: var(--accent);
 }
 
 /* ===================================================================================== Shell */
@@ -893,7 +936,12 @@ main:focus {
 }
 
 .brand:hover {
+  color: var(--ink);
   text-decoration: none;
+}
+
+.brand-hop {
+  color: var(--accent);
 }
 
 .mode {

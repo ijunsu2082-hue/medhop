@@ -6,6 +6,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { blockersFrom, errorText, requestVia } from "../../api/client";
+import type { DoseStatus } from "../../api/types";
 import { useControlSocket } from "../../hooks/useControlSocket";
 import { useStatus } from "../../hooks/useStatus";
 import { arrivalLine } from "../../logic/care";
@@ -33,6 +34,15 @@ import { getTransport } from "../../transport";
 import { CorridorSelect } from "../pilot/Avoidance";
 
 const call: DemoCall = (method, path, body) => requestVia(getTransport(), method, path, body);
+
+/** The caregiver's mark for the demo dose, as on the Caregiver page: amber while due, blue once arrived or picked up. */
+const DOSE_TONE: Record<DoseStatus, string> = {
+  upcoming: "tone-info",
+  due: "tone-wait",
+  arrived: "tone-pass",
+  acknowledged: "tone-pass",
+  needs_attention: "tone-fail",
+};
 
 /** Where the plan view puts the drone before the first status arrives. */
 const START = { x_m: 0, distance_m: 2.5, heading_deg: 0, altitude_m: 0, airborne: false };
@@ -185,6 +195,16 @@ export function LandingDemo() {
   const settling = status !== null && told === null && !running && !landing && !busy && !readyToRun(status);
   const note = recovering ? DEMO.recovering : settling ? DEMO.settling : null;
   const line = note !== null ? { tone: "info" as const, text: note, announce: note } : told;
+  // The line's colour: blue while the drone goes, amber while it waits (or the way stayed blocked), blue tint on arrival.
+  const lineTone = problem
+    ? "warn"
+    : !line
+      ? "info"
+      : line.tone === "warn"
+        ? "wait"
+        : line.tone === "info" && running
+          ? "go"
+          : line.tone;
   const shown = problem ?? line?.text ?? (linkOpen ? "" : DEMO.linkWait);
   const announced = problem ?? line?.announce ?? (linkOpen ? "" : DEMO.linkWait);
   const steps = stepStates(DEMO.steps.length, phase, mission?.state ?? "idle", furthest.current);
@@ -224,7 +244,7 @@ export function LandingDemo() {
 
       {/* What is shown changes several times a second (a distance, the countdown). What is read out changes only
           when something happens. */}
-      <p className={`demo-line state tone-${problem ? "warn" : (line?.tone ?? "info")}`}>
+      <p className={`demo-line state tone-${lineTone}`}>
         {(problem ?? line) && <span className="dot" aria-hidden="true" />}
         <span aria-hidden="true">{shown}</span>
         <span className="sr-only" role="status">
@@ -275,7 +295,7 @@ export function LandingDemo() {
               <p className="demo-care-dose">
                 {DEMO.careLead} <strong>{dose.label}</strong>
               </p>
-              <p className="small">This was due at {dose.time}.</p>
+              <p className="small tone-wait">This was due at {dose.time}.</p>
               {arrival && (
                 <p className="state tone-pass">
                   <span className="dot" aria-hidden="true" />
@@ -297,7 +317,10 @@ export function LandingDemo() {
               <p className="demo-dose-row">
                 <span>{dose.time}</span> <strong>{dose.label}</strong>
               </p>
-              <p>{doseStatusLine(dose)}</p>
+              <p className={`state ${DOSE_TONE[dose.status] ?? "tone-info"}`}>
+                <span className="dot" aria-hidden="true" />
+                <span>{doseStatusLine(dose)}</span>
+              </p>
               {dose.status === "acknowledged" && <p className="small">{DEMO.caregiverNote}</p>}
             </>
           )}

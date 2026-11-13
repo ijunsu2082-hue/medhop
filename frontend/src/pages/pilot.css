@@ -246,8 +246,9 @@
 
 .pilot .takeoff-primary,
 .pilot .takeoff-primary:hover:not(:disabled) {
-  background: var(--ink);
+  background: var(--accent);
   color: var(--bg);
+  border-color: var(--accent);
 }
 
 .pilot .takeoff-primary .takeoff-sub {
@@ -255,7 +256,7 @@
 }
 
 .pilot .takeoff-primary .takeoff-fill {
-  background: var(--mid);
+  background: var(--accent-strong);
 }
 
 .pilot .takeoff:disabled {

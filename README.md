@@ -154,7 +154,7 @@ quietly become a simulator.
 | Browser (`VITE_BACKEND=browser`) | `npm run dev:browser`, `npm run build:browser` | the simulator and a TypeScript port of the flight code, running inside the page (`frontend/src/engine/`) | never |
 
 The browser build needs nothing installed for a visitor. It is what the hosted site uses: Netlify builds
-it with `npm run build:browser` (`frontend/netlify.toml`), and `vite.config.ts` stops any other build on
+it with `npm run build:browser` (`netlify.toml` at the repo root), and `vite.config.ts` stops any other build on
 Netlify.
 
 **The browser engine is a port, checked against Python.** `backend/tools/parity_traces.py` records

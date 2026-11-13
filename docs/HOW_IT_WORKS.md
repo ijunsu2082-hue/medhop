@@ -511,7 +511,7 @@ and failsafes are in the backend, so a frozen or closed tab cannot keep the dron
 on `http://localhost:8010`, simulator or real drone. `browser` (`npm run dev:browser`,
 `npm run build:browser`): `frontend/src/engine/`, a TypeScript port of the backend's mixer, station run,
 waiting for people, care store and REST routes, with the simulator, all running inside the page. A
-visitor installs nothing. The hosted site on Netlify is the browser build (`frontend/netlify.toml`), and
+visitor installs nothing. The hosted site on Netlify is the browser build (`netlify.toml` at the repo root), and
 `vite.config.ts` stops any other build there.
 
 **The one idea.** There is no switching between the two while the site runs, on purpose: a page that was

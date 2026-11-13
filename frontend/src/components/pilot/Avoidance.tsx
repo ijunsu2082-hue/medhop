@@ -3,12 +3,12 @@ import { api, blockersFrom, errorText } from "../../api/client";
 import type { MissionAvoid, SimScenarioName, Status } from "../../api/types";
 import { AVOID_SWITCH_LABEL, SCENARIOS, avoidHint, avoidLine, scenarioRefusalText, scenarioText } from "../../text/avoidWording";
 
-/** The avoidance line inside a run's live state: a word with a mark. Waiting and blocked are not faults: never red. */
+/** The avoidance line inside a run's live state: a word with a mark. Waiting and blocked are amber, never red. */
 export function AvoidLine({ avoid }: { avoid: MissionAvoid | null | undefined }) {
   const view = avoidLine(avoid);
   if (!view) return null;
   return (
-    <span className={`state avoid-line tone-${view.tone}`}>
+    <span className={`state avoid-line tone-${view.tone === "warn" ? "wait" : view.tone}`}>
       <span className="dot" aria-hidden="true" />
       <span>{view.text}</span>
     </span>

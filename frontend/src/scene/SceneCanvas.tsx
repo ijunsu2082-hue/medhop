@@ -1,19 +1,37 @@
 import { useEffect, useRef } from "react";
 import { drawScene, FRAME_H, FRAME_W, type SceneFrame, type SceneTheme } from "./drawScene";
 
-/** The page tokens, or null while the stylesheet has not defined them (nothing is painted then). */
+/** The scene's colours (styles.css --scene-*, plus four page tokens), or null while the stylesheet has not defined
+ * them (nothing is painted then). */
 function readTheme(): SceneTheme | null {
   const root = getComputedStyle(document.documentElement);
   const token = (name: string) => root.getPropertyValue(name).trim();
-  const theme = {
+  const colours = {
     bg: token("--bg"),
-    fill: token("--fill"),
-    line: token("--line"),
-    mid: token("--mid"),
     ink: token("--ink"),
-    fontFamily: getComputedStyle(document.body).fontFamily || "sans-serif",
+    mid: token("--mid"),
+    accent: token("--accent"),
+    wall: token("--scene-wall"),
+    wallSide: token("--scene-wall-side"),
+    ceiling: token("--scene-ceiling"),
+    floor: token("--scene-floor"),
+    floorLine: token("--scene-floor-line"),
+    rail: token("--scene-rail"),
+    door: token("--scene-door"),
+    doorEdge: token("--scene-door-edge"),
+    picture: token("--scene-picture"),
+    cloth1: token("--scene-cloth-1"),
+    cloth2: token("--scene-cloth-2"),
+    cloth3: token("--scene-cloth-3"),
+    skin: token("--scene-skin"),
+    trolley: token("--scene-trolley"),
+    trolleyEdge: token("--scene-trolley-edge"),
+    outline: token("--scene-outline"),
+    tracking: token("--scene-tracking"),
+    obstacle: token("--scene-obstacle"),
   };
-  return theme.bg && theme.fill && theme.line && theme.mid && theme.ink ? theme : null;
+  if (Object.values(colours).some((c) => !c)) return null;
+  return { ...colours, fontFamily: getComputedStyle(document.body).fontFamily || "sans-serif" };
 }
 
 interface Props {

@@ -214,6 +214,7 @@
 .caregiver .caregiver-schedule:has(.schedule-item-editing) .schedule-add .btn-primary:not(:disabled) {
   background: var(--bg);
   color: var(--ink);
+  border-color: var(--ink);
 }
 
 .caregiver .dose-form {
