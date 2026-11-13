@@ -49,8 +49,8 @@
   --scene-trolley: #A7B0B8;
   --scene-trolley-edge: #5F6C77;
   --scene-outline: #2B2F33;
-  --scene-tracking: #12B886;
-  --scene-obstacle: #E8890C;
+  --scene-tracking: #0B7A57;
+  --scene-obstacle: #A35200;
 
   /* Glyphs drawn by CSS. */
   --icon-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9.5l6 6 6-6' fill='none' stroke='%23111111' stroke-width='2'/%3E%3C/svg%3E");

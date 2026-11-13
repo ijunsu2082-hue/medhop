@@ -27,7 +27,7 @@ export const DRONE_FRAME_WIDTH = 640;
 // A browser build (the simulator runs in this page) has no camera and no image analysis at all: the picture is a
 // drawing, and the sign's position is computed from the simulator's own geometry.
 export const CAPTION_BROWSER_PICTURE =
-  "Simulator view: a line drawing made by the simulator running in this page. It is not a camera picture.";
+  "Simulator view: a drawing made by the simulator running in this page. It is not a camera picture.";
 export const CAPTION_BROWSER_DETECTION =
   "No picture is analysed: the station sign's position comes from the simulator's geometry, with noise and " +
   "dropped frames added, not from OpenCV. The people and objects are simulated.";

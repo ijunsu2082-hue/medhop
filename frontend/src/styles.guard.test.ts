@@ -72,8 +72,8 @@ const SCENE: Record<string, string> = {
   "--scene-trolley": "#A7B0B8",
   "--scene-trolley-edge": "#5F6C77",
   "--scene-outline": "#2B2F33",
-  "--scene-tracking": "#12B886",
-  "--scene-obstacle": "#E8890C",
+  "--scene-tracking": "#0B7A57",
+  "--scene-obstacle": "#A35200",
 };
 
 const EXPECTED: Record<string, string> = { ...PAGE, ...SCENE };
@@ -115,7 +115,9 @@ describe("styles.css tokens", () => {
       ["white on red (emergency stop)", t("--bg"), t("--red"), 4.5],
       ["red on bg (faults)", t("--red"), t("--bg"), 4.5],
       ["white on accent (primary buttons)", t("--bg"), t("--accent"), 4.5],
-      ["white on accent-strong (hover, and the hold sweep under a primary label)", t("--bg"), t("--accent-strong"), 4.5],
+      ["white on accent-strong (hover)", t("--bg"), t("--accent-strong"), 4.5],
+      ["white on ink (the hold sweep under a primary label)", t("--bg"), t("--ink"), 4.5],
+      ["the hold sweep (ink) against the primary button (accent)", t("--ink"), t("--accent"), 3],
       ["accent on bg (links, done states)", t("--accent"), t("--bg"), 4.5],
       ["accent on accent-soft (the tinted band)", t("--accent"), t("--accent-soft"), 4.5],
       ["ink on accent-soft", t("--ink"), t("--accent-soft"), 4.5],
@@ -124,7 +126,13 @@ describe("styles.css tokens", () => {
       ["warn on warn-soft", t("--warn"), t("--warn-soft"), 4.5],
       ["ink on warn-soft", t("--ink"), t("--warn-soft"), 4.5],
       ["ink on line (the hold sweep under an outlined label)", t("--ink"), t("--line"), 4.5],
-      ["obstacle label text on its amber plate", t("--scene-outline"), t("--scene-obstacle"), 4.5],
+      ["obstacle label text (white) on its amber plate", t("--bg"), t("--scene-obstacle"), 4.5],
+      // The flight logic's marks on the camera view must stand out from the room behind them.
+      ["obstacle box on the wall", t("--scene-obstacle"), t("--scene-wall"), 3],
+      ["obstacle box on the side wall", t("--scene-obstacle"), t("--scene-wall-side"), 3],
+      ["obstacle box on the floor", t("--scene-obstacle"), t("--scene-floor"), 3],
+      ["sign outline on the wall", t("--scene-tracking"), t("--scene-wall"), 3],
+      ["sign outline on the floor", t("--scene-tracking"), t("--scene-floor"), 3],
     ];
     for (const [what, fg, bg, floor] of floors) {
       expect(contrast(fg, bg), what).toBeGreaterThanOrEqual(floor);

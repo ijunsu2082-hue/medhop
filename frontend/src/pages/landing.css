@@ -349,15 +349,15 @@
   font: var(--t-heading);
 }
 
-.landing .results-note {
-  margin-left: var(--s-2);
-  font: var(--t-small);
-  color: var(--mid);
-}
-
 .landing .results p {
   max-width: 68ch;
   margin: 0;
+}
+
+.landing .results .results-note {
+  margin: calc(-1 * var(--s-2)) 0 var(--s-5);
+  font: var(--t-small);
+  color: var(--mid);
 }
 
 .landing .figures {

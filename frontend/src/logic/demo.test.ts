@@ -192,7 +192,7 @@ describe("the demo flow on the in-page backend", () => {
       const status = statusOf(engine);
       const line = demoLine(status, demoPhase(status, run.runId, demoDose(status, run.doseId)), null);
       if (line) announced.add(line.announce);
-      if (line?.tone === "warn") lines.add(line.text.replace(/[\d.]+ m ahead|closer than about 2.5 m/, "…"));
+      if (line?.tone === "wait") lines.add(line.text.replace(/[\d.]+ m ahead|closer than about 2.5 m/, "…"));
       return ["done", "aborted"].includes(status.mission.state);
     }, 120);
     const status = statusOf(engine);
@@ -205,6 +205,15 @@ describe("the demo flow on the in-page backend", () => {
     expect(status.mission.avoid?.held_s).toBeGreaterThanOrEqual(1);
     pilot!.close();
   }, 30_000);
+
+  it("shows amber only for waiting and the blocked ending; any other ending is a plain notice", () => {
+    const ended = (reason: string | null) =>
+      demoLine({ mission: { state: "aborted", reason, last_landing: "safe_landing" } } as unknown as Status, "stopped", null);
+    expect(ended("path_blocked")?.tone).toBe("wait");
+    for (const reason of ["timeout", "marker_lost", "marker_not_found", "off_axis", "video_stale", "not_aligned", null]) {
+      expect(ended(reason)?.tone, String(reason)).toBe("warn");
+    }
+  });
 
   it("refuses to take off with a cart in the lane, says why, and leaves no dose behind", async () => {
     const engine = engineFor();

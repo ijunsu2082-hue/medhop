@@ -598,7 +598,7 @@ function obstacleShapes(
       y: plate.y0 + padY + lineBox / 2 + 0.36 * size,
       size,
       weight: OVERLAY.labelWeight,
-      tone: "outline",
+      tone: "bg",
       align: "left",
       maxWidth: null,
       transform: null,

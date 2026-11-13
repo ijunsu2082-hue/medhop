@@ -104,9 +104,8 @@ export function LandingPage() {
             <h2 id="h-results">{SECTIONS.results}</h2>
             <div className="results">
               <div>
-                <h3>
-                  {RESULTS.simTitle} <span className="results-note">{RESULTS.simNote}</span>
-                </h3>
+                <h3>{RESULTS.simTitle}</h3>
+                <p className="results-note">{RESULTS.simNote}</p>
                 <dl className="figures">
                   {RESULTS.figures.map((f) => (
                     <div key={f.label}>

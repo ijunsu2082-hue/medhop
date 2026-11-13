@@ -73,7 +73,11 @@ export function stepStates(count: number, phase: DemoPhase, state: string, furth
 }
 
 export interface DemoLine {
-  tone: "pass" | "warn" | "info";
+  /**
+   * "wait": the drone is waiting for something in its way, or the run ended because the way stayed blocked (amber).
+   * "warn": any other ending that needs reading (ink, hollow mark). "pass": arrived or picked up. "info": the rest.
+   */
+  tone: "pass" | "warn" | "wait" | "info";
   text: string;
   /**
    * The same thing for a screen reader's live region, without the parts that change several times a second (a
@@ -110,7 +114,7 @@ export function demoLine(
       const what = obstacleNoun(m.avoid?.kind);
       const coarse =
         m.avoid?.state === "slow" ? `Slowing: ${what} ahead` : m.avoid?.state === "hold" ? `Waiting: ${what} in the way` : waiting.text;
-      return say("warn", waiting.text, coarse);
+      return say("wait", waiting.text, coarse);
     }
     return say("info", missionStateText(m.state));
   }
@@ -121,7 +125,8 @@ export function demoLine(
   if (phase === "acknowledged" && dose) return say("pass", `${doseStatusLine(dose)}.`);
   if (phase === "stopped") {
     if (stop !== "no") return say("info", stop === "landing" ? "Stopped. The simulated drone is landing." : "Stopped.");
-    return say("warn", abortTextFor(m.reason, m.last_landing === "safe_landing"));
+    // Only the blocked ending is about waiting; the 45 s limit, a lost sign and the rest read as a plain notice.
+    return say(m.reason === "path_blocked" ? "wait" : "warn", abortTextFor(m.reason, m.last_landing === "safe_landing"));
   }
   return null;
 }

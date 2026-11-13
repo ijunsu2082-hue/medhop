@@ -16,7 +16,7 @@ export const HERO = {
 
 export const DEMO = {
   cameraLabel: "The simulated drone's camera view of the room and the station sign",
-  cameraCaption: "The drone's camera view, about half a second behind, like the real one.",
+  cameraCaption: "The simulated drone's view, about half a second behind, like the real camera.",
   planCaption: "From above. It lands on the dashed circle.",
   honest:
     "This is a simulator. It runs the same flight logic as the real drone, but it works out where the sign is instead of finding it in a camera picture.",
@@ -68,12 +68,13 @@ export interface Figure {
 }
 
 export const RESULTS = {
-  simTitle: "In the simulator",
-  simNote: "20 runs of each.",
+  simTitle: "In the Python simulator",
+  simNote:
+    "20 runs of each kind of corridor. This is the fuller simulator, not the demo above, and it is told exactly where people are. A real detector would make mistakes.",
   figures: [
     { value: "20 of 20", label: "landed in front of the sign in an empty corridor, in 27 to 37 seconds" },
     { value: "20 of 20", label: "waited for a person to walk across, then reached the station" },
-    { value: "40 of 40", label: "landed and reported it when people stayed in the way" },
+    { value: "40 of 40", label: "landed and reported it when one person, or three, stayed in the way" },
   ] as readonly Figure[],
   closest: "The closest it came to a person was 1.1 m.",
   realTitle: "On the real drone",
@@ -90,7 +91,10 @@ export const BUILD: readonly { term: string; detail: string }[] = [
   { term: "Drone", detail: "AXNEN i1, a toy camera drone with no GPS." },
   { term: "Camera", detail: "640 × 360 pixels, about 15 frames a second, half a second behind." },
   { term: "Sign", detail: "A printed ArUco marker, 18 cm wide. Finding it is ordinary computer vision, not AI." },
-  { term: "Software", detail: "Python flies the real drone. This site is React and TypeScript." },
+  {
+    term: "Software",
+    detail: "Python flies the real drone, through the open-source turbodrone project. This site is React and TypeScript.",
+  },
 ];
 
 export const SIGN_CAPTION = "The station sign, as printed.";

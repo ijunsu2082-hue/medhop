@@ -255,8 +255,9 @@
   color: var(--bg);
 }
 
+/* The sweep must stand out from the blue (3:1), with the white label readable on both. */
 .pilot .takeoff-primary .takeoff-fill {
-  background: var(--accent-strong);
+  background: var(--ink);
 }
 
 .pilot .takeoff:disabled {

@@ -195,16 +195,9 @@ export function LandingDemo() {
   const settling = status !== null && told === null && !running && !landing && !busy && !readyToRun(status);
   const note = recovering ? DEMO.recovering : settling ? DEMO.settling : null;
   const line = note !== null ? { tone: "info" as const, text: note, announce: note } : told;
-  // The line's colour: blue while the drone goes, amber while it waits (or the way stayed blocked), blue tint on arrival.
-  const lineTone = problem
-    ? "warn"
-    : !line
-      ? "info"
-      : line.tone === "warn"
-        ? "wait"
-        : line.tone === "info" && running
-          ? "go"
-          : line.tone;
+  // The line's colour: blue while the drone goes, amber while it waits (or the way stayed blocked), blue tint on
+  // arrival; any other ending is a plain notice (ink, hollow mark).
+  const lineTone = problem ? "warn" : !line ? "info" : line.tone === "info" && running ? "go" : line.tone;
   const shown = problem ?? line?.text ?? (linkOpen ? "" : DEMO.linkWait);
   const announced = problem ?? line?.announce ?? (linkOpen ? "" : DEMO.linkWait);
   const steps = stepStates(DEMO.steps.length, phase, mission?.state ?? "idle", furthest.current);

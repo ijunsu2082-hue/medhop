@@ -119,7 +119,11 @@ describe("the landing page", () => {
   });
 
   it("labels the results as simulator results, and keeps them apart from the real drone", () => {
-    expect(RESULTS.simTitle).toMatch(/simulator/i);
+    expect(RESULTS.simTitle).toMatch(/Python simulator/);
+    // The figures are the fuller Python simulator's, which is told exactly where people are: no real detector is.
+    expect(RESULTS.simNote).toMatch(/not the demo above/);
+    expect(RESULTS.simNote).toMatch(/told exactly where people are/);
+    expect(RESULTS.simNote).toMatch(/real detector would make mistakes/);
     // No simulator figure is repeated under the real drone's heading.
     expect(RESULTS.real).not.toMatch(/\d+ of \d+/);
     expect(RESULTS.figures).toHaveLength(3);

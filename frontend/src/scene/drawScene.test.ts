@@ -202,10 +202,10 @@ describe("the flight logic's marks", () => {
     const marks = paths(buildScene(frame(view(3.5), { obstacles }), { uiScale: 1 }), "obstacle");
     expect(marks.map((s) => s.index)).toEqual([0, 1]);
     expect(marks.every((s) => s.stroke === "obstacle" && s.fill === null && s.closed)).toBe(true);
-    // Each label sits on an amber plate in the outline colour, so it reads on any part of the room.
+    // Each label is white on an amber plate, so it reads on any part of the room.
     const shapes = buildScene(frame(view(3.5), { obstacles }), { uiScale: 1 });
     expect(paths(shapes, "label").every((s) => s.fill === "obstacle")).toBe(true);
-    expect(texts(shapes, "label").every((t) => t.tone === "outline")).toBe(true);
+    expect(texts(shapes, "label").every((t) => t.tone === "bg")).toBe(true);
     expect(marks[1]!.width).toBeGreaterThan(marks[0]!.width);
     obstacles.forEach((o, i) => {
       const drawn = box(marks[i]!);

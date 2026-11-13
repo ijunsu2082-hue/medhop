@@ -60,7 +60,7 @@ export const CANVAS_WAITING_DETAIL = "Waiting for status from the simulator in t
 
 /** What the drawing made in this page shows, for people who cannot see it. It is never called a camera view. */
 export const CANVAS_VIEW_LABEL =
-  "Line drawing made by the simulator in this page, from the drone's position: the room, the station sign, " +
+  "Drawing made by the simulator in this page, from the drone's position: the room, the station sign, " +
   "the simulated people and objects, an outline round the tracked sign and a box round each obstacle";
 
 export function videoAlt(mode: "sim" | "real" | null | undefined): string {

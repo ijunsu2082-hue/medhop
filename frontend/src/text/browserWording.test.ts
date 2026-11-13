@@ -39,7 +39,7 @@ import { CONTROL_ERROR_TEXT, TOGGLE_GUARD_BROWSER_TEXT, controlErrorText } from 
 describe("browser-build camera caption", () => {
   it("pins every sentence", () => {
     expect(CAPTION_BROWSER_PICTURE).toBe(
-      "Simulator view: a line drawing made by the simulator running in this page. It is not a camera picture.",
+      "Simulator view: a drawing made by the simulator running in this page. It is not a camera picture.",
     );
     expect(CAPTION_BROWSER_DETECTION).toBe(
       "No picture is analysed: the station sign's position comes from the simulator's geometry, with noise and " +
@@ -78,7 +78,7 @@ describe("browser-build camera caption", () => {
 describe("canvas feed wording", () => {
   it("says what the drawing is, without calling it a camera view", () => {
     expect(CANVAS_VIEW_LABEL).toBe(
-      "Line drawing made by the simulator in this page, from the drone's position: the room, the station sign, " +
+      "Drawing made by the simulator in this page, from the drone's position: the room, the station sign, " +
         "the simulated people and objects, an outline round the tracked sign and a box round each obstacle",
     );
     expect(CANVAS_VIEW_LABEL).not.toMatch(/camera|stream/i);

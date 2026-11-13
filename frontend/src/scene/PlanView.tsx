@@ -78,10 +78,9 @@ export function PlanView({ x, distance, heading, track, landingSpot, actors, cla
       </defs>
       <rect className="plan-floor" x={0} y={TOP} width={W} height={H - TOP} />
       <line className="plan-axis" x1={px(0)} y1={TOP} x2={px(0)} y2={H} />
-      {/* Both faint bands first, then their edges, so neither hides the other's. */}
+      {/* The lane's soft tint first, then the edges of the lane and of the camera's view (an outline only). */}
       <g clipPath={`url(#${clipId})`}>
-        <polygon className="plan-band" points={view} />
-        <polygon className="plan-band plan-band--lane" points={lane} />
+        <polygon className="plan-lane-band" points={lane} />
         <polygon className="plan-view" points={view} />
         <polygon className="plan-lane" points={lane} />
       </g>
@@ -91,7 +90,7 @@ export function PlanView({ x, distance, heading, track, landingSpot, actors, cla
         a.kind === "person" ? (
           <circle
             key={i}
-            className={`plan-actor plan-person plan-cloth-${(i % 3) + 1}`}
+            className={`plan-actor plan-cloth-${(i % 3) + 1}`}
             cx={px(a.x_m)}
             cy={py(a.distance_m)}
             r={(Math.max(a.width_m, a.depth_m) / 2) * SCALE}
