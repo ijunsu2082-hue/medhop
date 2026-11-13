@@ -29,16 +29,25 @@ function Fail($message) {
     exit 1
 }
 
+# Something is listening on this port, on IPv4 or IPv6. Both are tried: Node listens on "localhost" as ::1 only,
+# and a plain TcpClient looks at 127.0.0.1 only, so one check alone calls a busy port free.
 function Test-PortBusy($port) {
-    $client = New-Object System.Net.Sockets.TcpClient
-    try {
-        $client.Connect("localhost", $port)
-        return $true
-    } catch {
-        return $false
-    } finally {
-        $client.Close()
+    $targets = @(
+        @([System.Net.Sockets.AddressFamily]::InterNetwork, "127.0.0.1"),
+        @([System.Net.Sockets.AddressFamily]::InterNetworkV6, "::1")
+    )
+    foreach ($target in $targets) {
+        $client = $null
+        try {
+            $client = New-Object System.Net.Sockets.TcpClient($target[0])
+            $client.Connect($target[1], $port)
+            return $true
+        } catch {
+        } finally {
+            if ($client) { $client.Close() }
+        }
     }
+    return $false
 }
 
 function Test-Answers($url) {
