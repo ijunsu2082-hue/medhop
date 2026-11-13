@@ -37,10 +37,28 @@
   stroke-width: 1.5;
 }
 
-.plan-view {
+/* Two faint bands: the camera's view (a wedge) and the lane the drone needs (parallel, dashed edges). */
+.plan-band {
   fill: var(--fill);
+}
+
+.plan-view {
+  fill: none;
   stroke: var(--line);
   stroke-width: 1;
+}
+
+.plan-lane {
+  fill: none;
+  stroke: var(--mid);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.plan-actor {
+  fill: var(--mid);
+  stroke: var(--ink);
+  stroke-width: 1.5;
 }
 
 .plan-drone {

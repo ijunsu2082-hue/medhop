@@ -297,6 +297,11 @@
     padding-block: var(--s-7) var(--s-6);
   }
 
+  /* The plan view needs the full width to stay readable. */
+  .landing .demo-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .landing .landing-nav-extra {
     display: none;
   }

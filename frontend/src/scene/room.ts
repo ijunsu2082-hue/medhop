@@ -17,7 +17,8 @@ export const SHEET_TOP_Y = SIGN.markerCentreY + SIGN.markerSize / 2 + SIGN.topMa
 
 /**
  * ArUco DICT_4X4_50 id 7 with its one-cell black border: six rows of six cells, top row first, 1 = white.
- * Taken from OpenCV (cv2.aruco.generateImageMarker); a test pins it.
+ * Taken from OpenCV (cv2.aruco.generateImageMarker); room.test.ts pins it to the engine fixture marker7.json
+ * (backend/tools/parity_traces.py marker7).
  */
 export const MARKER_7: readonly string[] = ["000000", "011000", "001000", "011110", "000100", "000000"];
 

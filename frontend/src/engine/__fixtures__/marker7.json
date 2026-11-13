@@ -1,0 +1,8 @@
+{
+ "group":"marker7",
+ "generator":"backend/tools/parity_traces.py marker7",
+ "dictionary":"DICT_4X4_50",
+ "id":7,
+ "side_cells":6,
+ "bits":[[0,0,0,0,0,0],[0,1,1,0,0,0],[0,0,1,0,0,0],[0,1,1,1,1,0],[0,0,0,1,0,0],[0,0,0,0,0,0]]
+}
