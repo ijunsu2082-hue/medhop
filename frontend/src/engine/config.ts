@@ -14,9 +14,12 @@ export const DRONE_MODES = ["sim", "real"] as const;
 export const PERSON_CHECK_MODES = ["auto", "on", "off"] as const;
 /** "high": the display profile (a rendered room at 1280x720); "drone": 640x360 with blur, noise and JPEG q50. */
 export const SIM_CAMERA_MODES = ["high", "drone"] as const;
+/** Obstacle avoidance (experimental), SPEC section 11. */
+export const AVOID_MODES = ["off", "hold"] as const;
 
 export type PersonCheckMode = (typeof PERSON_CHECK_MODES)[number];
 export type SimCameraMode = (typeof SIM_CAMERA_MODES)[number];
+export type AvoidMode = (typeof AVOID_MODES)[number];
 
 export interface Settings {
   drone: Mode;
@@ -36,6 +39,12 @@ export interface Settings {
   /** Horizontal field of view of the drone camera. 70 matches the simulator; the real lens is unmeasured. */
   camera_hfov_deg: number;
   sim_camera: SimCameraMode;
+  /**
+   * Obstacle avoidance (experimental, simulator-tested only; SPEC section 11): "off" or "hold". "off"
+   * here (Python's from_env defaults it to "hold" in simulator mode). A mode stored with the mission
+   * settings wins over this.
+   */
+  avoid: AvoidMode;
 }
 
 /** Constructor arguments, as for the Python dataclass: every field optional, strings normalised. */
@@ -54,6 +63,7 @@ export interface SettingsInit {
   grace_min?: number;
   camera_hfov_deg?: number;
   sim_camera?: string;
+  avoid?: string;
 }
 
 /** The dataclass defaults (arrive_width is null there: derived in __post_init__). */
@@ -71,6 +81,7 @@ export const SETTINGS_DEFAULTS = Object.freeze({
   grace_min: 15,
   camera_hfov_deg: 70.0,
   sim_camera: "high",
+  avoid: "off",
 } as const);
 
 function normalise(value: string): string {
@@ -87,6 +98,11 @@ export function makeSettings(init: SettingsInit = {}): Settings {
   const drone = normalise(merged.drone);
   const personCheck = normalise(merged.person_check);
   const simCamera = normalise(merged.sim_camera);
+  const avoid = normalise(merged.avoid);
+  // Python checks the avoid mode first, right after normalising the strings.
+  if (!oneOf(avoid, AVOID_MODES)) {
+    throw new ValueError(`MEDHOP_AVOID must be one of ${pyTupleRepr(AVOID_MODES)}, got ${pyStrRepr(avoid)}`);
+  }
   if (!oneOf(drone, DRONE_MODES)) {
     throw new ValueError(`MEDHOP_DRONE must be one of ${pyTupleRepr(DRONE_MODES)}, got ${pyStrRepr(drone)}`);
   }
@@ -148,6 +164,7 @@ export function makeSettings(init: SettingsInit = {}): Settings {
     grace_min: s.grace_min,
     camera_hfov_deg: s.camera_hfov_deg,
     sim_camera: simCamera,
+    avoid,
   };
 }
 

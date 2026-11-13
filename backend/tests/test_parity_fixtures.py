@@ -10,6 +10,13 @@ followed by `python tools/parity_traces.py replayed` fails here. detector_calibr
 replayed (it renders pictures and runs the real detector for about a minute): only its deterministic
 `cases` part is regenerated here.
 
+The mission groups: avoid (mission/avoid.py) and the runner traces (mission/runner.py with the mixer,
+recorded call by call). Of the runner traces, runner_scripted (synthetic detections) and runner_quick
+(two short closed-loop runs) are in GROUPS and regenerated here; runner_auto, runner_manual and
+runner_avoid record longer closed-loop simulator runs with rendering and the real detector (about 40 s
+together) and are only checked by `python tools/parity_traces.py --check runner_auto runner_manual
+runner_avoid`.
+
 Comparison: strings, booleans, None and integers exactly; floats within 1e-9 relative or 1e-12
 absolute (the same machine reproduces them bit for bit; another machine's C library or OpenBLAS may
 round differently). Pose fits use the rule of the vitest suite: within the tolerance, or within 16
@@ -32,6 +39,9 @@ SPREAD_FACTOR = 16.0        # as in frontend/src/engine/vision/pose.test.ts
 MAX_TOTAL_BYTES = 1_500_000             # the flight-logic groups
 SIMULATOR_GROUPS = ("sim_physics", "sim_actors", "projection", "sim_harness", "detector_calibration")
 MAX_SIMULATOR_BYTES = 1_500_000         # the simulator groups, on top
+# The mission groups (mission/avoid.py and the runner traces), on top of both.
+MISSION_GROUPS = ("avoid", "runner_scripted", "runner_quick", *parity_traces.RUNNER_GROUPS)
+MAX_MISSION_BYTES = 3_100_000           # about 3 MB
 INFORMATIONAL_KEYS = ("spread", "stopped_by_rule")
 
 
@@ -129,8 +139,11 @@ class ParityFixtureTests(unittest.TestCase):
     def test_the_fixtures_stay_small(self):
         sizes = {name: parity_traces.fixture_path(name).stat().st_size for name in parity_traces.ALL_GROUPS}
         self.assertEqual(set(SIMULATOR_GROUPS) - set(sizes), set())
-        self.assertLessEqual(sum(v for k, v in sizes.items() if k not in SIMULATOR_GROUPS), MAX_TOTAL_BYTES)
+        self.assertEqual(set(MISSION_GROUPS) - set(sizes), set())
+        others = set(SIMULATOR_GROUPS) | set(MISSION_GROUPS)
+        self.assertLessEqual(sum(v for k, v in sizes.items() if k not in others), MAX_TOTAL_BYTES)
         self.assertLessEqual(sum(sizes[k] for k in SIMULATOR_GROUPS), MAX_SIMULATOR_BYTES)
+        self.assertLessEqual(sum(sizes[k] for k in MISSION_GROUPS), MAX_MISSION_BYTES)
 
     def test_the_comparison_notices_a_change(self):
         problems = []

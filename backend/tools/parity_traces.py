@@ -10,9 +10,14 @@ RecordingLink of tests/harness.py), num (the Python number semantics the port mi
 sum, median, repr, clamp), rng (random.Random), config (Settings and the config dataclass defaults),
 sim_physics (drone/sim.py stepped with its noise at zero), sim_actors (drone/sim_actors.py and the
 boxes frames carry), projection (the simulator's pinhole camera), sim_harness (SimHarness.step of
-tests/harness.py with a scripted stand-in for the runner), and detector_calibration: the real OpenCV
-detector run on the simulator's own pictures and compared with geometric truth. That last one is
-measured rather than replayed and takes about a minute:
+tests/harness.py with a scripted stand-in for the runner), marker7 (the station sign's ArUco pattern as
+OpenCV draws it, for the line drawing in frontend/src/scene), avoid (mission/avoid.py: the estimates
+from a box and the state machine), the runner traces (mission/runner.py and the mixer it drives,
+recorded call by call: runner_scripted with synthetic detections, runner_quick, runner_manual,
+runner_auto and runner_avoid from closed-loop SimHarness runs; see "runner_*" below), and
+detector_calibration: the real OpenCV detector run on the simulator's own pictures and compared with
+geometric truth. That last one is measured rather than replayed and takes about a minute; the closed-
+loop runner groups take about 40 s together:
 
     python tools/parity_traces.py detector_calibration    # measure again
     python tools/parity_traces.py replayed                 # every group except the measured one
@@ -95,16 +100,19 @@ def encode(value: Any) -> Any:
     raise TypeError(f"cannot encode {type(value).__name__}")
 
 
-def render(value: Any, indent: int = 0, width: int = 118) -> str:
-    """Compact JSON, broken into one item per line wherever a line would get long (diff-friendly)."""
+def render(value: Any, indent: int = 0, width: int = 118, flat_from: Optional[int] = None) -> str:
+    """Compact JSON, broken into one item per line wherever a line would get long (diff-friendly). From
+    nesting depth `flat_from` on, values stay on one line however long (the runner groups: one op per line)."""
     flat = json.dumps(value, separators=(",", ":"), allow_nan=False)
-    if len(flat) + indent <= width or not isinstance(value, (list, dict)) or not value:
+    if (len(flat) + indent <= width or not isinstance(value, (list, dict)) or not value
+            or (flat_from is not None and indent >= flat_from)):
         return flat
     pad = " " * (indent + 1)
     if isinstance(value, list):
-        inner = ",\n".join(pad + render(item, indent + 1, width) for item in value)
+        inner = ",\n".join(pad + render(item, indent + 1, width, flat_from) for item in value)
         return "[\n" + inner + "\n" + " " * indent + "]"
-    inner = ",\n".join(pad + json.dumps(key) + ":" + render(item, indent + 1, width) for key, item in value.items())
+    inner = ",\n".join(pad + json.dumps(key) + ":" + render(item, indent + 1, width, flat_from)
+                       for key, item in value.items())
     return "{\n" + inner + "\n" + " " * indent + "}"
 
 
@@ -240,7 +248,7 @@ def build_rng() -> dict:
 
 SETTINGS_FIELDS = ("drone", "control_rate", "marker_id", "marker_size_m", "arrive_width", "land_distance_m",
                    "person_check", "battery_low_raw", "telemetry_fresh_s", "hover_max_excursion_m", "grace_min",
-                   "camera_hfov_deg", "sim_camera")
+                   "camera_hfov_deg", "sim_camera", "avoid")
 MIXER_CONSTANTS = ("PILOT_ACTIVE_S", "MISSION_FRESH_S", "VIDEO_STALE_S", "PILOT_RAMP_PER_S", "TRIM_LIMIT",
                    "MISSION_ROLL_LIMIT", "MAX_STICK_MIN", "MAX_STICK_MAX", "TOGGLE_GUARD_S", "LANDING_GUARD_S",
                    "MISSION_TOGGLE_PILOT_QUIET_S", "STICKS_BLOCK_AFTER_S", "ESTOP_CONFIRM_S", "ESTOP_MAX_STEP_S",
@@ -267,7 +275,8 @@ def build_config() -> dict:
                  {"grace_min": -1}, {"hover_max_excursion_m": 6.0}, {"camera_hfov_deg": 20.0},
                  {"land_distance_m": 0.2}, {"marker_size_m": 0.02, "camera_hfov_deg": 150.0, "land_distance_m": 3.0},
                  {"marker_size_m": 1.0, "camera_hfov_deg": 30.0, "land_distance_m": 0.35}, {"arrive_width": 0.9},
-                 {"arrive_width": 0.02}):
+                 {"arrive_width": 0.02}, {"avoid": " HOLD "}, {"avoid": "Off"}, {"avoid": "go_around"},
+                 {"avoid": "pass", "drone": "plane"}):
         settings.append(_settings_case(init))
     for size in (0.05, 0.18, 0.3):
         for hfov in (40.0, 70.0, 110.0):
@@ -1158,6 +1167,299 @@ def build_mixer() -> dict:
 
 
 # ---------------------------------------------------------------------------------------------- #
+# avoid: mission/avoid.py, the distance estimates from a box and the state machine
+
+def _avoid_configs() -> Dict[str, Any]:
+    from medhop.mission.avoid import AvoidConfig
+    return {
+        "default": AvoidConfig(),
+        "low": AvoidConfig(camera_height_m=0.3),        # sees the floor from 0.76 m: every distance placeable
+        "ground": AvoidConfig(camera_height_m=0.04),    # the start blocker's camera on the ground
+        "wide": AvoidConfig(hfov_deg=90.0, frame_aspect=4.0 / 3.0, lane_half_m=0.4, slow_distance_m=2.5,
+                            hold_distance_m=1.2, back_distance_m=0.7, clear_confirm_s=0.5, blocked_timeout_s=6.0,
+                            lat_kp=0.5, lat_ki=0.3, roll_max=0.1, roll_rise_per_s=2.0, match_fw=0.08,
+                            person_height_m=1.8, edge_margin=0.01, horizon_margin=0.02),
+    }
+
+
+def _seen_row(s: Any) -> Any:
+    return None if s is None else [s.kind, list(s.box), s.ts, s.distance_m, s.lateral_m, s.half_width_m, s.near_m,
+                                   s.in_lane]
+
+
+def _avoid_command_row(c: Any) -> list:
+    return [c.state, c.pitch_cap, c.pitch, c.roll, c.freeze_yaw, c.blocked, c.reason]
+
+
+def _avoid_box_at(distance: float, lateral: float, width: float, height: float, cfg: Any) -> Tuple[float, ...]:
+    """tests/test_avoid.py box_at: an upright box standing on the floor `distance` metres ahead."""
+    from medhop.mission.avoid import focal_fh, focal_fw
+    f, fh = focal_fw(cfg), focal_fh(cfg)
+    x1 = 0.5 + (lateral - width / 2.0) * f / distance
+    x2 = 0.5 + (lateral + width / 2.0) * f / distance
+    y2 = 0.5 + cfg.camera_height_m * fh / distance
+    y1 = 0.5 - (height - cfg.camera_height_m) * fh / distance
+    return tuple(max(0.0, min(1.0, v)) for v in (x1, y1, x2, y2))
+
+
+def _avoid_functions(rng: random.Random) -> dict:
+    from medhop.mission.avoid import (blind_distance_m, estimate, floor_distance_m, focal_fh, focal_fw, nearest,
+                                      sign_lateral_m)
+    configs = _avoid_configs()
+    geometry = {name: {"focal_fw": focal_fw(cfg), "focal_fh": focal_fh(cfg), "blind_distance_m": blind_distance_m(cfg)}
+                for name, cfg in configs.items()}
+    floor = []
+    for name, cfg in configs.items():
+        for y2 in (0.0, 0.4, 0.5, 0.505, 0.51, 0.5100001, 0.51 + 1e-12, 0.52, 0.53, 0.6, 0.75, 0.9, 0.995, 0.996,
+                   1.0, 1.2, -0.3, NAN, INF):
+            floor.append([name, y2, floor_distance_m(y2, cfg)])
+        for _ in range(10):
+            y2 = r9(rng.uniform(0.45, 1.0))
+            floor.append([name, y2, floor_distance_m(y2, cfg)])
+
+    boxes: List[Tuple[str, Any, str]] = []
+    for name, cfg in configs.items():
+        for kind in ("person", "object"):
+            for distance in (0.9, 2.6, 3.0, 12.0):
+                for lateral in (0.0, 0.78, -0.8, 1.5):
+                    for width, height in ((0.45, 1.7), (0.6, 0.9)):
+                        boxes.append((kind, tuple(r9(v) for v in _avoid_box_at(distance, lateral, width, height, cfg)),
+                                      name))
+        edge = 1.0 - cfg.edge_margin
+        specials = [
+            (0.4, 0.2, 0.6, 0.45),                 # bottom above the horizon: no distance
+            (0.4, 0.2, 0.6, 0.5),
+            (0.4, cfg.edge_margin, 0.6, 0.8),      # top exactly at the margin: no person height
+            (0.4, cfg.edge_margin + 1e-9, 0.6, 0.8),
+            (0.4, 0.3, 0.6, edge),                 # bottom exactly at the cut-off
+            (0.4, 0.3, 0.6, edge - 1e-9),
+            (0.4, 0.6, 0.6, 0.6 + 5e-7),           # under 1e-6 tall
+            (0.4, 0.6, 0.6, 0.6 + 2e-6),
+            (0.6, 0.3, 0.4, 0.7),                  # x1 > x2
+            (0.0, 0.0, 1.0, 1.0), (0.0, 0.2, 0.05, 0.62), (0.95, 0.2, 1.0, 0.62), (0.5, 0.2, 0.5, 0.62),
+            (0.49, 0.3, 0.51, 0.62), (0.2, 0.1, 0.48, 0.7), (0.52, 0.1, 0.9, 0.7),
+            (0.4, 0.2, 0.6, NAN), (NAN, 0.2, 0.6, 0.7), (0.4, 0.2, 0.6, 0.5 + cfg.horizon_margin),
+        ]
+        for box in specials:
+            boxes.append(("person", box, name))
+            boxes.append(("object", box, name))
+        for _ in range(25):
+            x1 = rng.uniform(-0.1, 0.9)
+            y1 = rng.uniform(-0.1, 0.6)
+            box = (r9(x1), r9(y1), r9(x1 + rng.uniform(0.0, 0.5)), r9(y1 + rng.uniform(0.0, 0.7)))
+            boxes.append((rng.choice(("person", "object")), box, name))
+    # [cfg, kind, box, [distance_m, lateral_m, half_width_m, near_m, in_lane]], all at ts AVOID_TS
+    estimates = []
+    for kind, box, name in boxes:
+        s = estimate(kind, box, AVOID_TS, configs[name])
+        estimates.append([name, kind, list(box), [s.distance_m, s.lateral_m, s.half_width_m, s.near_m, s.in_lane]])
+
+    cfg = configs["default"]
+    pool = [(kind, box) for kind, box, name in boxes if name == "default"]
+    # [[kind, box], ...] estimated with the default config, and the index nearest() picked (None: empty)
+    nearest_cases: List[list] = [[[], None]]
+
+    def nearest_case(items: List[Tuple[str, Any]]) -> list:
+        seen = [estimate(kind, box, AVOID_TS, cfg) for kind, box in items]
+        best = nearest(seen)
+        return [[[kind, list(box)] for kind, box in items], None if best is None else seen.index(best)]
+
+    for _ in range(40):
+        nearest_cases.append(nearest_case(rng.sample(pool, rng.randint(1, 6))))
+    twin = tuple(r9(v) for v in _avoid_box_at(3.0, 0.0, 0.45, 1.7, cfg))
+    nearest_cases.append(nearest_case([("person", twin), ("person", twin)]))         # a tie: the first
+    close = [(kind, box) for kind, box in pool if estimate(kind, box, AVOID_TS, cfg).distance_m is None][:3]
+    nearest_cases.append(nearest_case(close))
+
+    lateral = []
+    for name, c in configs.items():
+        for cx in (0.0, 0.2, 0.45, 0.5, 0.55, 0.8, 1.0):
+            for range_m in (0.4, 1.0, 3.5, 6.0):
+                lateral.append([name, cx, range_m, sign_lateral_m(cx, range_m, c)])
+    return {"ts": AVOID_TS, "geometry": geometry, "floor": floor, "estimate": estimates, "nearest": nearest_cases,
+            "sign_lateral": lateral}
+
+
+AVOID_TS = 1000.5
+AVOID_STEP_FIELDS = ["now", "seen", "fresh", "sign", "out", "state", "holds", "no_progress_s", "blocked_reason",
+                     "target", "snap", "events_n"]
+
+
+def _run_avoider(name: str, cfg_name: str, steps: List[Tuple[float, list, bool, Any]]) -> dict:
+    """Drive an Avoider through (now, [(kind, box)], fresh, sign) steps; record what every step returned
+    and the state it left behind (one row per step, AVOID_STEP_FIELDS). Each step's obstacles are
+    estimated with the sequence's config at ts = now, as the runner does; `target` is null, the index of
+    this step's obstacle it is, or "same" (the previous step's target, kept)."""
+    from medhop.mission.avoid import Avoider, estimate
+    cfg = _avoid_configs()[cfg_name]
+    avoider = Avoider(cfg)
+    out = []
+    previous = None
+    for now, items, fresh, sign in steps:
+        seen = [estimate(kind, box, now, cfg) for kind, box in items]
+        command = avoider.update(now, seen, fresh, sign=sign)
+        target = avoider.target
+        if target is None:
+            ref: Any = None
+        elif any(target is s for s in seen):
+            ref = next(i for i, s in enumerate(seen) if target is s)
+        else:
+            assert target is previous, "the target is always this step's obstacle or the previous target"
+            ref = "same"
+        previous = target
+        snap = avoider.snapshot()
+        out.append([now, [[kind, list(box)] for kind, box in items], fresh, None if sign is None else list(sign),
+                    _avoid_command_row(command), avoider.state, avoider.holds, avoider.no_progress_s,
+                    avoider.blocked_reason, ref, [snap["state"], snap["kind"], snap["distance_m"], snap["held_s"]],
+                    len(avoider.events)])
+    return {"name": name, "cfg": cfg_name, "steps": out, "events": avoider.events}
+
+
+def _avoid_sequences(rng: random.Random) -> List[dict]:
+    from medhop.mission.avoid import focal_fw
+    configs = _avoid_configs()
+    dt = 1.0 / 15.0
+
+    def box(distance: float, lateral: float, width: float, height: float, cfg: Any) -> Tuple[float, ...]:
+        return tuple(r9(v) for v in _avoid_box_at(distance, lateral, width, height, cfg))
+
+    class Script:
+        def __init__(self, cfg_name: str, t: float = 1000.0) -> None:
+            self.cfg = configs[cfg_name]
+            self.t = t
+            self.steps: List[Tuple[float, list, bool, Any]] = []
+
+        def seen(self, distance: float, lateral: float = 0.0, kind: str = "person", width: float = 0.45,
+                 height: float = 1.7) -> Tuple[str, Any]:
+            return kind, box(distance, lateral, width, height, self.cfg)
+
+        def step(self, items: Callable[[], list] = list, step_dt: float = dt, fresh: bool = True, sign: Any = None,
+                 n: int = 1) -> None:
+            for _ in range(n):
+                self.t += step_dt
+                self.steps.append((self.t, items(), fresh, sign))
+
+    out = []
+    # tests/test_avoid.py: clear, slow, hold and back (the low camera places things at every distance)
+    s = Script("low")
+    s.step()
+    s.step(lambda: [s.seen(3.5, kind="object", height=0.2)])
+    s.step(lambda: [s.seen(2.5, lateral=1.5, kind="object", height=0.2)])
+    s.step(lambda: [s.seen(2.9, kind="object", height=0.2)])
+    s.step(lambda: [s.seen(1.7, kind="object", height=0.2)])
+    s.step(lambda: [s.seen(0.85, kind="object", height=0.2)])
+    s.step(lambda: [s.seen(0.7, kind="object", height=0.2)])
+    s.step(n=20)
+    s.step(lambda: [s.seen(2.9, kind="object", height=0.2)], n=3)
+    s.step(lambda: [s.seen(2.9, kind="object", height=0.2)], fresh=False, n=3)
+    s.step(n=3)
+    out.append(_run_avoider("clear_slow_hold_and_back", "low", s.steps))
+
+    # the hold: the clear confirmation starts again when something comes back; no evidence never clears
+    s = Script("default")
+    s.step(lambda: [s.seen(1.5)])
+    s.step(lambda: [s.seen(4.0, lateral=2.0)], n=int(0.9 / dt))
+    s.step(lambda: [s.seen(1.5)])
+    s.step(n=int(0.95 / dt))
+    s.step(fresh=False, n=5)
+    s.step(n=int(1.2 / dt))
+    s.step(lambda: [s.seen(1.5)])
+    s.step(lambda: [s.seen(3.5, kind="object", height=0.9)], n=int(1.2 / dt))
+    s.step(lambda: [s.seen(2.9, kind="object", height=0.9)])
+    s.step(fresh=False, n=3)
+    out.append(_run_avoider("clear_confirmation", "default", s.steps))
+
+    # several holds add up; blocked after blocked_timeout_s held in total, and it stays blocked
+    s = Script("wide")
+    for _ in range(2):
+        s.step(lambda: [s.seen(1.0)])
+        s.step(lambda: [s.seen(1.0)], n=int(2.5 / dt))
+        s.step(n=int(0.8 / dt))
+    s.step(lambda: [s.seen(1.0)])
+    s.step(lambda: [s.seen(1.0)], n=int(1.0 / dt) + 3)
+    s.step(n=3)
+    s.step(lambda: [s.seen(6.0, lateral=3.0)], n=3)
+    out.append(_run_avoider("holds_add_up_then_blocked", "wide", s.steps))
+
+    # the hold's sideways loop: on the obstacle's box (low camera), then on the sign (wins over the box)
+    s = Script("low")
+    s.step(lambda: [s.seen(2.8, kind="object", height=0.9)])
+    s.step(lambda: [s.seen(1.5)])
+    k = [0]
+
+    def drifting() -> list:
+        k[0] += 1
+        return [("object", box(1.5, -0.02 * k[0], 0.45, 0.2, s.cfg))]
+
+    s.step(drifting, n=int(3.0 / dt))
+    s.step(lambda: [("object", box(1.5, 0.6, 0.45, 0.2, s.cfg))], n=4)     # another box
+    s.step(lambda: [("person", box(1.5, 0.6, 0.45, 1.7, s.cfg))], n=4)     # another kind
+    s.step(fresh=False, n=4)
+    out.append(_run_avoider("hold_roll_on_the_box", "low", s.steps))
+
+    s = Script("default")
+    f = focal_fw(configs["default"])
+    s.step(lambda: [s.seen(1.5)], sign=(0.5, 3.5))
+    for k2 in range(int(3.0 / dt)):
+        lat = -0.02 * k2
+        s.step(lambda: [s.seen(2.0)], sign=(r9(0.5 + f * (-lat) / 3.5), 3.5))
+    s.step(lambda: [s.seen(2.0)], n=10)
+    s.step(lambda: [s.seen(2.0)], sign=(0.62, 3.4), n=3)
+    out.append(_run_avoider("hold_roll_on_the_sign", "default", s.steps))
+
+    # odd clocks: time going backwards, a long gap (dt clamped to 0.5) and repeated times
+    s = Script("default")
+    s.step(lambda: [s.seen(1.5)])
+    for step_dt in (dt, -0.2, 0.0, 0.0, 2.0, 0.6, dt, -1.0, dt, 30.0, dt):
+        s.step(lambda: [s.seen(1.5)], step_dt=step_dt)
+    out.append(_run_avoider("odd_clocks", "default", s.steps))
+
+    # flapping between clear and slow: more than 200 state changes (the event list is trimmed by 50)
+    s = Script("default")
+    for i in range(215):
+        s.step((lambda: [s.seen(2.9, kind="object", height=0.9)]) if i % 2 else list)
+    out.append(_run_avoider("event_trimming", "default", s.steps))
+
+    # random sequences on every configuration
+    # (busy and quiet stretches, so that it holds, clears and holds again before it is blocked)
+    for seed, cfg_name, n in ((1, "default", 100), (2, "low", 100), (3, "wide", 140), (4, "ground", 24)):
+        r = random.Random(1000 + seed)
+        s = Script(cfg_name)
+        lateral_drift = 0.0
+        busy = False
+        for i in range(n):
+            if r.random() < 0.05:
+                lateral_drift = r.uniform(-0.03, 0.03)
+            if r.random() < 0.08:
+                busy = not busy
+            items = []
+            for _ in range(r.choice((0, 1, 1, 2, 3) if busy else (0, 0, 0, 0, 0, 0, 1))):
+                kind = r.choice(("person", "object"))
+                distance = r.choice((r.uniform(0.6, 1.9), r.uniform(1.0, 3.2), r.uniform(2.5, 8.0)))
+                lateral = r.choice((r.uniform(-0.6, 0.6), r.uniform(-3.0, 3.0), lateral_drift * (i % 40)))
+                height = 1.7 if kind == "person" else r.choice((0.2, 0.9, 1.2))
+                items.append((kind, box(distance, lateral, 0.45, height, s.cfg)))
+            fresh = r.random() < 0.85
+            sign = None if r.random() < 0.4 else (r6(r.uniform(0.2, 0.8)), r6(r.uniform(0.5, 6.0)))
+            step_dt = r.choice((dt, dt, dt, dt, 0.02, 0.1, 0.6, -0.05)) + r.uniform(-0.002, 0.002)
+            s.step(lambda: items, step_dt=round(step_dt, 6), fresh=fresh, sign=sign)
+        out.append(_run_avoider(f"random_{cfg_name}", cfg_name, s.steps))
+    return out
+
+
+def build_avoid() -> dict:
+    from medhop.mission.avoid import AVOID_STATES, NOT_MOVING_ON, AvoidConfig
+    rng = random.Random(20261112)
+    return {
+        "config_defaults": dataclasses.asdict(AvoidConfig()),
+        "configs": {name: dataclasses.asdict(cfg) for name, cfg in _avoid_configs().items()},
+        "constants": {"AVOID_STATES": list(AVOID_STATES), "NOT_MOVING_ON": list(NOT_MOVING_ON)},
+        "functions": _avoid_functions(rng),
+        "sequences": _avoid_sequences(rng),
+    }
+
+
+# ---------------------------------------------------------------------------------------------- #
 # simulator: drone/sim.py in stepped mode, drone/sim_actors.py, and the camera both use
 #
 # The simulator's own noise comes from numpy's generator, which the TypeScript port cannot replay, so
@@ -2013,6 +2315,1463 @@ def build_detector_calibration() -> dict:
 
 
 # ---------------------------------------------------------------------------------------------- #
+# marker7: the station sign's marker as OpenCV draws it, for the line drawing in frontend/src/scene
+
+def build_marker7() -> dict:
+    """ArUco DICT_4X4_50 id 7 at one pixel per cell: cv2.aruco.generateImageMarker(dictionary, 7, 6)
+    (marker.marker_image, which the printed sign uses). Six rows of six cells including the one-cell
+    black border, top row first, 1 = white."""
+    image = marker_module.marker_image(7, 6)
+    return {"dictionary": marker_module.ARUCO_DICT_NAME, "id": 7, "side_cells": int(image.shape[0]),
+            "bits": [[int(v > 127) for v in row] for row in image]}
+
+
+# ---------------------------------------------------------------------------------------------- #
+# runner_*: mission/runner.py and the mixer it drives, recorded call by call for an open-loop replay
+#
+# Every call the runner and the mixer get from outside is an op: runner.step(obs, now) ("s"),
+# mixer.tick(now) ("k"), and whatever the scenario does (start, abort, the setters, pilot input, ...).
+# Each op records its inputs, what the link reported before it (only what changed: the latest frame's
+# timestamp and sequence "f", the telemetry "tel", the link mode, the person status, the pilot link),
+# what it returned ("out"), what the runner handed the mixer ("cmd" mission commands, "mt" mission
+# toggles, "clr" clear_mission_command calls), what the link was asked and answered besides frames and
+# telemetry ("lk": control_up, toggle, estop, calibrate), the store writes ("store"), the log lines
+# ("log"), every line-up pose fit with Python's one-ulp spread of it ("fits", the rule of the pose group),
+# and after every op but a tick the runner's whole public state: snapshot() plus obstacles_snapshot(),
+# hover_snapshot(), settings(), ready_for_dose, auto_fly, avoid_mode and arrive_width ("S": the keys that
+# changed since the previous op; the first op has all of them). frontend/src/engine/mission/runner.test.ts
+# replays the ops into the TypeScript runner and mixer over a link that answers what was recorded.
+#
+# Closed-loop scenarios are real SimHarness runs (tests/harness.py: rendering and the OpenCV detector);
+# the runner and the mixer are rebuilt on a recording proxy of the simulator link. Observations are
+# rounded before the runner sees them (cx, cy, width, height to 9 decimals, corners to 1e-4 px), which
+# keeps the files small: the Python runner sees exactly the recorded values. Scripted scenarios drive the
+# runner like tests/test_runner.py (a RecordingLink, synthetic detections, the line-up off). Run ids are
+# made deterministic for the files: the stamp in UTC instead of local time and a counter instead of
+# secrets.token_hex.
+
+RUNNER_WALL_EPOCH = 1_794_000_000.0      # tests/harness.py WALL_EPOCH
+# The scripted scenarios step 1/16 s (tests/test_runner.py: 1/15 s) and every time step is a multiple
+# of 1/16 s, so their times are exact binary fractions with short decimal forms.
+RUNNER_DT = 1.0 / 16.0
+_NO_OUT = object()
+
+
+def _runner_spread(corners: Any, w: Any, h: Any, size_m: float, hfov: float, iterations: int, base: Any,
+                   seed: int) -> Any:
+    """_python_spread's two nudge patterns plus 16 random ones (each coordinate moved one unit in the last
+    place up or down, or left, at random; seeded per fit). The line-up's poses are close and nearly
+    square-on, where the two fixed patterns can miss most of the instability: for some of these fits
+    Python's own answer moves a hundred times further under a random one-ulp nudge."""
+    spread = _python_spread(corners, w, h, size_m, hfov, iterations, base)
+    if spread is None:
+        return None
+    rng = random.Random(seed)
+    for _ in range(16):
+        nudged = [[math.nextafter(v, rng.choice((INF, -INF))) if rng.random() < 0.75 else v for v in c]
+                  for c in corners]
+        pose = fit_sign_pose(nudged, w, h, size_m, hfov, iterations)
+        for name in POSE_FIELDS:
+            change = INF if pose is None else abs(getattr(pose, name) - base[name])
+            spread[name] = max(spread[name], change)
+    return spread
+
+
+def _round_up_2(x: float) -> float:
+    """x to two significant digits, rounded away from zero (a recorded spread is a tolerance)."""
+    if x == 0.0 or not math.isfinite(x):
+        return x
+    exponent = math.floor(math.log10(abs(x))) - 1
+    return math.ceil(x / 10.0 ** exponent) * 10.0 ** exponent
+
+
+class _UtcDatetime:
+    """Stands in for datetime in mission/runner.py: fromtimestamp in UTC, so run ids do not depend on the
+    machine's time zone."""
+
+    @staticmethod
+    def fromtimestamp(ts: float) -> Any:
+        from datetime import datetime, timezone
+        return datetime.fromtimestamp(ts, timezone.utc).replace(tzinfo=None)
+
+
+def _rounded_obs(obs: Any) -> Any:
+    from medhop.vision.marker import MarkerObs, Observation
+    m = obs.marker
+    if m is not None:
+        m = MarkerObs(id=m.id, cx=r9(m.cx), cy=r9(m.cy), width=r9(m.width),
+                      corners=tuple((round(float(x), 4), round(float(y), 4)) for x, y in m.corners),
+                      ts=m.ts, height=r9(m.height), frame_w=m.frame_w, frame_h=m.frame_h)
+    return Observation(ts=obs.ts, seq=obs.seq, marker=m, brightness=obs.brightness, obstacles=tuple(obs.obstacles))
+
+
+def _obs_record(obs: Any, now: float, frame_size: List[int], previous: List[Any]) -> Any:
+    """[ts, seq, marker, obstacles]: ts null when it is the op's time; marker [cx, cy, width, height,
+    [8 corner coordinates] or null when they are the previous marker's] (its id is 7, its ts the
+    observation's, its frame size the scenario's); obstacles [[kind, x1, y1, x2, y2]] (each stamped with
+    the observation's ts). `previous` holds the last corners written."""
+    if obs is None:
+        return None
+    m = obs.marker
+    marker = None
+    if m is not None:
+        assert m.ts == obs.ts and [m.frame_w, m.frame_h] == frame_size and m.id == 7, "a marker the replay can rebuild"
+        corners = [float(v) for c in m.corners for v in c]
+        marker = [m.cx, m.cy, m.width, m.height, None if corners == previous[0] else corners]
+        previous[0] = corners
+    for o in obs.obstacles:
+        assert o.ts == obs.ts, "obstacles carry the frame's time"
+    return [None if obs.ts == now else obs.ts, obs.seq, marker, [[o.kind, *o.box] for o in obs.obstacles]]
+
+
+def _person_record(p: Any) -> list:
+    return [p.enabled, p.detected, p.count, p.ts, [list(b) for b in p.boxes]]
+
+
+def _trace_record(trace: Dict[str, Any]) -> Dict[str, Any]:
+    """The run trace as written, with its samples (which all share keys) column by column, each column
+    run-length encoded: {"keys": [...], "n": count, "columns": [[[value, repeats], ...], ...]}."""
+    out = encode(trace)
+    samples = out["samples"]
+    keys = list(samples[0]) if samples else []
+    columns = []
+    for key in keys:
+        runs: List[list] = []
+        for s in samples:
+            assert list(s) == keys, "every sample of a run has the same keys"
+            if runs and json.dumps(runs[-1][0]) == json.dumps(s[key]):
+                runs[-1][1] += 1
+            else:
+                runs.append([s[key], 1])
+        columns.append(runs)
+    out["samples"] = {"keys": keys, "n": len(samples), "columns": columns}
+    return out
+
+
+class _RunnerRecorder:
+    def __init__(self, inner: Any, clock: Any, person: Callable[[], Any], pilot: Optional[Callable[[], bool]]) -> None:
+        self.inner = inner
+        self.clock = clock
+        self.person = person
+        self.pilot = pilot
+        self.ops: List[dict] = []
+        self.cur: Optional[dict] = None
+        self.env: Dict[str, Any] = {}
+        self.state: Dict[str, str] = {}
+        self.runner: Any = None
+        self.capture = _LogCapture()
+        self._log_start = 0
+        self.frame_size = [640, 360]
+        self.run_ids = 0
+        self.corners: List[Any] = [None]
+        self.last_axes: Optional[List[float]] = None
+        self.fits = 0
+
+    # -- what the link shows -------------------------------------------------------------------- #
+    def env_now(self) -> Dict[str, Any]:
+        f = self.inner.latest_frame()
+        tel = self.inner.telemetry()
+        return {"f": None if f is None else [f.timestamp, f.seq],
+                "tel": None if tel is None else [tel.fly_state_raw, tel.battery_raw, tel.flags_raw, tel.timestamp],
+                "mode": self.inner.mode,
+                "person": _person_record(self.person()),
+                "pilot": None if self.pilot is None else bool(self.pilot())}
+
+    def check(self, key: str, value: Any) -> None:
+        if self.cur is not None:
+            assert self.env[key] == value, f"the link's {key} changed inside an op: the replay would not see it"
+
+    # -- ops ------------------------------------------------------------------------------------- #
+    def begin(self, kind: str, now: float, **inputs: Any) -> dict:
+        assert self.cur is None, "ops do not nest"
+        op: Dict[str, Any] = {"o": kind, "t": now, **{k: encode(v) for k, v in inputs.items()}}
+        env = self.env_now()
+        for key, value in env.items():
+            if key not in self.env or json.dumps(self.env[key]) != json.dumps(value):
+                op[key] = value
+        self.env = env
+        self.cur = op
+        self._log_start = len(self.capture.records)
+        return op
+
+    def effect(self, key: str, value: Any) -> None:
+        assert self.cur is not None, f"{key} outside an op: not replayable"
+        self.cur.setdefault(key, []).append(encode(value))
+
+    def end(self, out: Any = _NO_OUT, snapshot: bool = True) -> None:
+        op = self.cur
+        assert op is not None
+        if out is not _NO_OUT:
+            op["out"] = encode(out)
+        logs = self.capture.records[self._log_start:]
+        if logs:
+            op["log"] = logs
+        if snapshot:
+            state = self.public_state(op["t"])
+            changed = {k: v for k, v in state.items() if k not in self.state or self.state[k] != json.dumps(v)}
+            if changed:
+                op["S"] = changed
+            self.state = {k: json.dumps(v) for k, v in state.items()}
+        self.cur = None
+        self.ops.append(op)
+
+    def public_state(self, now: float) -> Dict[str, Any]:
+        r = self.runner
+        return encode({**r.snapshot(now), "_obstacles": r.obstacles_snapshot(now), "_hover": r.hover_snapshot(now),
+                       "_settings": r.settings(), "_ready_for_dose": r.ready_for_dose, "_auto_fly": r.auto_fly,
+                       "_avoid_mode": r.avoid_mode, "_arrive_width": r.arrive_width, "_state": r.state,
+                       "_reason": r.reason})
+
+    def call(self, kind: str, fn: Callable[[], Any], snapshot: bool = True, **inputs: Any) -> Any:
+        self.begin(kind, self.clock.t, **inputs)
+        try:
+            out = fn()
+        except ValueError as exc:
+            out = {"error": "ValueError", "message": str(exc)}
+        self.end(out, snapshot=snapshot)
+        return out
+
+    # -- wiring ---------------------------------------------------------------------------------- #
+    def wire(self, runner: Any, mixer: Any) -> None:
+        """Wrap runner.step and mixer.tick (instance attributes) so every call becomes an op."""
+        self.runner = runner
+        real_step, real_tick = runner.step, mixer.tick
+
+        def step(obs: Any, now: Optional[float] = None) -> None:
+            now = self.clock() if now is None else now
+            if obs is not None:
+                obs = _rounded_obs(obs)
+            op = self.begin("s", now, obs=_obs_record(obs, now, self.frame_size, self.corners))
+            if obs is not None and op.get("f") == [obs.ts, obs.seq]:
+                op["f"] = 1          # the frame this observation came from
+            real_step(obs, now)
+            self.end()
+
+        def tick(now: Optional[float] = None) -> Any:
+            now = self.clock() if now is None else now
+            self.begin("k", now)
+            axes = list(real_tick(now))
+            if axes == self.last_axes:
+                self.end(snapshot=False)       # no "out": the same axes as the previous tick
+            else:
+                self.end(axes, snapshot=False)
+            self.last_axes = axes
+            return tuple(axes)
+
+        runner.step = step
+        mixer.tick = tick
+
+    def recording(self) -> Any:
+        import contextlib
+        import types
+
+        recorder = self
+
+        @contextlib.contextmanager
+        def ctx():
+            from medhop.mission import runner as runner_module
+
+            def fit(corners, frame_w, frame_h, marker_size_m, hfov_deg, iterations=12):
+                pose = fit_sign_pose(corners, frame_w, frame_h, marker_size_m, hfov_deg, iterations)
+                out = _pose_out(pose)
+                spread = _runner_spread([list(c) for c in corners], frame_w, frame_h, marker_size_m, hfov_deg,
+                                        iterations, out, recorder.fits)
+                recorder.fits += 1
+                recorder.effect("fits", [None if out is None else [out[k] for k in POSE_FIELDS],
+                                         None if spread is None else [_round_up_2(spread[k]) for k in POSE_FIELDS]])
+                return pose
+
+            def token_hex(n: int) -> str:
+                recorder.run_ids += 1
+                return f"{recorder.run_ids:0{2 * n}x}"
+
+            logger = logging.getLogger("medhop.mission")
+            mixer_logger = logging.getLogger("medhop.mixer")     # its lines are the mixer group's business
+            saved = (logger.level, logger.propagate, logging.root.manager.disable, mixer_logger.disabled)
+            logging.disable(logging.NOTSET)
+            logger.addHandler(recorder.capture)
+            logger.setLevel(logging.DEBUG)
+            logger.propagate = False
+            mixer_logger.disabled = True
+            try:
+                with mock.patch.object(runner_module, "fit_sign_pose", fit), \
+                        mock.patch.object(runner_module, "datetime", _UtcDatetime), \
+                        mock.patch.object(runner_module, "secrets", types.SimpleNamespace(token_hex=token_hex)):
+                    yield
+            finally:
+                logger.removeHandler(recorder.capture)
+                logger.setLevel(saved[0])
+                logger.propagate = saved[1]
+                logging.disable(saved[2])
+                mixer_logger.disabled = saved[3]
+
+        return ctx()
+
+
+class _ProxyLink:
+    """The DroneLink the runner and the mixer see: the real one, with every answer recorded."""
+
+    def __init__(self, inner: Any, rec: _RunnerRecorder) -> None:
+        self.inner = inner
+        self.rec = rec
+
+    @property
+    def mode(self) -> str:
+        return self.inner.mode
+
+    def latest_frame(self) -> Any:
+        f = self.inner.latest_frame()
+        self.rec.check("f", None if f is None else [f.timestamp, f.seq])
+        return f
+
+    def telemetry(self) -> Any:
+        t = self.inner.telemetry()
+        self.rec.check("tel", None if t is None else [t.fly_state_raw, t.battery_raw, t.flags_raw, t.timestamp])
+        return t
+
+    def set_axes(self, throttle: float, yaw: float, pitch: float, roll: float) -> None:
+        self.inner.set_axes(throttle, yaw, pitch, roll)
+
+    def takeoff_land_toggle(self) -> bool:
+        result = self.inner.takeoff_land_toggle()
+        self.rec.effect("lk", ["toggle", result])
+        return result
+
+    def emergency_stop(self) -> bool:
+        result = self.inner.emergency_stop()
+        self.rec.effect("lk", ["estop", result])
+        return result
+
+    def control_up(self) -> bool:
+        result = self.inner.control_up()
+        self.rec.effect("lk", ["control_up", result])
+        return result
+
+    def drone_seen(self) -> bool:
+        return self.inner.drone_seen()
+
+    def calibrate(self) -> None:
+        self.inner.calibrate()
+        self.rec.effect("lk", ["calibrate", None])
+
+    def start(self) -> None:
+        self.inner.start()
+
+    def stop(self) -> None:
+        self.inner.stop()
+
+
+def _spy_mixer(link: Any, rec: _RunnerRecorder, clock: Any) -> Any:
+    class SpyMixer(ControlMixer):
+        """Records what the runner hands the mixer."""
+
+        def mission_command(self, yaw: float, pitch: float, now: Optional[float] = None, roll: float = 0.0) -> None:
+            rec.effect("cmd", [yaw, pitch, roll])
+            super().mission_command(yaw, pitch, now, roll=roll)
+
+        def mission_toggle(self, now: Optional[float] = None, landing: bool = True) -> bool:
+            result = super().mission_toggle(now, landing=landing)
+            rec.effect("mt", [landing, result])
+            return result
+
+        def clear_mission_command(self) -> None:
+            rec.effect("clr", 1)
+            super().clear_mission_command()
+
+    return SpyMixer(link, rate_hz=20.0, clock=clock)
+
+
+class _RecordingStore:
+    """The real CareStore, with every write the runner makes recorded ("store" of the op)."""
+
+    def __init__(self, inner: Any, rec: _RunnerRecorder) -> None:
+        self._inner = inner
+        self._rec = rec
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+    def add_event(self, event_type: str, dose_id: Optional[str] = None, run_id: Optional[str] = None,
+                  detail: Optional[Dict[str, Any]] = None, ts: Optional[float] = None) -> Any:
+        self._rec.effect("store", ["event", event_type, dose_id, run_id, detail, ts])
+        return self._inner.add_event(event_type, dose_id=dose_id, run_id=run_id, detail=detail, ts=ts)
+
+    def write_run_trace(self, run_id: str, trace: Dict[str, Any]) -> Any:
+        self._rec.effect("store", ["trace", run_id, _trace_record(trace)])
+        return self._inner.write_run_trace(run_id, trace)
+
+    def _save(self, name: str, value: Any) -> None:
+        self._rec.effect("store", [name, value])
+        getattr(self._inner, name)(value)
+
+    def save_arrive_width(self, width: float) -> None:
+        self._save("save_arrive_width", width)
+
+    def save_land_on_arrival(self, enabled: bool) -> None:
+        self._save("save_land_on_arrival", enabled)
+
+    def save_drift_assist(self, enabled: bool) -> None:
+        self._save("save_drift_assist", enabled)
+
+    def save_auto_fly(self, enabled: bool) -> None:
+        self._save("save_auto_fly", enabled)
+
+    def save_avoid(self, mode: str) -> None:
+        self._save("save_avoid", mode)
+
+
+def _scenario_init(settings: Any, runner_config: Any, rec: _RunnerRecorder, store: Any, avoid_config: Any = None,
+                   **extra: Any) -> dict:
+    from medhop.mission.runner import RunnerConfig
+    from medhop.mission.avoid import AvoidConfig
+    defaults = dataclasses.asdict(RunnerConfig())
+    overrides = {k: v for k, v in dataclasses.asdict(runner_config or RunnerConfig()).items() if defaults[k] != v}
+    avoid_defaults = dataclasses.asdict(AvoidConfig(hfov_deg=settings.camera_hfov_deg))
+    avoid_overrides = ({} if avoid_config is None else
+                       {k: v for k, v in dataclasses.asdict(avoid_config).items() if avoid_defaults[k] != v})
+    return {"settings": {name: getattr(settings, name) for name in SETTINGS_FIELDS},
+            "runner_config": overrides, "avoid_config": avoid_overrides,
+            "pilot_check": rec.pilot is not None, "frame_size": rec.frame_size, "marker_id": settings.marker_id,
+            "loads": {"arrive_width": store.load_arrive_width(), "land_on_arrival": store.load_land_on_arrival(),
+                      "drift_assist": store.load_drift_assist(), "auto_fly": store.load_auto_fly(),
+                      "avoid": store.load_avoid()},
+            **extra}
+
+
+class _Ops:
+    """The scenario's own calls (start, abort, the setters, pilot input), each recorded as an op. `runner`,
+    `mixer` and `link` are the objects the runner was built with; `inner` the raw link."""
+
+    def __init__(self, rec: _RunnerRecorder, runner: Any, mixer: Any, clock: Any, settings: Any) -> None:
+        self.rec, self.runner, self.mixer, self.clock, self.settings = rec, runner, mixer, clock, settings
+
+    def start(self, confirm: bool = True, dose: Optional[str] = "d1", automatic: bool = False) -> Any:
+        rec = self.rec
+        rec.begin("start", self.clock.t, c=confirm, d=dose, a=automatic)
+        out = self.runner.start(confirm, dose, now=self.clock.t, automatic=automatic)
+        if out[0]:
+            rec.cur["rid"] = self.runner.snapshot(self.clock.t)["run_id"]
+        rec.end(out)
+        return out
+
+    def abort(self, reason: str = "pilot_took_over") -> Any:
+        return self.rec.call("abort", lambda: self.runner.abort(reason, now=self.clock.t), r=reason)
+
+    def set(self, name: str, value: Any) -> Any:
+        method = {"land_on_arrival": "set_land_on_arrival", "drift_assist": "set_drift_assist",
+                  "auto_fly": "set_auto_fly", "avoid": "set_avoid"}[name]
+        return self.rec.call("set", lambda: getattr(self.runner, method)(value), n=name, v=value)
+
+    def hover(self) -> Any:
+        return self.rec.call("hover", lambda: self.runner.start_hover_test(now=self.clock.t))
+
+    def calibrate(self) -> Any:
+        return self.rec.call("calibrate", lambda: self.runner.calibrate_arrival(now=self.clock.t))
+
+    def ready(self) -> Any:
+        return self.rec.call("ready", self.runner.mark_ready_for_dose)
+
+    def note(self) -> Any:
+        return self.rec.call("note", self.runner.note_pilot_input)
+
+    def blockers(self) -> Any:
+        return self.rec.call("blockers", lambda: self.runner.blockers(now=self.clock.t))
+
+    def flush(self) -> Any:
+        return self.rec.call("flush", self.runner.flush)
+
+    def pilot_axes(self, *v: float) -> Any:
+        return self.rec.call("pilot_axes", lambda: self.mixer.pilot_axes(*v, now=self.clock.t), v=list(v))
+
+    def pilot_toggle(self) -> Any:
+        def fn() -> Any:
+            r = self.mixer.pilot_toggle(self.clock.t)
+            return [r.ok, r.message, r.code]
+        return self.rec.call("pilot_toggle", fn)
+
+    def pilot_estop(self) -> Any:
+        return self.rec.call("pilot_estop", lambda: self.mixer.pilot_estop(self.clock.t))
+
+    def estop_reset(self) -> Any:
+        return self.rec.call("estop_reset", self.mixer.estop_reset)
+
+    def pilot_disconnect(self) -> Any:
+        return self.rec.call("pilot_disconnect", self.mixer.pilot_disconnect)
+
+    def set_trim(self, roll: float, pitch: float) -> Any:
+        return self.rec.call("set_trim", lambda: list(self.mixer.set_trim(roll, pitch)), v=[roll, pitch])
+
+    def settings_field(self, **fields: Any) -> Any:
+        def fn() -> None:
+            for key, value in fields.items():
+                setattr(self.settings, key, value)
+        return self.rec.call("settings", fn, v=fields)
+
+
+def _record_closed_loop(name: str, description: str, sim_config: Any, script: Callable[[Any, _Ops], None],
+                        runner_config: Any = None, dropout: float = 0.0, seed: int = 0,
+                        avoid_config: Any = None) -> dict:
+    """A SimHarness run (tests/harness.py) with the runner and the mixer rebuilt on a recording proxy."""
+    from medhop.mission.runner import MissionRunner
+    from tests.harness import SimHarness
+    h = SimHarness(sim_config, runner_config=runner_config, marker_dropout=dropout, dropout_seed=seed)
+    try:
+        rec = _RunnerRecorder(h.sim, h.clock, lambda: h.person, None)
+        rec.frame_size = [h.sim.cfg.width, h.sim.cfg.height]
+        link = _ProxyLink(h.sim, rec)
+        mixer = _spy_mixer(link, rec, h.clock)
+        store = _RecordingStore(h.store, rec)
+        runner = MissionRunner(link, mixer, store, h.settings, clock=h.clock, wall_clock=h.wall,
+                               person_status=lambda: h.person, config=runner_config, avoid_config=avoid_config)
+        mixer.on_pilot_input = lambda kind: runner.abort("estop" if kind == "estop" else "pilot_took_over")
+        h.mixer, h.store, h.runner = mixer, store, runner
+        rec.wire(runner, mixer)
+        init = _scenario_init(h.settings, runner_config, rec, store, avoid_config, kind="closed_loop", clock=h.clock.t,
+                              sim={k: v for k, v in dataclasses.asdict(sim_config).items()
+                                   if k in ("seed", "start_distance_m", "start_x_m", "start_heading_deg",
+                                            "start_airborne", "lateral_drift", "lateral_gain", "width", "height")},
+                              marker_dropout=dropout)
+        with rec.recording():
+            script(h, _Ops(rec, runner, mixer, h.clock, h.settings))
+        return {"name": name, "description": description, "init": init, "ops": rec.ops}
+    finally:
+        h.close()
+
+
+def _done(h: Any) -> bool:
+    return h.runner.state in ("done", "aborted")
+
+
+def _cl_scenarios() -> List[Tuple[str, str, Callable[[], dict]]]:
+    """(group, name, builder) of every closed-loop scenario."""
+    from medhop.drone.sim import SimConfig
+    from medhop.drone.sim_actors import SCENARIOS
+    from medhop.mission.runner import RunnerConfig
+    out: List[Tuple[str, str, Callable[[], dict]]] = []
+
+    def auto_done() -> dict:
+        def script(h: Any, ops: _Ops) -> None:
+            h.warm_up(1.0)
+            ops.start(confirm=False, dose="d1", automatic=True)
+            h.run(70.0, until=_done)
+            h.run(1.5)
+        return _record_closed_loop("auto_done", "automatic run from the ground: countdown, takeoff, search, approach, "
+                                   "line-up, landing (tests/test_automatic.py AutomaticClosedLoopTests)",
+                                   SimConfig(seed=1, start_airborne=False, start_distance_m=2.5,
+                                             start_heading_deg=10.0), script)
+
+    def manual(name: str, description: str, land: bool, assist: bool = False, dropout: float = 0.0,
+               **sim: Any) -> Callable[[], dict]:
+        def build() -> dict:
+            def script(h: Any, ops: _Ops) -> None:
+                h.warm_up(1.0)
+                ops.set("land_on_arrival", land)
+                if assist:
+                    ops.set("drift_assist", True)
+                ops.start(confirm=True, dose="d1")
+                h.run(70.0, until=_done)
+                h.run(0.5)
+            seed = sim.pop("seed", 0)
+            return _record_closed_loop(name, description, SimConfig(seed=seed, start_airborne=True, **sim), script,
+                                       dropout=dropout, seed=seed)
+        return build
+
+    out.append(("runner_auto", "auto_done", auto_done))
+    out.append(("runner_manual", "manual_land", manual(
+        "manual_land", "manual run, land on arrival on, 0.08 m/s drift, 15 degrees off (test_sim_closed_loop.py)",
+        True, seed=0, lateral_drift=0.08, start_distance_m=2.0, start_heading_deg=15.0)))
+    out.append(("runner_manual", "manual_no_land", manual(
+        "manual_no_land", "manual run, land on arrival off: done without the toggle", False,
+        seed=2, lateral_drift=0.0, start_distance_m=1.8, start_heading_deg=-10.0)))
+    out.append(("runner_manual", "assist_switches_off", manual(
+        "assist_switches_off", "drift assist on, the drone answers roll the other way (lateral_gain -1): the "
+        "assist switches itself off (test_sim_closed_loop.py test_i)", True, assist=True,
+        seed=0, lateral_drift=0.08, start_distance_m=2.5, start_heading_deg=25.0, lateral_gain=-1.0)))
+    out.append(("runner_manual", "dropout_half", manual(
+        "dropout_half", "half the detections thrown away: the approach and the line-up coast through", True,
+        dropout=0.5, seed=0, lateral_drift=0.0, start_distance_m=2.2, start_heading_deg=0.0)))
+
+    def avoid_run(scenario: str, seed: int, avoid_config: Any = None) -> Callable[[], dict]:
+        def build() -> dict:
+            sc = SCENARIOS[scenario]
+            config = SimConfig(seed=seed, start_airborne=False, start_distance_m=sc.start_distance_m or 2.5,
+                               start_heading_deg=5.0 if seed % 3 == 0 else -5.0,
+                               lateral_drift=0.08 if seed % 2 == 0 else -0.08, actors=sc.actors)
+
+            def script(h: Any, ops: _Ops) -> None:
+                h.warm_up(1.0)
+                ops.start(confirm=False, dose="d1", automatic=True)
+                h.run(150.0, until=_done)
+                h.run(3.0)
+            note = "" if avoid_config is None else f", blocked_timeout_s {avoid_config.blocked_timeout_s}"
+            return _record_closed_loop(f"avoid_{scenario}", f"avoidance hold, automatic run, the {scenario} scenario "
+                                       f"(tests/test_avoid_sim.py){note}", config, script,
+                                       runner_config=RunnerConfig(avoid="hold"), avoid_config=avoid_config)
+        return build
+
+    from medhop.mission.avoid import AvoidConfig
+    for scenario, seed, avoid_config in (("crossing", 0, None), ("standing", 0, AvoidConfig(blocked_timeout_s=15.0)),
+                                         ("blocked", 0, AvoidConfig(blocked_timeout_s=6.0))):
+        out.append(("runner_avoid", f"avoid_{scenario}", avoid_run(scenario, seed, avoid_config)))
+
+    def cart() -> dict:
+        sc = SCENARIOS["cart"]
+        config = SimConfig(seed=0, start_airborne=False, start_distance_m=sc.start_distance_m, start_heading_deg=5.0,
+                           lateral_drift=0.08, actors=sc.actors)
+
+        def script(h: Any, ops: _Ops) -> None:
+            h.warm_up(1.0)
+            ops.blockers()
+            ops.start(confirm=False, dose="d1", automatic=True)
+            ops.start(confirm=True, dose="d1")
+            h.run(1.0)
+        return _record_closed_loop("avoid_cart", "a cart in the lane: both starts refused with obstacle_in_view",
+                                   config, script, runner_config=RunnerConfig(avoid="hold"))
+
+    out.append(("runner_quick", "avoid_cart", cart))
+
+    def empty() -> dict:
+        def script(h: Any, ops: _Ops) -> None:
+            h.warm_up(1.0)
+            ops.set("land_on_arrival", True)
+            ops.start(confirm=True, dose="d1")
+            h.run(70.0, until=_done)
+            h.run(1.0)
+        return _record_closed_loop("avoid_empty", "avoidance hold with nothing in the corridor, manual run",
+                                   SimConfig(seed=0, start_heading_deg=0.0, start_airborne=True, lateral_drift=0.0,
+                                             start_distance_m=1.6), script, runner_config=RunnerConfig(avoid="hold"))
+
+    out.append(("runner_avoid", "avoid_empty", empty))
+
+    def hover() -> dict:
+        def script(h: Any, ops: _Ops) -> None:
+            h.warm_up(1.0)
+            ops.hover()
+            h.run(10.5, until=lambda hh: hh.runner.state == "idle")
+            h.run(0.3)
+            ops.calibrate()
+            ops.blockers()
+        return _record_closed_loop("hover_and_calibrate", "the hover test in the simulator (0.03 m/s drift), then "
+                                   "calibrate_arrival", SimConfig(seed=0, lateral_drift=0.03, start_heading_deg=0.0,
+                                                                  start_airborne=True), script)
+
+    out.append(("runner_quick", "hover_and_calibrate", hover))
+    return out
+
+
+class _Rig(_Ops):
+    """tests/test_runner.py RunnerTestCase with every call recorded: a RecordingLink, synthetic detections
+    (placeholder corners), the line-up off, arrive width 0.16, a pilot window, the clock at 1000 s."""
+
+    def __init__(self, runner_config: Any = None, avoid_config: Any = None, **settings_kw: Any) -> None:
+        from medhop.care.store import CareStore
+        from medhop.mission.runner import MissionRunner, RunnerConfig
+        from medhop.vision.person import PersonStatus
+        from tests.harness import FakeClock, RecordingLink, make_temp_dir
+        self.dir = make_temp_dir()
+        clock = FakeClock(1000.0)
+        settings = Settings(data_dir=self.dir, person_check="off", **{"arrive_width": 0.16, **settings_kw})
+        self.inner = RecordingLink()
+        self.person = PersonStatus()
+        self.pilot_window = True
+        rec = _RunnerRecorder(self.inner, clock, lambda: self.person, lambda: self.pilot_window)
+        link = _ProxyLink(self.inner, rec)
+        mixer = _spy_mixer(link, rec, clock)
+        store = _RecordingStore(CareStore(self.dir, wall_clock=lambda: RUNNER_WALL_EPOCH + clock.t), rec)
+        config = runner_config or RunnerConfig(align_enabled=False)
+        runner = MissionRunner(link, mixer, store, settings, clock=clock, config=config,
+                               wall_clock=lambda: RUNNER_WALL_EPOCH + clock.t, person_status=lambda: self.person,
+                               pilot_connected=lambda: self.pilot_window, avoid_config=avoid_config)
+        mixer.on_pilot_input = lambda kind: runner.abort("estop" if kind == "estop" else "pilot_took_over")
+        rec.wire(runner, mixer)
+        super().__init__(rec, runner, mixer, clock, settings)
+        self.init = _scenario_init(settings, config, rec, store, avoid_config, kind="scripted", clock=clock.t)
+        self.seq = 0
+
+    def close(self) -> None:
+        import shutil
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def feed(self, seen: Any = None, boxes: Sequence[Tuple[str, Any]] = (), dt: float = RUNNER_DT) -> Any:
+        """One frame with the marker (or not) and simulator obstacle boxes, then on every fourth frame a mixer
+        tick. (tests/test_runner.py ticks on every frame; a tick changes nothing the runner reads, and the
+        closed-loop scenarios tick at the mixer's own rate.)"""
+        from medhop.vision.marker import MarkerObs, Observation, Obstacle
+        self.clock.advance(dt)
+        self.seq += 1
+        self.inner.new_frame(self.clock.t)
+        if seen is not None:
+            seen = MarkerObs(id=seen.id, cx=seen.cx, cy=seen.cy, width=seen.width, corners=seen.corners,
+                             ts=self.clock.t, height=seen.height)
+        obstacles = tuple(Obstacle(kind, tuple(box), self.clock.t) for kind, box in boxes)
+        self.runner.step(Observation(ts=self.clock.t, seq=self.seq, marker=seen, brightness=100.0,
+                                     obstacles=obstacles), self.clock.t)
+        return self.mixer.tick(self.clock.t) if self.seq % 4 == 0 else None
+
+    def see(self, seen: Any, frames: int = 3) -> Any:
+        axes = None
+        for _ in range(frames):
+            axes = self.feed(seen)
+        return axes
+
+    def idle(self, seconds: float, step: float = RUNNER_DT) -> Any:
+        axes = None
+        end = self.clock.t + seconds
+        ticks = 0
+        while self.clock.t < end - 1e-9:
+            self.clock.advance(step)
+            self.runner.step(None, self.clock.t)
+            ticks += 1
+            if ticks % 4 == 0:
+                axes = self.mixer.tick(self.clock.t)
+        return axes
+
+    def step_none(self) -> None:
+        self.runner.step(None, self.clock.t)
+
+    def approach(self, start: float = 0.05, stop: float = 0.2, step: float = 0.004, **kw: Any) -> None:
+        width = start
+        while self.runner.state == "approaching" and width < stop:
+            self.feed(_marker(width=width, **kw))
+            width += step
+
+    def through_takeoff(self, seen: Any = None) -> None:
+        for _ in range(int(self.runner.cfg.countdown_s / RUNNER_DT) + 2):
+            self.feed(seen)
+        for _ in range(int(self.runner.cfg.takeoff_wait_s / RUNNER_DT) + 2):
+            self.feed(seen)
+
+    def fly_in(self, cy: float = 0.5, stop: Optional[float] = None) -> None:
+        width = 0.05
+        while width < 0.17 and (stop is None or width < stop):
+            self.feed(_marker(width=width, cy=cy))
+            width += 0.004
+
+    def tel(self, fly: int, battery: int, flags: int, ts: float) -> None:
+        from medhop.drone.base import Telemetry
+        self.inner.tel = Telemetry(fly, battery, flags, ts)
+
+    def set_person(self, **kw: Any) -> None:
+        from medhop.vision.person import PersonStatus
+        self.person = PersonStatus(**kw)
+
+
+def _marker(cx: float = 0.5, width: float = 0.05, aspect: float = 1.0, cy: float = 0.5) -> Any:
+    """tests/test_runner.py marker()."""
+    from medhop.vision.marker import MarkerObs
+    return MarkerObs(id=7, cx=cx, cy=cy, width=width, corners=((0, 0), (1, 0), (1, 1), (0, 1)), ts=0.0,
+                     height=width / aspect)
+
+
+def _person_box(distance: float, lateral: float = 0.0, width: float = 0.45, height: float = 1.7) -> Tuple[float, ...]:
+    """tests/test_avoid_runner.py person_box."""
+    from medhop.mission.avoid import AvoidConfig, focal_fh, focal_fw
+    cfg = AvoidConfig()
+    f, fh = focal_fw(cfg), focal_fh(cfg)
+    box = (0.5 + (lateral - width / 2) * f / distance, 0.5 - (height - 1.0) * fh / distance,
+           0.5 + (lateral + width / 2) * f / distance, 0.5 + 1.0 * fh / distance)
+    return tuple(r9(max(0.0, min(1.0, v))) for v in box)
+
+
+def _scripted(name: str, description: str, script: Callable[[_Rig], None], **rig_kw: Any) -> dict:
+    rig = _Rig(**rig_kw)
+    try:
+        with rig.rec.recording():
+            rig.see(_marker(width=0.05))           # RunnerTestCase.setUp
+            script(rig)
+        return {"name": name, "description": description, "init": rig.init, "ops": rig.rec.ops}
+    finally:
+        rig.close()
+
+
+def _s_blockers(r: _Rig) -> None:
+    """Every start blocker, the hover and calibration refusals, the setters, ready for dose."""
+    r.blockers()
+    r.pilot_window = False
+    r.start()
+    r.hover()
+    r.pilot_window = True
+    r.clock.advance(0.625)
+    r.blockers()                                   # no_video
+    r.inner.frame = None
+    r.start()
+    r.feed(_marker(width=0.05))
+    r.pilot_estop()
+    r.start()
+    r.hover()
+    r.estop_reset()
+    r.set_person(enabled=True, detected=True, count=1, ts=r.clock.t)
+    r.start()
+    r.set_person(enabled=False, detected=True, count=1, ts=r.clock.t)
+    r.blockers()
+    r.set_person(enabled=True, detected=True, count=1, ts=r.clock.t - 5.0)
+    r.blockers()                                   # a stale result is ignored
+    r.set_person()
+    r.settings_field(battery_low_raw=35)
+    r.blockers()                                   # no telemetry: no decision
+    r.tel(1, 35, 16, r.clock.t)
+    r.start()
+    r.tel(1, 36, 16, r.clock.t)
+    r.blockers()
+    r.tel(1, 35, 16, r.clock.t - 2.875)
+    r.blockers()
+    r.tel(1, 35, 16, r.clock.t - 3.0)
+    r.blockers()
+    r.settings_field(battery_low_raw=-1)
+    r.feed(_marker(width=0.16))
+    r.start()                                      # marker_too_close
+    r.feed(_marker(width=0.15))
+    r.start(confirm=False)                         # confirm_airborne_required
+    r.tel(1, 42, 16, r.clock.t)
+    r.start(confirm=False, automatic=True)         # drone_flying
+    r.inner.mode = "real"
+    r.blockers()
+    r.feed(_marker(width=0.05))
+    r.inner.mode = "sim"
+    r.inner.tel = None
+    r.pilot_toggle()
+    r.start(confirm=False, automatic=True)         # recent_toggle
+    r.clock.advance(10.5)
+    r.feed(_marker(width=0.05))
+    cart = ("object", _person_box(3.0, lateral=0.15, width=0.6, height=0.9))
+    beside = ("object", _person_box(3.0, lateral=1.5, width=0.6, height=0.9))
+    close = ("object", _person_box(2.0, lateral=1.5, width=0.6, height=0.9))
+    r.feed(_marker(width=0.05), boxes=[cart])
+    r.start()
+    r.start(confirm=False, automatic=True)
+    r.feed(_marker(width=0.05), boxes=[close])
+    r.blockers()
+    r.feed(_marker(width=0.05), boxes=[beside])
+    r.blockers()
+    r.feed(_marker(width=0.05), boxes=[("person", _person_box(3.0, lateral=1.5))])
+    r.start()                                      # a simulated person anywhere in view
+    r.feed(_marker(width=0.21))
+    r.calibrate()
+    r.feed(None)
+    r.idle(0.625)
+    r.calibrate()                                  # marker_not_visible
+    r.hover()
+    r.inner.new_frame(r.clock.t)
+    r.set("avoid", "hold")
+    r.set("avoid", "pass")
+    r.set("drift_assist", True)
+    r.set("auto_fly", True)
+    r.set("land_on_arrival", True)
+    r.set("drift_assist", False)
+    r.ready()
+    r.note()
+    r.ready()
+    r.see(_marker(width=0.05))
+    r.start()
+    r.ready()                                      # already_running
+    r.start()
+    r.calibrate()
+    r.hover()
+    r.abort()
+    r.abort()                                      # nothing to stop
+    r.feed(_marker(width=0.05))
+    r.start(dose="d3")
+    r.flush()
+
+
+def _s_landings(r: _Rig) -> None:
+    """Arrival and every landing outcome: sent (then the landing ends done, a pilot toggle is swallowed),
+    off, refused by the mixer, settle guard undecided; pilot input and pilot link lost during the landing."""
+    def settle(frames: int = 20, cy: float = 0.5) -> None:
+        for _ in range(frames):
+            r.feed(_marker(width=0.17, cy=cy))
+
+    r.set("land_on_arrival", True)
+    r.start(dose="d2")
+    r.approach(start=0.11, step=0.01)
+    settle()
+    r.pilot_toggle()                               # swallowed: landing in progress
+    for _ in range(int(r.runner.cfg.takeoff_wait_s / RUNNER_DT) + 2):
+        r.feed(_marker(width=0.17))
+    r.step_none()
+    r.set("land_on_arrival", False)
+    r.see(_marker(width=0.05))
+    r.start()
+    r.approach(start=0.11, step=0.01)
+    settle()
+    r.step_none()
+    r.set("land_on_arrival", True)
+    r.see(_marker(width=0.05))
+    r.start()
+    r.approach(start=0.11, step=0.01)
+    r.inner.control = False                        # the landing toggle is refused by the mixer
+    settle()
+    r.inner.control = True
+    r.step_none()
+    r.see(_marker(width=0.05))
+    r.start()
+    r.approach(start=0.11, step=0.01)
+    for cy in (None, None, 0.5, 0.5, 0.5, 0.40, 0.5, 0.40):   # sparse detections around the threshold
+        for _ in range(3):
+            r.feed(None)
+        r.feed(None if cy is None else _marker(width=0.17, cy=cy))
+    r.feed(None)
+    r.feed(None)
+    r.step_none()
+    r.see(_marker(width=0.05))
+    r.start()
+    r.approach(start=0.11, step=0.01)
+    settle()
+    r.pilot_axes(0.0, 0.3, 0.0, 0.0)               # pilot input during the landing: done
+    r.pilot_axes(0.0, 0.0, 0.0, 0.0)
+    r.idle(0.5)
+    r.see(_marker(width=0.05))
+    r.start()
+    r.approach(start=0.11, step=0.01)
+    settle()
+    r.abort("pilot_link_lost")                     # during the landing: done
+    r.step_none()
+    r.clock.advance(4.5)
+    # arrival needs three in a row, 15 % growth, and counts the apparent width of a side view
+    r.see(_marker(width=0.05))
+    r.start()
+    r.approach(stop=0.155)
+    for w in (0.17, 0.17, 0.15, 0.17, 0.17, 0.17):
+        r.feed(_marker(width=w))
+    settle()
+    r.idle(1.0)
+    r.see(_marker(width=0.15))
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(width=0.165))
+    for _ in range(3):
+        r.feed(_marker(width=0.175))
+    r.abort()
+    r.see(_marker(width=0.05))
+    r.start()
+    r.approach(stop=0.10)
+    for _ in range(3):
+        r.feed(_marker(width=0.14, aspect=0.85))
+    r.step_none()
+
+
+def _s_settle_guard(r: _Rig) -> None:
+    """The settle descent guard: unexpected_descent, a marker moving down, an outlier, the reference not
+    the arrival frame, the toggle waiting for a pending rise; and a marker vanishing while settling."""
+    for cys in ([0.5] * 6 + [0.40] * 3, [0.5] * 6 + [0.62] * 14, [0.5] * 7 + [0.30] + [0.5] * 12, [0.40] * 20,
+                [0.5] * 17 + [0.40] * 2 + [0.5], [0.5 + (0.07 if i % 2 else -0.07) for i in range(20)]):
+        r.set("land_on_arrival", True)
+        r.see(_marker(width=0.05))
+        r.start()
+        r.approach(start=0.11, step=0.01)
+        for cy in cys:
+            r.feed(_marker(width=0.17, cy=cy))
+        r.step_none()
+        r.abort()                                  # ends a landing at once (done)
+        r.clock.advance(4.5)                       # past the mixer's landing guard
+    r.see(_marker(width=0.05))
+    r.start()
+    r.approach(start=0.11, step=0.01)
+    for _ in range(20):
+        r.feed(None)                               # the drone dropped to the floor
+    r.step_none()
+    r.see(_marker(width=0.05))
+    r.start()
+    r.approach(start=0.11, step=0.01)
+    r.pilot_axes(0.2, 0.0, 0.0, 0.0)               # pilot input while settling
+    r.step_none()
+
+
+def _s_aborts(r: _Rig) -> None:
+    """marker_lost (hold, creep, abort), a creep that recovers, video_stale, pilot_took_over (axes, toggle,
+    api), estop, person_in_view, battery_low (stale and fresh), off_axis, not_lined_up, pilot_link_lost."""
+    r.start()
+    for _ in range(20):
+        r.feed(_marker(cx=0.62, width=0.06))
+    for _ in range(int(3.0 / RUNNER_DT)):
+        r.feed(None)
+    r.step_none()
+    r.see(_marker(width=0.05))
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(cx=0.38, width=0.06))
+    for _ in range(int(1.5 / RUNNER_DT)):
+        r.feed(None)
+    r.feed(_marker(cx=0.45, width=0.06))
+    for _ in range(10):
+        r.feed(_marker(cx=0.5, width=0.06))
+    for _ in range(15):
+        r.feed(_marker(width=0.06))
+    r.idle(0.3125)
+    r.idle(1.125)
+    r.idle(0.1875)                                    # video_stale
+    r.inner.new_frame(r.clock.t)
+    r.see(_marker(width=0.05))
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(width=0.06))
+    r.pilot_axes(0.0, 0.0, -0.5, 0.0)
+    r.idle(0.5)
+    r.pilot_axes(0.0, 0.0, 0.0, 0.0)
+    r.see(_marker(width=0.05))
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(width=0.06))
+    r.pilot_toggle()
+    r.idle(1.2)
+    r.see(_marker(width=0.05))
+    r.start()
+    r.feed(_marker(width=0.06))
+    r.abort("pilot_took_over")
+    r.see(_marker(width=0.05))
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(width=0.06))
+    r.pilot_estop()
+    r.feed(_marker(width=0.06))
+    r.estop_reset()
+    r.see(_marker(width=0.05))
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(width=0.06))
+    r.set_person(enabled=True, detected=True, count=1, ts=r.clock.t)
+    r.feed(_marker(width=0.06))
+    r.set_person()
+    r.settings_field(battery_low_raw=35)
+    r.see(_marker(width=0.05))
+    r.start()
+    r.tel(1, 34, 16, r.clock.t - 3.5)
+    for _ in range(10):
+        r.feed(_marker(width=0.06))
+    r.tel(1, 34, 16, r.clock.t)
+    r.feed(_marker(width=0.06))
+    r.settings_field(battery_low_raw=-1)
+    r.inner.tel = None
+    r.see(_marker(width=0.05))
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(width=0.06))
+    for _ in range(3):
+        r.feed(_marker(width=0.05, aspect=0.6))    # off_axis
+    r.set("land_on_arrival", True)
+    r.see(_marker(width=0.05))
+    r.start()
+    r.approach(stop=0.15)
+    for _ in range(int(3.0 / RUNNER_DT)):
+        r.feed(_marker(width=0.15, aspect=0.75))   # beside the station: not_lined_up
+        if r.runner.state != "approaching":
+            break
+    r.see(_marker(width=0.05))
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(width=0.18, cx=0.65))       # off centre at arrive size: holds, no forward stick
+    for _ in range(4):
+        r.feed(_marker(width=0.18, cx=0.5))
+    r.abort()
+    for state in ("searching", "approaching", "arrived"):
+        if state == "searching":
+            r.feed(None)
+            r.idle(0.625)
+            r.inner.new_frame(r.clock.t)
+        else:
+            r.see(_marker(width=0.05))
+        r.start()
+        if state == "arrived":
+            r.approach()
+        r.pilot_window = False
+        r.abort("pilot_link_lost")
+        r.step_none()
+        r.pilot_window = True
+    r.flush()
+
+
+def _s_search(r: _Rig) -> None:
+    """Searching: a single false detection, jumping detections, confirmation with dropout gaps, a gap
+    longer than the coast; the search timeout (shortened) and the run timeout (shortened)."""
+    r.feed(None)
+    r.idle(0.625)
+    r.inner.new_frame(r.clock.t)
+    r.start()
+    for index in range(30):
+        r.feed(_marker(cx=0.2, cy=0.3, width=0.02) if index % 10 == 5 else None)
+    for cx in (0.2, 0.5, 0.8, 0.5, 0.2):
+        r.feed(_marker(cx=cx, width=0.05))
+    r.feed(_marker(cx=0.9, cy=0.2, width=0.02))
+    r.see(_marker(width=0.15))
+    for _ in range(10):
+        r.feed(_marker(width=0.165))
+    r.abort()
+    r.feed(None)
+    r.idle(0.625)
+    r.inner.new_frame(r.clock.t)
+    r.start()
+    for seen in (_marker(cx=0.7), None, _marker(cx=0.7), _marker(cx=0.7)):     # hit, miss, hit, hit
+        r.feed(seen)
+    r.abort()
+    r.feed(None)
+    r.idle(0.625)
+    r.inner.new_frame(r.clock.t)
+    r.start()
+    r.feed(_marker(cx=0.7))
+    for _ in range(9):
+        r.feed(None)                               # longer than the coast
+    r.feed(_marker(cx=0.7))
+    r.feed(_marker(cx=0.7))
+    for _ in range(int(4.5 / RUNNER_DT)):
+        r.feed(None)                               # marker_not_found (search_timeout_s 4)
+    r.step_none()
+    r.see(_marker(width=0.15))
+    r.start()
+    for _ in range(int(7.0 / RUNNER_DT)):
+        r.feed(_marker(width=0.165))               # never grows enough: timeout (run_timeout_s 6)
+    r.step_none()
+
+
+def _s_coast(r: _Rig) -> None:
+    """Detection dropouts in the approach (tests/test_runner.py DropoutCoastTests)."""
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(width=0.06))
+    r.feed(None)
+    for _ in range(3):
+        r.feed(_marker(width=0.06))
+    for _ in range(12):
+        r.feed(None)                               # fades, then neutral, then creeps
+    r.feed(_marker(width=0.06))
+    for _ in range(5):
+        r.feed(_marker(width=0.06))
+    width = 0.06
+    while width < 0.15:
+        r.feed(_marker(width=width))
+        width += 0.006
+    r.feed(None)                                   # near the arrive width: no forward coast
+    for w in (0.17, None, 0.17, 0.17):              # the arrival counts survive a dropout
+        r.feed(None if w is None else _marker(width=w))
+    r.abort()
+    r.idle(0.5)
+    r.see(_marker(width=0.05))
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(width=0.06))
+    r.feed(None)
+    r.pilot_estop()                                # an e-stop during a coast
+    r.feed(None)
+    r.estop_reset()
+
+
+def _s_automatic(r: _Rig) -> None:
+    """Automatic runs (tests/test_automatic.py): countdown, takeoff, landing on arrival; Stop in the
+    countdown; takeoff refused; a safe landing after a confirmed flight; no landing when the marker rises,
+    is lost, or before the flight is confirmed; estop and pilot take-over never toggle; already at the
+    station; the rise allowed scales with the distance."""
+    r.start(confirm=False, dose="d1", automatic=True)
+    for _ in range(int(r.runner.cfg.countdown_s / RUNNER_DT) + 2):
+        r.feed(_marker(width=0.05))
+    for _ in range(int(r.runner.cfg.takeoff_wait_s / RUNNER_DT) + 2):
+        r.feed(_marker(width=0.05))
+    r.fly_in()
+    for _ in range(30):
+        r.feed(_marker(width=0.17))
+    for _ in range(int(r.runner.cfg.takeoff_wait_s / RUNNER_DT) + 2):
+        r.feed(_marker(width=0.17))
+    r.clock.advance(11.0)
+    r.feed(_marker(width=0.05))
+    r.start(confirm=False, automatic=True)
+    r.feed(_marker(width=0.05))
+    r.abort("pilot_took_over")                     # Stop during the countdown: never flies
+    r.feed(_marker(width=0.05))
+    r.start(confirm=False, automatic=True)
+    r.inner.control = False
+    for _ in range(int(r.runner.cfg.countdown_s / RUNNER_DT) + 2):
+        r.feed(_marker(width=0.05))                # takeoff_refused
+    r.inner.control = True
+    r.clock.advance(11.0)
+    r.feed(_marker(width=0.05))
+    r.start(confirm=False, automatic=True)
+    r.through_takeoff(_marker(width=0.05))
+    r.fly_in(stop=0.10)
+    r.set_person(enabled=True, detected=True, count=1, ts=r.clock.t)
+    r.feed(_marker(width=0.10))                    # safe landing
+    r.set_person()
+    r.clock.advance(11.0)
+    r.feed(_marker(width=0.05))
+    r.start(confirm=False, automatic=True)
+    r.through_takeoff(_marker(width=0.05))
+    r.fly_in(stop=0.10)
+    for i in range(12):
+        r.feed(_marker(width=0.10, cy=0.5 - 0.02 * i))
+    r.set_person(enabled=True, detected=True, count=1, ts=r.clock.t)
+    r.feed(_marker(width=0.10, cy=0.25))           # rising: no landing, needs a pilot
+    r.set_person()
+    r.note()
+    r.clock.advance(11.0)
+    r.feed(_marker(width=0.05))
+    r.start(confirm=False, automatic=True)
+    r.through_takeoff(_marker(width=0.05))
+    r.fly_in(stop=0.10)
+    for _ in range(int(3.0 / RUNNER_DT)):
+        r.feed(None)                               # marker_lost: no landing
+    r.clock.advance(11.0)
+    r.feed(_marker(width=0.05))
+    r.start(confirm=False, automatic=True)
+    r.through_takeoff()
+    r.set_person(enabled=True, detected=True, count=1, ts=r.clock.t)
+    r.feed(None)                                   # not confirmed: no landing
+    r.set_person()
+    for reason in ("estop", "pilot_took_over"):
+        r.clock.advance(11.0)
+        r.estop_reset()
+        r.feed(_marker(width=0.05))
+        r.start(confirm=False, automatic=True)
+        r.through_takeoff(_marker(width=0.05))
+        for _ in range(4):
+            r.feed(_marker(width=0.05))
+        if reason == "estop":
+            r.pilot_estop()
+        else:
+            r.abort("pilot_took_over")
+        r.feed(_marker(width=0.10))
+    r.estop_reset()
+    r.clock.advance(11.0)
+    r.feed(_marker(width=0.05))
+    r.start(confirm=False, automatic=True)
+    for _ in range(int(r.runner.cfg.countdown_s / RUNNER_DT) + 2):
+        r.feed(None)
+    for _ in range(int(r.runner.cfg.takeoff_wait_s / RUNNER_DT) + 2):
+        r.feed(_marker(width=0.17))                # already_at_station
+    r.ready()
+    r.flush()
+
+
+def _s_safe_landing_scale(r: _Rig, width: float, rise: float) -> None:
+    """The rise allowed for a safe landing scales with the current distance (test_automatic.py: a 0.11
+    rise far away is a real sink, close to the sign it still lands)."""
+    for _ in range(1):
+        r.start(confirm=False, automatic=True)
+        r.through_takeoff(_marker(width=0.05))
+        w = 0.05
+        while w < width:
+            r.feed(_marker(width=w))
+            w += 0.004
+        for _ in range(int(2.2 / RUNNER_DT)):
+            r.feed(_marker(width=width))
+        r.set_person(enabled=True, detected=True, count=1, ts=r.clock.t)
+        r.feed(_marker(width=width, cy=0.5 - rise))
+        r.set_person()
+
+
+def _s_avoid(r: _Rig) -> None:
+    """Avoidance in the runner with synthetic boxes (tests/test_avoid_runner.py): in-flight holds for an
+    object and a person-check box, a stale check, the sign hidden (not lost), a box over where the sign
+    was, searching again at most twice, the run keeping its mode, the status shapes, a countdown stopped
+    by a person and by an object."""
+    r.start()
+    for _ in range(5):
+        r.feed(_marker(width=0.06))
+    for _ in range(10):
+        r.feed(_marker(width=0.06), boxes=[("object", _person_box(2.0, height=0.9))])
+    r.set_person(enabled=True, detected=True, count=1, ts=r.clock.t, boxes=(_person_box(2.0),))
+    for _ in range(10):
+        r.feed(_marker(width=0.06))
+    r.set_person(enabled=True, detected=True, count=1, ts=r.clock.t - 5.0, boxes=(_person_box(2.0),))
+    for _ in range(25):
+        r.feed(_marker(width=0.06))                # stale: no evidence; clears after a second
+    r.set_person()
+    r.set("avoid", "off")
+    r.feed(_marker(width=0.06), boxes=[("person", _person_box(2.0))])   # the run keeps "hold"
+    r.set("avoid", "hold")
+    for _ in range(int(10.0 / RUNNER_DT)):
+        r.feed(None, boxes=[("person", _person_box(2.0))])                 # hidden for 10 s, not lost
+    for _ in range(int(1.5 / RUNNER_DT)):
+        r.feed(_marker(width=0.06))
+    r.abort()
+    r.see(_marker(width=0.05))
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(width=0.06, cx=0.8))
+    # corners spanning (0.75, 0.45) to (0.85, 0.55) of the frame (the Python test sets that box directly)
+    boxed = _marker(width=0.1, cx=0.8)
+    boxed = type(boxed)(id=7, cx=0.8, cy=0.5, width=0.1, corners=((480.0, 162.0), (544.0, 162.0), (544.0, 198.0),
+                                                                   (480.0, 198.0)), ts=0.0, height=0.1)
+    for _ in range(3):
+        r.feed(boxed)
+    for _ in range(int(3.0 / RUNNER_DT)):
+        r.feed(None, boxes=[("person", (0.7, 0.3, 0.95, 0.7))])
+    r.abort()
+    r.see(_marker(width=0.05, cx=0.3))
+    r.start()
+    for _ in range(10):
+        r.feed(_marker(width=0.06, cx=0.3))
+    for attempt in range(3):
+        for _ in range(int(2.0 / RUNNER_DT)):
+            r.feed(None, boxes=[("person", _person_box(2.0))])
+        for _ in range(int(2.0 / RUNNER_DT)):
+            r.feed(None)
+        if attempt < 2:
+            for _ in range(4):
+                r.feed(_marker(width=0.06, cx=0.3))
+    r.step_none()
+    r.see(_marker(width=0.06))
+    r.start()
+    r.feed(_marker(width=0.06), boxes=[("person", _person_box(3.2, lateral=0.2)),
+                                       ("object", _person_box(2.0, lateral=-1.5, height=0.9))])
+    r.abort()
+    for kind in ("person", "object"):
+        r.clock.advance(11.0)
+        r.feed(_marker(width=0.05))
+        r.start(confirm=False, automatic=True)
+        r.feed(None)
+        r.feed(None, boxes=[(kind, _person_box(3.0))])
+    r.flush()
+
+
+def _s_path_blocked(r: _Rig) -> None:
+    """path_blocked (blocked_timeout_s 4 here): a manual run (time held not counted against the run timeout,
+    run_timeout_s 10), an automatic run landing on the obstacle's evidence, no landing when the obstacle
+    rises in the picture, a climb seen during the takeoff as evidence, and without that climb."""
+    r.start()
+    for _ in range(int(7.0 / RUNNER_DT)):
+        r.feed(_marker(width=0.06))
+    for _ in range(int(5.0 / RUNNER_DT)):
+        r.feed(_marker(width=0.06), boxes=[("person", _person_box(2.0))])
+        if r.runner.state != "approaching":
+            break
+    r.step_none()
+
+    def automatic_into_hold() -> None:
+        r.clock.advance(11.0)
+        r.feed(_marker(width=0.05))
+        r.start(confirm=False, automatic=True)
+        for _ in range(int(r.runner.cfg.countdown_s / RUNNER_DT) + 2 + int(r.runner.cfg.takeoff_wait_s / RUNNER_DT) + 2):
+            r.feed(_marker(width=0.05))
+        width = 0.05
+        while width < 0.08:
+            r.feed(_marker(width=width))
+            width += 0.003
+
+    automatic_into_hold()
+    for _ in range(int(6.0 / RUNNER_DT)):
+        if r.runner.state != "approaching":
+            break
+        r.feed(None, boxes=[("person", _person_box(2.0))])
+    automatic_into_hold()
+    x1, y1, x2, y2 = _person_box(2.0)
+    sinking_from = int(2.5 / RUNNER_DT)            # from 1.5 s before the 4 s limit to past the 2.5 s wait
+    for i in range(int(10.0 / RUNNER_DT)):
+        if r.runner.state != "approaching":
+            break
+        rise = max(0.0, (i - sinking_from) * 0.006)
+        r.feed(None, boxes=[("person", (x1, y1 - rise, x2, y2 - rise))])
+    for ground_cy in (0.21, 0.45):
+        r.clock.advance(11.0)
+        r.feed(_marker(width=0.05))
+        r.start(confirm=False, automatic=True)
+        for _ in range(int(r.runner.cfg.countdown_s / RUNNER_DT) + 2):
+            r.feed(_marker(width=0.05, cy=ground_cy))
+        for _ in range(int(r.runner.cfg.takeoff_wait_s / RUNNER_DT) + 2):
+            r.feed(_marker(width=0.05, cy=0.50))
+        for _ in range(int(9.0 / RUNNER_DT)):
+            if r.runner.state in ("aborted", "done"):
+                break
+            r.feed(None, boxes=[("person", _person_box(2.0))])
+    r.clock.advance(11.0)
+    r.feed(_marker(width=0.05))
+    r.start(confirm=False, automatic=True)
+    for _ in range(int(r.runner.cfg.countdown_s / RUNNER_DT) + 2):
+        r.feed(_marker(width=0.05, cy=0.21))
+    for _ in range(int(r.runner.cfg.takeoff_wait_s / RUNNER_DT) + 2):
+        r.feed(_marker(width=0.05, cy=0.50))
+    r.abort("timeout")                             # the climb counts for path_blocked only
+    r.flush()
+
+
+def _s_hover(r: _Rig) -> None:
+    """The hover test (tests/test_runner.py HoverTestTests): a drift that fails on the peak excursion, low
+    visibility, the trim during the test, cancelled by pilot input, by the pilot link and by the e-stop."""
+    frames = int(10.0 / RUNNER_DT) + 2
+
+    def run(cx_at: Callable[[float], float], visible: Callable[[int], bool] = lambda i: True) -> None:
+        r.hover()
+        for i in range(frames):
+            r.feed(_marker(cx=cx_at(i / frames), width=0.05) if visible(i) else None)
+            if r.runner.state != "hover_test":
+                break
+
+    run(lambda f: 0.5 + 0.2 * (1.0 - abs(2.0 * f - 1.0)))
+    r.settings_field(hover_max_excursion_m=0.8)
+    run(lambda f: 0.6 - 0.2 * f, visible=lambda i: i % 4 != 0)
+    r.set_trim(0.03, -0.01)
+    r.hover()
+    for _ in range(10):
+        r.feed(_marker())
+    r.pilot_axes(0.0, 0.0, 0.0, 0.4)
+    r.idle(0.5)
+    r.pilot_axes(0.0, 0.0, 0.0, 0.0)
+    r.feed(_marker())
+    r.hover()
+    r.feed(_marker())
+    r.abort("pilot_link_lost")
+    r.step_none()
+    r.hover()
+    r.feed(_marker())
+    r.pilot_estop()
+    r.feed(_marker())
+    r.estop_reset()
+    r.flush()
+
+
+def _scripted_scenarios() -> List[Tuple[str, str, Callable[[], dict]]]:
+    from medhop.mission.avoid import AvoidConfig
+    from medhop.mission.runner import RunnerConfig
+    plain = RunnerConfig(align_enabled=False)
+    # automatic runs with a 2 s countdown and a 2 s takeoff wait (the defaults are 5 s and 4 s)
+    quick_auto = dataclasses.replace(plain, countdown_s=2.0, takeoff_wait_s=2.0)
+    return [
+        ("runner_scripted", "blockers", lambda: _scripted("blockers", _s_blockers.__doc__, _s_blockers)),
+        ("runner_scripted", "landings", lambda: _scripted("landings", _s_landings.__doc__, _s_landings)),
+        ("runner_scripted", "settle_guard", lambda: _scripted("settle_guard", _s_settle_guard.__doc__, _s_settle_guard)),
+        ("runner_scripted", "aborts", lambda: _scripted("aborts", _s_aborts.__doc__, _s_aborts)),
+        ("runner_scripted", "search", lambda: _scripted(
+            "search", _s_search.__doc__, _s_search,
+            runner_config=dataclasses.replace(plain, search_timeout_s=4.0, run_timeout_s=6.0))),
+        ("runner_scripted", "coast", lambda: _scripted("coast", _s_coast.__doc__, _s_coast)),
+        ("runner_scripted", "automatic", lambda: _scripted(
+            "automatic", _s_automatic.__doc__, _s_automatic, runner_config=quick_auto)),
+        ("runner_scripted", "safe_landing_far", lambda: _scripted(
+            "safe_landing_far", _s_safe_landing_scale.__doc__, lambda r: _s_safe_landing_scale(r, 0.064, 0.11),
+            arrive_width=0.2856)),
+        ("runner_scripted", "safe_landing_close", lambda: _scripted(
+            "safe_landing_close", _s_safe_landing_scale.__doc__, lambda r: _s_safe_landing_scale(r, 0.286, 0.11),
+            arrive_width=0.32)),
+        ("runner_scripted", "avoid", lambda: _scripted(
+            "avoid", _s_avoid.__doc__, _s_avoid, runner_config=dataclasses.replace(plain, avoid="hold"))),
+        ("runner_scripted", "path_blocked", lambda: _scripted(
+            "path_blocked", _s_path_blocked.__doc__, _s_path_blocked,
+            runner_config=dataclasses.replace(quick_auto, avoid="hold", run_timeout_s=10.0),
+            avoid_config=AvoidConfig(blocked_timeout_s=4.0))),
+        ("runner_scripted", "hover", lambda: _scripted("hover", _s_hover.__doc__, _s_hover)),
+    ]
+
+
+def _runner_scenarios() -> List[Tuple[str, str, Callable[[], dict]]]:
+    return [*_scripted_scenarios(), *_cl_scenarios()]
+
+
+def build_runner_scenario(name: str) -> dict:
+    """One runner scenario by name (tests/test_parity_fixtures.py regenerates some on their own)."""
+    for _group, scenario, builder in _runner_scenarios():
+        if scenario == name:
+            return encode(builder())
+    raise KeyError(name)
+
+
+def _runner_group(group: str) -> Callable[[], dict]:
+    def build() -> dict:
+        from medhop.mission.runner import ABORT_REASONS, BLOCKERS, SAFE_LANDING_REASONS, RunnerConfig
+        return {"wall_epoch": RUNNER_WALL_EPOCH,
+                "constants": {"ABORT_REASONS": list(ABORT_REASONS), "BLOCKERS": list(BLOCKERS),
+                              "SAFE_LANDING_REASONS": sorted(SAFE_LANDING_REASONS),
+                              "runner_config": dataclasses.asdict(RunnerConfig())},
+                "scenarios": [builder() for g, _name, builder in _runner_scenarios() if g == group]}
+    return build
+
+
+# ---------------------------------------------------------------------------------------------- #
 # command line
 
 GROUPS: Dict[str, Callable[[], dict]] = {
@@ -2026,13 +3785,24 @@ GROUPS: Dict[str, Callable[[], dict]] = {
     "sim_actors": build_sim_actors,
     "projection": build_projection,
     "sim_harness": build_sim_harness,
+    "marker7": build_marker7,
+    "avoid": build_avoid,
+    # the scripted runner scenarios and two short closed-loop ones: a few seconds, so they are checked here
+    "runner_scripted": _runner_group("runner_scripted"),
+    "runner_quick": _runner_group("runner_quick"),
 }
 # Measured, not replayed: renders pictures and runs the real detector (about a minute). Its `cases`
 # part is deterministic and is what tests/test_parity_fixtures.py regenerates (build_detector_cases).
 MEASURED_GROUPS: Dict[str, Callable[[], dict]] = {
     "detector_calibration": build_detector_calibration,
 }
-ALL_GROUPS: Dict[str, Callable[[], dict]] = {**GROUPS, **MEASURED_GROUPS}
+# The mission runner's closed-loop traces: replayed, but each records simulator runs with rendering and
+# the real detector (several seconds each), so tests/test_parity_fixtures.py does not regenerate them
+# (it does regenerate runner_scripted and runner_quick, which are in GROUPS). `replayed` and `all`
+# include them.
+RUNNER_GROUPS: Dict[str, Callable[[], dict]] = {name: _runner_group(name)
+                                                for name in ("runner_auto", "runner_manual", "runner_avoid")}
+ALL_GROUPS: Dict[str, Callable[[], dict]] = {**GROUPS, **RUNNER_GROUPS, **MEASURED_GROUPS}
 
 
 def fixture_path(name: str, out_dir: Path = FIXTURE_DIR) -> Path:
@@ -2045,7 +3815,9 @@ def build_group(name: str) -> dict:
 
 
 def render_group(data: dict) -> str:
-    return render(data) + "\n"
+    # runner groups: {"scenarios": [{"ops": [op, ...]}]}: an op sits at depth 4, one per line
+    flat_from = 4 if str(data.get("group", "")).startswith("runner_") else None
+    return render(data, flat_from=flat_from) + "\n"
 
 
 def load_fixture_text(text: str) -> dict:
@@ -2067,7 +3839,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if "all" in args.groups:
         names = list(ALL_GROUPS)
     elif "replayed" in args.groups:
-        names = list(GROUPS)
+        names = [*GROUPS, *RUNNER_GROUPS]
     else:
         names = list(dict.fromkeys(args.groups))
     if any(name in MEASURED_GROUPS for name in names):

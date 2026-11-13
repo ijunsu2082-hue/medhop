@@ -174,6 +174,14 @@ export class Steering {
     this._yawLog.length = 0;
   }
 
+  /**
+   * A copy of the yaw commands issued, oldest first (Python: `tuple(steering._yaw_log)`, which the
+   * runner reads to call `steer()` itself when avoidance caps the forward stick between steer and shape).
+   */
+  get yawLog(): YawLog {
+    return this._yawLog.slice();
+  }
+
   /** Rate-limit an arbitrary (yaw, pitch) target against the previous output. */
   shape(yaw: number, pitch: number, now: number): [yaw: number, pitch: number] {
     const dt = this._lastAt === null ? 0.0 : pyMax(0.0, pyMin(0.5, now - this._lastAt));
