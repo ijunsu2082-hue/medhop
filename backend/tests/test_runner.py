@@ -686,7 +686,7 @@ class AbortTests(RunnerTestCase):
         covered = {"marker_not_found", "marker_lost", "video_stale", "timeout", "pilot_took_over",
                    "person_in_view", "battery_low", "estop", "off_axis", "pilot_link_lost",
                    "unexpected_descent", "takeoff_refused", "not_lined_up", "already_at_station",
-                   "path_blocked"}   # path_blocked: tests/test_avoid_runner.py
+                   "path_blocked", "obstacle_in_view"}   # both: tests/test_avoid_runner.py
         self.assertEqual(set(ABORT_REASONS), covered)
 
     def test_pilot_input_during_landing_just_ends_the_run(self):

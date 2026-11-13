@@ -8,7 +8,7 @@ from medhop.server import MedHopCore
 from tests.harness import RecordingLink, make_temp_dir
 from tests.test_api import ApiTestCase, wait_for
 
-AVOID_KEYS = {"mode", "state", "kind", "distance_m", "side", "held_s"}
+AVOID_KEYS = {"mode", "state", "kind", "distance_m", "held_s"}
 OBSTACLE_KEYS = {"kind", "box", "distance_m", "lateral_m", "in_lane"}
 ACTOR_KEYS = {"kind", "x_m", "distance_m", "width_m", "depth_m", "height_m"}
 
@@ -20,9 +20,10 @@ class AvoidApiTests(ApiTestCase):
 
     def test_the_avoid_setting(self):
         put = lambda body: self.client.put("/api/mission/settings", json=body)
-        response = put({"avoid": "pass"})
-        self.assertEqual((response.status_code, response.json()["avoid"]), (200, "pass"))
-        self.assertEqual(self.status()["mission"]["avoid"]["mode"], "pass")
+        self.assertEqual(put({"avoid": "pass"}).status_code, 422, "going round is not a mode")
+        response = put({"avoid": "hold"})
+        self.assertEqual((response.status_code, response.json()["avoid"]), (200, "hold"))
+        self.assertEqual(self.status()["mission"]["avoid"]["mode"], "hold")
         self.assertEqual(set(self.status()["mission"]["avoid"]), AVOID_KEYS)
         self.assertEqual(put({"avoid": "hold", "drift_assist": False}).json()["avoid"], "hold")
         self.assertEqual(put({"avoid": "sideways"}).status_code, 422)
@@ -47,6 +48,16 @@ class AvoidApiTests(ApiTestCase):
         self.assertEqual(len(obstacles[0]["box"]), 4)
         self.assertEqual(self.status()["sim"]["scenario"], "cart")
         self.assertEqual(self.client.post("/api/sim/scenario", json={"name": "party"}).status_code, 422)
+        # never take off with something in the lane: both kinds of start are refused
+        run_before = self.status()["mission"]["run_id"]
+        with self.pilot():
+            self.assertTrue(wait_for(lambda: self.status()["mission"]["blockers"] == ["obstacle_in_view"], 3.0),
+                            self.status()["mission"]["blockers"])
+            for body in ({"confirm_airborne": True}, {"automatic": True}):
+                response = self.client.post("/api/mission/start", json=body)
+                self.assertEqual(response.status_code, 409)
+                self.assertIn("obstacle_in_view", response.json()["blockers"])
+        self.assertEqual(self.status()["mission"]["run_id"], run_before, "no run started")
 
     def test_the_scenario_cannot_change_during_a_run(self):
         self.reset_sim()

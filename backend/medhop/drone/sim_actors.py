@@ -78,7 +78,8 @@ class Scenario:
 # Times are seconds after the takeoff toggle takes effect. An automatic run sends that toggle at the
 # end of its 5 s countdown, waits 4 s, and is usually approaching the sign about 4.5 s after the
 # toggle; the people below step in a few seconds later, after the sign has grown in the picture (the
-# runner's evidence that the drone is flying), from outside the camera's view.
+# runner's evidence that the drone is flying), from outside the camera's view. The cart stands in
+# the lane from the beginning, so a run is refused before takeoff (start blocker obstacle_in_view).
 SCENARIOS: Dict[str, Scenario] = {s.name: s for s in (
     Scenario("empty", (), None, "nothing in the corridor"),
     Scenario("crossing", (
@@ -89,7 +90,7 @@ SCENARIOS: Dict[str, Scenario] = {s.name: s for s in (
     ), 4.2, "a person steps into the lane about 1.4 m from the wall and stays"),
     Scenario("cart", (
         Actor("object", x_m=0.15, distance_m=1.5, width_m=0.60, depth_m=0.40, height_m=0.90),
-    ), 4.2, "a cart in the lane about 1.5 m from the wall, slightly off centre"),
+    ), 4.2, "a cart stands in the lane about 1.5 m from the wall: a run is refused before takeoff"),
     Scenario("blocked", (
         Actor("person", x_m=-3.5, distance_m=1.75, vx_m_s=1.0, move_from_s=6.5, move_until_s=9.0),
         Actor("person", x_m=3.5, distance_m=1.75, vx_m_s=-1.0, move_from_s=6.5, move_until_s=9.0),

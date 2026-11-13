@@ -379,7 +379,7 @@ class MissionSettingsBody(BaseModel):
     land_on_arrival: Optional[bool] = None
     drift_assist: Optional[bool] = None
     auto_fly: Optional[bool] = None
-    avoid: Optional[Literal["off", "hold", "pass"]] = None   # obstacle avoidance (experimental)
+    avoid: Optional[Literal["off", "hold"]] = None   # obstacle avoidance (experimental)
 
 
 class ScenarioBody(BaseModel):

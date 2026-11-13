@@ -2,7 +2,8 @@
 
 tools/parity_traces.py records traces from mission/steering.py, vision/pose.py and mixer.py (and from
 the Python number semantics they rely on), and from the simulator: drone/sim.py stepped with its noise
-at zero, drone/sim_actors.py, the camera, and SimHarness.step of tests/harness.py. The vitest suites
+at zero, drone/sim_actors.py, the camera, and SimHarness.step of tests/harness.py; marker7 is the sign's
+ArUco pattern as OpenCV draws it (checked by frontend/src/scene/room.test.ts). The vitest suites
 under frontend/src/engine replay them through the TypeScript port. These tests regenerate every
 replayed group in memory and compare it with the committed file, so a change to the Python that is not
 followed by `python tools/parity_traces.py replayed` fails here. detector_calibration is measured, not

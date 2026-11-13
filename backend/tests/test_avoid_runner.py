@@ -14,7 +14,7 @@ from medhop.config import Settings
 from medhop.drone.sim import SimConfig, SimLink
 from medhop.drone.sim_actors import SCENARIO_NAMES, SCENARIOS, Actor, actor_box, footprint_distance
 from medhop.mission.avoid import focal_fh, focal_fw, AvoidConfig
-from medhop.mission.runner import ABORT_REASONS, SAFE_LANDING_REASONS, MissionRunner, RunnerConfig
+from medhop.mission.runner import ABORT_REASONS, BLOCKERS, SAFE_LANDING_REASONS, MissionRunner, RunnerConfig
 from medhop.vision.marker import MarkerDetector, Observation, Obstacle
 from medhop.vision.person import PersonStatus
 from tests.harness import FakeClock, RecordingLink, make_temp_dir
@@ -55,27 +55,64 @@ class AvoidRunnerTestCase(RunnerTestCase):
 
 
 class ModeAndBlockerTests(AvoidRunnerTestCase):
-    def test_the_new_reason_is_a_safe_landing_reason(self):
+    def test_the_new_reasons(self):
         self.assertIn("path_blocked", ABORT_REASONS)
         self.assertIn("path_blocked", SAFE_LANDING_REASONS)
+        self.assertIn("obstacle_in_view", ABORT_REASONS)      # only ever on the ground (the countdown)
+        self.assertNotIn("obstacle_in_view", SAFE_LANDING_REASONS)
+        self.assertIn("obstacle_in_view", BLOCKERS)
 
     def test_never_starts_with_a_person_in_view_in_any_mode(self):
-        for mode in ("off", "hold", "pass"):
+        for mode in ("off", "hold"):
             with self.subTest(mode=mode):
                 self.runner.set_avoid(mode)
-                self.feed_obs(marker(width=0.05), boxes=[("person", person_box(3.0))])
-                self.assertIn("person_in_view", self.runner.blockers())
-                self.assertFalse(self.runner.start(True, None)[0])
-                self.feed_obs(marker(width=0.05), boxes=[("object", person_box(3.0))])
-                self.assertNotIn("person_in_view", self.runner.blockers(), "an object does not block a start")
+                self.feed_obs(marker(width=0.05), boxes=[("person", person_box(3.0, lateral=1.5))])
+                self.assertEqual(self.runner.blockers(), ["person_in_view"], "anywhere in view")
+                self.assertEqual(self.runner.start(True, None), (False, ["person_in_view"]))
+                self.assertEqual(self.runner.start(False, None, automatic=True), (False, ["person_in_view"]))
+                self.assertEqual(self.runner.state, "idle")
 
-    def test_a_person_in_view_during_the_countdown_still_stops_an_automatic_run(self):
-        self.runner.set_avoid("pass")
-        self.runner = self.make_runner()
-        self.assertTrue(self.runner.start(False, None, automatic=True)[0])
-        self.feed_obs(None, boxes=[("person", person_box(3.0))])
-        self.assertEqual((self.runner.state, self.runner.reason), ("aborted", "person_in_view"))
-        self.assertEqual(self.link.toggles, 0)
+    def test_never_starts_with_an_object_in_the_lane_in_any_mode(self):
+        cart = ("object", person_box(3.0, lateral=0.15, width=0.6, height=0.9))
+        beside = ("object", person_box(3.0, lateral=1.5, width=0.6, height=0.9))
+        close = ("object", person_box(2.0, lateral=1.5, width=0.6, height=0.9))   # base out of view
+        for mode in ("off", "hold"):
+            with self.subTest(mode=mode):
+                self.runner.set_avoid(mode)
+                self.feed_obs(marker(width=0.05), boxes=[cart])
+                self.assertEqual(self.runner.blockers(), ["obstacle_in_view"])
+                self.assertEqual(self.runner.start(True, None), (False, ["obstacle_in_view"]))
+                self.assertEqual(self.runner.start(False, None, automatic=True), (False, ["obstacle_in_view"]))
+                self.assertFalse(self.runner.snapshot()["can_start"])
+                self.assertFalse(self.runner.snapshot()["can_start_auto"])
+                self.feed_obs(marker(width=0.05), boxes=[close])
+                self.assertEqual(self.runner.blockers(), ["obstacle_in_view"], "very close counts as in the lane")
+                self.feed_obs(marker(width=0.05), boxes=[beside])
+                self.assertEqual(self.runner.blockers(), [], "an object beside the lane does not block")
+                self.assertEqual(self.store.events(), [])
+        self.feed_obs(marker(width=0.05))
+        self.start()
+
+    def test_a_person_or_an_object_appearing_during_the_countdown_stops_an_automatic_run(self):
+        for kind, reason in (("person", "person_in_view"), ("object", "obstacle_in_view")):
+            with self.subTest(kind=kind):
+                self.feed_obs(marker(width=0.05))
+                self.assertTrue(self.runner.start(False, None, automatic=True)[0])
+                self.feed_obs(None)
+                self.feed_obs(None, boxes=[(kind, person_box(3.0))])
+                self.assertEqual((self.runner.state, self.runner.reason), ("aborted", reason))
+                self.assertEqual(self.link.toggles, 0, "never took off")
+                self.assertFalse(self.runner.snapshot()["needs_pilot"])
+                self.clock.advance(11.0)
+
+    def test_an_object_in_the_lane_in_flight_is_held_for_not_aborted(self):
+        self.start()
+        for _ in range(5):
+            self.feed_obs(marker(width=0.06))
+        for _ in range(10):
+            self.feed_obs(marker(width=0.06), boxes=[("object", person_box(2.0, height=0.9))])
+        self.assertEqual(self.runner.state, "approaching")
+        self.assertEqual(self.runner.snapshot()["avoid"]["state"], "hold")
 
     def test_off_aborts_on_a_person_in_flight_as_before(self):
         self.runner.set_avoid("off")
@@ -117,13 +154,15 @@ class ModeAndBlockerTests(AvoidRunnerTestCase):
 
     def test_settings_persist_and_are_validated(self):
         self.assertEqual(self.runner.settings()["avoid"], "hold")
-        self.runner.set_avoid("pass")
-        self.assertEqual(json.loads((self.dir / "mission.json").read_text()), {"avoid": "pass"})
-        self.assertEqual(self.make_runner().avoid_mode, "pass")
+        self.runner.set_avoid("off")
+        self.assertEqual(json.loads((self.dir / "mission.json").read_text()), {"avoid": "off"})
+        self.assertEqual(self.make_runner().avoid_mode, "off")
         self.runner.set_drift_assist(True)
-        self.assertEqual(json.loads((self.dir / "mission.json").read_text()), {"avoid": "pass", "drift_assist": True})
-        with self.assertRaises(ValueError):
-            self.runner.set_avoid("maybe")
+        self.assertEqual(json.loads((self.dir / "mission.json").read_text()), {"avoid": "off", "drift_assist": True})
+        for bad in ("pass", "maybe", ""):
+            with self.assertRaises(ValueError):
+                self.runner.set_avoid(bad)
+        self.assertEqual(self.runner.avoid_mode, "off")
 
     def test_a_run_keeps_the_mode_it_started_with(self):
         self.start()
@@ -226,22 +265,63 @@ class TimeoutAndBlockedTests(AvoidRunnerTestCase):
         """A sinking camera sees everything move up: no toggle on that evidence."""
         self.automatic_into_hold()
         x1, y1, x2, y2 = person_box(2.0)
-        frames = int(26.0 / DT)
-        for i in range(frames):
+        sinking_from = int(23.5 / DT)          # from 1.5 s before the 25 s limit to past the 2.5 s wait
+        for i in range(int(32.0 / DT)):
             if self.runner.state != "approaching":
                 break
-            rise = max(0.0, (i - (frames - 40)) * 0.006)
+            rise = max(0.0, (i - sinking_from) * 0.006)
             self.feed_obs(None, boxes=[("person", (x1, y1 - rise, x2, y2 - rise))])
         self.assertEqual(self.runner.reason, "path_blocked")
         self.assertEqual(self.link.toggles, 1)
         self.assertTrue(self.runner.snapshot()["needs_pilot"])
+        trace = json.loads((self.dir / "runs" / f"{self.runner.snapshot()['run_id']}.json").read_text())
+        self.assertGreater(trace["duration_s"] - 9.0, 25.0 + 2.0, "it waited for evidence before giving up")
+
+    def blocked_before_the_sign_grew(self, ground_cy, air_cy):
+        """An automatic run whose countdown sees the sign at `ground_cy` and whose takeoff wait sees it
+        at `air_cy`; someone steps in before it has grown, so the flight is never confirmed."""
+        self.runner.set_avoid("hold")
+        self.runner = self.make_runner()
+        self.assertTrue(self.runner.start(False, None, automatic=True)[0])
+        for _ in range(int(5.0 / DT) + 2):
+            self.feed_obs(marker(width=0.05, cy=ground_cy))
+        self.assertEqual(self.runner.state, "taking_off")
+        for _ in range(int(4.0 / DT) + 2):
+            self.feed_obs(marker(width=0.05, cy=air_cy))
+        for _ in range(int(30.0 / DT)):
+            if self.runner.state in ("aborted", "done"):
+                break
+            self.feed_obs(None, boxes=[("person", person_box(2.0))])
+        self.assertFalse(self.runner.snapshot()["flight_confirmed"])
+        self.assertEqual((self.runner.state, self.runner.reason), ("aborted", "path_blocked"))
+
+    def test_a_climb_seen_during_the_takeoff_is_evidence_of_flight_for_path_blocked(self):
+        self.blocked_before_the_sign_grew(ground_cy=0.21, air_cy=0.50)     # the sign moved down: it climbed
+        self.assertEqual(self.link.toggles, 2, "takeoff and the landing where it is")
+        self.assertEqual(self.runner.snapshot()["last_landing"], "safe_landing")
+
+    def test_without_a_climb_seen_there_is_no_landing(self):
+        self.blocked_before_the_sign_grew(ground_cy=0.45, air_cy=0.50)     # 0.05: not a climb
+        self.assertEqual(self.link.toggles, 1)
+        self.assertTrue(self.runner.snapshot()["needs_pilot"])
+
+    def test_the_climb_counts_for_path_blocked_only(self):
+        self.runner.set_avoid("hold")
+        self.runner = self.make_runner()
+        self.assertTrue(self.runner.start(False, None, automatic=True)[0])
+        for _ in range(int(5.0 / DT) + 2):
+            self.feed_obs(marker(width=0.05, cy=0.21))
+        for _ in range(int(4.0 / DT) + 2):
+            self.feed_obs(marker(width=0.05, cy=0.50))
+        self.runner.abort("timeout")              # a failsafe that existed before: unchanged rules
+        self.assertEqual(self.link.toggles, 1, "flight not confirmed: no landing toggle for timeout")
 
 
 class StatusTests(AvoidRunnerTestCase):
     def test_status_shapes(self):
         snap = self.runner.snapshot()
         self.assertEqual(snap["avoid"], {"mode": "hold", "state": None, "kind": None, "distance_m": None,
-                                         "side": None, "held_s": 0.0})
+                                         "held_s": 0.0})
         self.start()
         self.feed_obs(marker(width=0.06), boxes=[("person", person_box(3.2, lateral=0.2)),
                                                   ("object", person_box(2.0, lateral=-1.5, height=0.9))])
@@ -252,7 +332,7 @@ class StatusTests(AvoidRunnerTestCase):
         self.assertIs(obstacles[0]["in_lane"], True)
         self.assertIsNone(obstacles[1]["distance_m"], "base out of the picture: very close")
         self.assertIs(obstacles[1]["in_lane"], True)
-        self.assertEqual(set(self.runner.snapshot()["avoid"]), {"mode", "state", "kind", "distance_m", "side", "held_s"})
+        self.assertEqual(set(self.runner.snapshot()["avoid"]), {"mode", "state", "kind", "distance_m", "held_s"})
 
 
 class SimActorTests(unittest.TestCase):
@@ -335,7 +415,10 @@ class SettingsEnvTests(unittest.TestCase):
         self.assertEqual(Settings().avoid, "off")
         self.assertEqual(RunnerConfig().avoid, "off")
         self.assertEqual(Settings.from_env({"MEDHOP_DRONE": "real"}).avoid, "off")
-        self.assertEqual(Settings.from_env({"MEDHOP_AVOID": "pass"}).avoid, "pass")
+        self.assertEqual(Settings.from_env({"MEDHOP_AVOID": "off"}).avoid, "off")
+        for bad in ("pass", "dodge"):
+            with self.assertRaises(ValueError):
+                Settings.from_env({"MEDHOP_AVOID": bad})
         self.assertEqual(Settings.from_env({"MEDHOP_DRONE": "real", "MEDHOP_AVOID": "hold"}).avoid, "hold")
         with self.assertRaises(ValueError):
             Settings(avoid="dodge")
@@ -348,11 +431,15 @@ class SettingsEnvTests(unittest.TestCase):
         try:
             store = CareStore(directory)
             self.assertIsNone(store.load_avoid())
-            store.save_avoid("pass")
+            store.save_avoid("off")
             store.save_land_on_arrival(True)
-            self.assertEqual(CareStore(directory).load_avoid(), "pass")
+            self.assertEqual(CareStore(directory).load_avoid(), "off")
             runner = MissionRunner(RecordingLink(), None, CareStore(directory), Settings(data_dir=directory, avoid="hold"))
-            self.assertEqual(runner.avoid_mode, "pass")
+            self.assertEqual(runner.avoid_mode, "off")
+            with self.assertRaises(ValueError):
+                store.save_avoid("pass")
+            (directory / "mission.json").write_text('{"avoid": "pass"}')     # stored by an older version
+            self.assertIsNone(CareStore(directory).load_avoid(), "no longer a mode: the default applies")
             (directory / "mission.json").write_text('{"avoid": "sideways"}')
             self.assertIsNone(CareStore(directory).load_avoid())
         finally:

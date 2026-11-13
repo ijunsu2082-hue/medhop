@@ -35,10 +35,11 @@ corrected figure instead reaches the arrive width at the same distance from the 
 uses `MarkerObs.size` (the larger edge measure), which tracks range.
 
 Obstacle avoidance (experimental, simulator-tested only, never flown near people, not a safety
-system; SPEC section 11): with the mission setting `avoid` at "hold" or "pass", people and objects in
-the way (`mission/avoid.py`) make the run slow down, hold, back off a little and, in "pass", go
-round, instead of ending the run with person_in_view. A sign hidden by them is "hidden", not lost.
-"off" is the behaviour without it, unchanged. Never takes off with a person in view in any mode.
+system; SPEC section 11): with the mission setting `avoid` at "hold", people and objects in the way
+(`mission/avoid.py`) make the run slow down, hold and back off a little, and end it with path_blocked
+when they stay, instead of ending it with person_in_view. It never goes round them. A sign hidden by
+them is "hidden", not lost. "off" is the behaviour without it, unchanged. In every mode a run never
+starts with a person in view, or with an object in the lane (simulator).
 
 Lock rule: the runner may call the mixer while holding its lock; the mixer never calls the runner
 while holding its own.
@@ -52,7 +53,7 @@ import statistics
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, Callable, Deque, Dict, List, Optional, Tuple
 
@@ -60,8 +61,8 @@ from medhop.care.store import CareStore
 from medhop.config import Settings
 from medhop.drone.base import DroneLink
 from medhop.mission.avoid import (
-    AVOID_MODES, CLEAR as AVOID_CLEAR, HOLD as AVOID_HOLD, NOT_MOVING_ON, PASSING as AVOID_PASSING,
-    SIDESTEP as AVOID_SIDESTEP, AvoidCommand, AvoidConfig, Avoider, Seen, SignFix, estimate, floor_distance_m,
+    AVOID_MODES, CLEAR as AVOID_CLEAR, NOT_MOVING_ON, AvoidCommand, AvoidConfig, Avoider, Seen, estimate,
+    floor_distance_m,
 )
 from medhop.mission.steering import (
     DriftAssist, DriftAssistConfig, MarkerSample, Steering, SteeringConfig, marker_skew, steer,
@@ -100,13 +101,15 @@ ABORT_REASONS = (
     "takeoff_refused",      # automatic run: the mixer did not send the takeoff toggle
     "not_lined_up",         # at the arrive distance but could not get centred and in front of the sign
     "already_at_station",   # automatic run: the marker was already at arrive size after takeoff
-    "path_blocked",         # obstacle avoidance: held too long, or no way round (SPEC section 11)
+    "path_blocked",         # obstacle avoidance: held too long (SPEC section 11)
+    "obstacle_in_view",     # automatic run: an object came into the lane during the countdown (simulator)
 )
 BLOCKERS = (
     "no_video", "estop_active", "already_running", "person_in_view", "battery_low", "marker_too_close",
     "no_pilot_link",     # no pilot control socket is connected (start and hover test)
     "drone_flying",      # automatic start only: simulated telemetry says the drone is already up
     "recent_toggle",     # automatic start only: a takeoff/land toggle went out a moment ago
+    "obstacle_in_view",  # an object in the lane (simulator boxes; the real drone never sees objects)
 )
 DRONE_FLYING = "drone_flying"
 RECENT_TOGGLE = "recent_toggle"
@@ -248,13 +251,21 @@ class RunnerConfig:
     # instead of landing there. 0 for arrive_min_aspect disables both the facing rule and that abort.
     arrive_centre_tol: float = 0.12
     arrive_min_aspect: float = 0.80
-    # Obstacle avoidance (experimental, SPEC section 11): "off", "hold" or "pass". A stored mission
+    # Obstacle avoidance (experimental, SPEC section 11): "off" or "hold". A stored mission
     # setting wins; without one, Settings.avoid when it is not "off", else this. A run keeps the mode
     # it started with.
     avoid: str = "off"
     obstacle_fresh_s: float = 1.0      # a person-check result older than this is no evidence for avoidance
     research_max: int = 2              # back to searching after the way cleared without the sign, per run
     obstacle_evidence_max_m: float = 8.0   # safe landing on path_blocked: a base farther than this is no evidence
+    # Safe landing on path_blocked: an automatic run that saw the sign move this much DOWN the picture
+    # (fraction of the frame height, median of the countdown on the ground against the median of the
+    # last second of the takeoff wait) saw its camera climb: evidence of flight even when an obstacle
+    # stepped in before the sign could grow. A 1 m climb moves a sign 4.2 m away about 0.3.
+    takeoff_cy_rise: float = 0.10
+    # path_blocked in an automatic run without current evidence of flight: hold still (neutral sticks)
+    # at most this long for it to show, then end the run anyway.
+    path_blocked_evidence_wait_s: float = 2.5
 
 
 def marker_aspect(marker: MarkerObs) -> float:
@@ -313,6 +324,10 @@ class MissionRunner:
         self._auto_fly = store.load_auto_fly()           # fly automatically at dose times; off by default
         self._automatic = False                          # the current (or last) run took off by itself
         self._flight_confirmed = False                   # the marker grew since first seen in this run
+        self._ground_cy: List[float] = []                # automatic run: the sign's cy during the countdown
+        self._climb_cy: Deque[Tuple[float, float]] = deque()   # ... and during the takeoff wait (ts, cy)
+        self._takeoff_seen = False                       # the sign moved down the picture during the takeoff
+        self._blocked_since: Optional[float] = None      # path_blocked: waiting for evidence of flight
         self._timeout_from = 0.0                         # the run timeout counts from here
         self._at_size_since: Optional[float] = None      # since when the marker has been at arrive size
         self._align: Dict[str, Any] = {}                 # line-up state, see _step_aligning_locked
@@ -417,6 +432,18 @@ class MissionRunner:
             return any(o.kind == "person" for o in obs.obstacles)
         return False
 
+    def _object_in_lane(self, now: float, on_ground: bool = False) -> bool:
+        """An "object" box in the newest frame (no older than person_fresh_s) that is in the lane by its
+        estimate, including one whose base is out of the picture or not clearly below the horizon (very
+        close, or too far to tell). `on_ground`: an automatic start, from the ground, where the camera is
+        only ground_camera_height_m up. Only the simulator reports objects; the real drone never does."""
+        if self._seen_at is None or now - self._seen_at > self.cfg.person_fresh_s:
+            return False
+        if not on_ground:
+            return any(s.kind == "object" and s.in_lane for s in self._seen)
+        ground = replace(self._avoid_cfg, camera_height_m=self._avoid_cfg.ground_camera_height_m)
+        return any(s.kind == "object" and estimate(s.kind, s.box, s.ts, ground).in_lane for s in self._seen)
+
     def _battery_low(self, now: float) -> bool:
         """Only with the check enabled (MEDHOP_BATTERY_LOW_RAW >= 0) and on fresh telemetry: a reading
         older than telemetry_fresh_s is no decision either way."""
@@ -486,6 +513,8 @@ class MissionRunner:
             out.append("already_running")
         if self._person_in_view(now):
             out.append("person_in_view")
+        if self._object_in_lane(now, on_ground=automatic):
+            out.append("obstacle_in_view")
         if self._battery_low(now):
             out.append("battery_low")
         marker = self._current_marker(now)
@@ -556,6 +585,10 @@ class MissionRunner:
             self._research_pending = False
             self._search_direction = 1.0
             self._obstacle_log.clear()
+            self._ground_cy = []
+            self._climb_cy.clear()
+            self._takeoff_seen = False
+            self._blocked_since = None
             self._ready_for_dose = False      # the drone is leaving its start spot
             self._needs_pilot = False
             self._state = COUNTDOWN if automatic else SEARCHING
@@ -707,7 +740,7 @@ class MissionRunner:
             return self._auto_fly
 
     def set_avoid(self, mode: str) -> str:
-        """The obstacle-avoidance mode (persisted): "off", "hold" or "pass". A run keeps the mode it
+        """The obstacle-avoidance mode (persisted): "off" or "hold". A run keeps the mode it
         started with; the new one applies from the next run."""
         if mode not in AVOID_MODES:
             raise ValueError(f"avoid must be one of {AVOID_MODES}")
@@ -781,7 +814,7 @@ class MissionRunner:
         return self._avoid_run != "off" and self._state in (SEARCHING, APPROACHING, ALIGNING)
 
     def _shift_timers_locked(self, now: float) -> None:
-        """Time held, side-stepping or passing does not count against the run timeout (blocked_timeout_s
+        """Time held does not count against the run timeout (blocked_timeout_s
         bounds it instead), nor against the search limit, the line-up limit or the stall timer."""
         dt = 0.0 if self._avoid_clock is None else max(0.0, now - self._avoid_clock)
         self._avoid_clock = now
@@ -800,20 +833,14 @@ class MissionRunner:
         if obs.marker is not None:
             range_m = self._distance_m(obs.marker.size)
             if range_m:
-                sign = SignFix(obs.ts, obs.marker.cx, range_m)
-        drift = self._assist.mean_roll_near_end() if self._assist_run else None
-        cmd = self._avoider.update(now, self._seen, self._seen_fresh, sign,
-                                   allow_pass=self._avoid_run == "pass" and self._state == APPROACHING,
-                                   drift_roll=drift or 0.0)
+                sign = (obs.marker.cx, range_m)        # for holding still sideways (avoid.sign_lateral_m)
+        cmd = self._avoider.update(now, self._seen, self._seen_fresh, sign=sign)
         self._avoid_cmd = cmd
         if self._seen:
             # Every box of this frame, for the safe-landing evidence on path_blocked.
             self._obstacle_log.append((obs.ts, tuple(s.box for s in self._seen)))
         while self._obstacle_log and obs.ts - self._obstacle_log[0][0] > 3.0:
             self._obstacle_log.popleft()
-        if cmd.handed_back:
-            self._research_pending = True     # beside the obstacle now: find the sign again if out of view
-            logger.info("run %s: went round the obstacle", self._run_id)
         return cmd
 
     def _marker_hidden_locked(self, cmd: Optional[AvoidCommand]) -> bool:
@@ -834,7 +861,8 @@ class MissionRunner:
 
     def _hold_hidden_locked(self, now: float, cmd: AvoidCommand) -> None:
         """The sign is hidden: no yaw, no forward stick (backward only when avoidance says the
-        obstacle is very close), only the sideways hold, and no marker-lost timer. A real gap: the arrival counts start again."""
+        obstacle is very close), only the sideways hold, and no marker-lost timer. A real gap: the
+        arrival counts start again."""
         self._lost_since = None
         self._arrive_count = 0
         self._size_count = 0
@@ -870,33 +898,6 @@ class MissionRunner:
         logger.info("run %s: the way is clear but the sign is not in view; searching again (%d of %d)",
                     self._run_id, self._research_count, self.cfg.research_max)
         self._send(*self._steering.search(now, direction=self._search_direction), now)
-
-    def _avoid_override_locked(self, marker: Optional[MarkerObs], obs: Observation, now: float,
-                               cmd: AvoidCommand) -> None:
-        """Side-stepping or passing: avoidance has the sticks (yaw frozen). The marker, when in view,
-        still counts as evidence of flight and for where the sign is."""
-        cfg = self.cfg
-        self._assist.pause()
-        self._coast_pitch = 0.0
-        self._arrive_count = 0
-        self._size_count = 0
-        self._off_axis_count = 0
-        self._at_size_since = None
-        self._lost_since = None
-        if marker is not None:
-            self._marker_seen_at = obs.ts
-            self._last_cx = marker.cx
-            if self._first_width is None:
-                self._first_width = marker.size
-            if not self._flight_confirmed and marker.size >= self._first_width * cfg.growth_ratio:
-                self._flight_confirmed = True
-                logger.info("run %s: flight confirmed (marker grew %.2fx)", self._run_id,
-                            marker.size / max(1e-9, self._first_width))
-            self._history.append(MarkerSample(ts=obs.ts, cx=marker.cx, width=apparent_width(marker)))
-            while self._history and obs.ts - self._history[0].ts > 2.0:
-                self._history.popleft()
-        yaw, pitch = self._steering.shape(0.0, cmd.pitch or 0.0, now)
-        self._send(yaw, pitch, now, cmd.roll or 0.0)
 
     def obstacles_snapshot(self, now: Optional[float] = None) -> List[Dict[str, Any]]:
         """Status `vision.obstacles`: what the newest frame showed, with the estimates."""
@@ -953,11 +954,15 @@ class MissionRunner:
         # countdown) it still stops the run: never take off with a person in view.
         if self._person_in_view(now) and (self._avoid_run == "off" or self._state == COUNTDOWN):
             return self._abort_locked("person_in_view", now)
+        if self._state == COUNTDOWN and self._object_in_lane(now, on_ground=True):
+            return self._abort_locked("obstacle_in_view", now)    # on the ground: never take off into it
         if self._battery_low(now):
             return self._abort_locked("battery_low", now)
 
         if self._state == COUNTDOWN:
             # On the ground: nothing is sent until the countdown is over.
+            if obs is not None and obs.marker is not None:
+                self._ground_cy.append(obs.marker.cy)
             if now - self._phase_at >= self.cfg.countdown_s:
                 self._take_off_locked(now)
             return
@@ -967,7 +972,10 @@ class MissionRunner:
             self._send(*self._steering.neutral(now), now)
             if obs is not None:
                 self._record(now, obs.marker)
+                if obs.marker is not None:
+                    self._climb_cy.append((obs.ts, obs.marker.cy))
             if now - self._phase_at >= self.cfg.takeoff_wait_s:
+                self._takeoff_seen = self._takeoff_seen_locked()
                 marker = self._current_marker(now)
                 if marker is not None and apparent_width(marker) >= self._arrive_width:
                     # It took off from in front of the sign: the arrival could not be told from the
@@ -990,6 +998,16 @@ class MissionRunner:
         if avoiding:
             cmd = self._avoid_update_locked(obs, now)
             if cmd.blocked:
+                if self._automatic and not self._airborne_now_locked(now, "path_blocked"):
+                    # No current evidence that it is flying (for example it was turning, so every box
+                    # slid across the picture): hold still a moment so the obstacle or the sign can show
+                    # it, then end the run either way. A manual run never lands on an abort: no wait.
+                    if self._blocked_since is None:
+                        self._blocked_since = now
+                    if now - self._blocked_since < self.cfg.path_blocked_evidence_wait_s:
+                        self._send(*self._steering.shape(0.0, 0.0, now), now)
+                        self._record(now, marker)
+                        return
                 return self._abort_locked("path_blocked", now, self._path_blocked_detail_locked(cmd))
         if self._state == SEARCHING:
             if marker is None or not self._marker_confirmed_locked():
@@ -1019,9 +1037,6 @@ class MissionRunner:
     def _step_approach_locked(self, marker: Optional[MarkerObs], obs: Observation, now: float,
                               cmd: Optional[AvoidCommand] = None) -> None:
         cfg = self.cfg
-        if cmd is not None and cmd.state in (AVOID_SIDESTEP, AVOID_PASSING):
-            self._avoid_override_locked(marker, obs, now, cmd)
-            return
         if marker is None:
             if self._marker_hidden_locked(cmd):
                 self._hold_hidden_locked(now, cmd)
@@ -1122,11 +1137,13 @@ class MissionRunner:
         if not limited:
             yaw, pitch = self._steering.update(list(self._history), now, self._arrive_width, no_forward=hold)
         else:
-            # Something in the way: the same pursuit, with the forward stick capped (slow), zero (hold)
-            # or a little backward (very close). Steering.update is steer() then shape(); the cap goes
-            # in between so the rise limit sees what was really sent.
+            # Something in the way: the same pursuit, with the forward stick capped (slow), or holding:
+            # no yaw and no forward stick (a little backward when very close). Steering.update is
+            # steer() then shape(); the cap goes in between so the rise limit sees what was really sent.
             raw_yaw, raw_pitch = steer(list(self._history), tuple(self._steering._yaw_log), now,
                                        self._arrive_width, self._steering.cfg)
+            if cmd.freeze_yaw:
+                raw_yaw = 0.0
             target = 0.0 if hold else raw_pitch
             if cmd.pitch_cap is not None:
                 target = min(target, cmd.pitch_cap)
@@ -1449,15 +1466,17 @@ class MissionRunner:
         """Obstacle-avoidance keys for the run's closing event; empty when the run had it off."""
         if self._avoid_run == "off":
             return {}
-        return {"avoid": {"mode": self._avoid_run, "holds": self._avoider.holds, "passes": self._avoider.passes,
+        return {"avoid": {"mode": self._avoid_run, "holds": self._avoider.holds,
                           "held_s": round(self._avoider.no_progress_s, 1)}}
 
     def _path_blocked_detail_locked(self, cmd: AvoidCommand) -> Dict[str, Any]:
         target = self._avoider.target
         return {
-            "blocked_by": cmd.reason,           # "timeout", "no_way_round" or "pass_timeout"
+            "blocked_by": cmd.reason,           # "timeout" (held blocked_timeout_s in total)
             "obstacle_kind": None if target is None else target.kind,
             "obstacle_distance_m": None if target is None or target.distance_m is None else round(target.distance_m, 2),
+            "flight_confirmed": self._flight_confirmed,      # the sign grew since first seen
+            "takeoff_climb_seen": self._takeoff_seen,        # automatic run: the climb seen at takeoff
         }
 
     def _abort_locked(self, reason: str, now: float, extra: Optional[Dict[str, Any]] = None) -> None:
@@ -1508,7 +1527,8 @@ class MissionRunner:
         return reason == "path_blocked" and self._obstacle_evidence_locked(now)
 
     def _obstacle_evidence_locked(self, now: float) -> bool:
-        """path_blocked only: the flight was confirmed, obstacle boxes were seen in the last
+        """path_blocked only: the flight was confirmed (or, for an automatic run, the climb was seen
+        during the takeoff: _takeoff_seen_locked), obstacle boxes were seen in the last
         safe_land_marker_fresh_s, and for every one of them wholly inside the picture sideways: its
         base is either below the bottom of the picture or at a floor distance a camera at hover height
         could see (a camera sitting on the floor sees a base just under the horizon, which reads as very
@@ -1516,7 +1536,7 @@ class MissionRunner:
         frame height against the median over 2.0 to 0.5 s before (the box nearest it in each earlier
         frame, within 0.1 of the frame width; a sinking camera sees everything move up). At least one
         edge must have been checked. Unproven on a real drone."""
-        if not self._flight_confirmed or not self._obstacle_log:
+        if not (self._flight_confirmed or self._takeoff_seen) or not self._obstacle_log:
             return False
         latest_ts, boxes = self._obstacle_log[-1]
         if now - latest_ts > self.cfg.safe_land_marker_fresh_s:
@@ -1549,6 +1569,19 @@ class MissionRunner:
                     return False
                 checked += 1
         return checked > 0
+
+    def _takeoff_seen_locked(self) -> bool:
+        """End of an automatic run's takeoff wait: the sign moved down the picture by at least
+        takeoff_cy_rise between the countdown on the ground (median of its last 10 detections) and the
+        last second of the takeoff wait (median), on at least 3 detections each: the camera climbed."""
+        ground = self._ground_cy[-10:]
+        if len(ground) < 3 or not self._climb_cy:
+            return False
+        latest = self._climb_cy[-1][0]
+        air = [cy for ts, cy in self._climb_cy if latest - ts <= 1.0]
+        if len(air) < 3:
+            return False
+        return statistics.median(air) - statistics.median(ground) >= self.cfg.takeoff_cy_rise
 
     def _marker_evidence_locked(self, now: float) -> bool:
         if not self._flight_confirmed or not self._cy_log:
@@ -1646,7 +1679,6 @@ class MissionRunner:
             **({"avoid": {
                 "mode": self._avoid_run,
                 "holds": self._avoider.holds,
-                "passes": self._avoider.passes,
                 "held_s": round(self._avoider.no_progress_s, 2),
                 "blocked_reason": self._avoider.blocked_reason,
                 "searched_again": self._research_count,
@@ -1801,10 +1833,9 @@ class MissionRunner:
 
     def _avoid_snapshot_locked(self) -> Dict[str, Any]:
         """Status `mission.avoid`: the setting, and what the current (or last) run's avoidance is doing.
-        state, kind, distance_m and side are null before any run that had it on."""
+        state, kind and distance_m are null before any run that had it on."""
         if self._avoid_run == "off" or self._run_id is None:
-            return {"mode": self._avoid_mode, "state": None, "kind": None, "distance_m": None, "side": None,
-                    "held_s": 0.0}
+            return {"mode": self._avoid_mode, "state": None, "kind": None, "distance_m": None, "held_s": 0.0}
         return {"mode": self._avoid_mode, **self._avoider.snapshot()}
 
     def _alignment_snapshot_locked(self, now: float) -> Optional[Dict[str, Any]]:

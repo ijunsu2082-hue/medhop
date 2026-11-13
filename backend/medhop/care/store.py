@@ -366,7 +366,7 @@ class CareStore:
         self._save_mission_setting("auto_fly", bool(enabled))
 
     def load_avoid(self) -> Optional[str]:
-        """The stored obstacle-avoidance mode ("off", "hold" or "pass"), or None when none is stored
+        """The stored obstacle-avoidance mode ("off" or "hold"), or None when none is stored
         (or the stored value is not one of those): the settings' default applies then."""
         with self._lock:
             raw = self._read_json(self._mission_path)

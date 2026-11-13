@@ -15,7 +15,7 @@ PERSON_CHECK_MODES = ("auto", "on", "off")
 # Simulator camera profile: "high" is the display profile (a rendered room at 1280x720), "drone" the
 # drone-like profile (640x360, blur, noise, JPEG quality 50) that the automated tests use.
 SIM_CAMERA_MODES = ("high", "drone")
-AVOID_MODES = ("off", "hold", "pass")    # obstacle avoidance (experimental), SPEC section 11
+AVOID_MODES = ("off", "hold")    # obstacle avoidance (experimental), SPEC section 11
 
 BACKEND_PORT = 8010
 FRONTEND_ORIGINS = ("http://localhost:5180", "http://127.0.0.1:5180")
@@ -51,7 +51,7 @@ class Settings:
     port: int = BACKEND_PORT
     # Simulator only: which camera profile the interactive simulator renders (SIM_CAMERA_MODES).
     sim_camera: str = "high"
-    # Obstacle avoidance (experimental, simulator-tested only; SPEC section 11): "off", "hold" or "pass".
+    # Obstacle avoidance (experimental, simulator-tested only; SPEC section 11): "off" or "hold".
     # "off" here; from_env defaults it to "hold" in simulator mode and "off" on the real drone. A mode
     # stored with the mission settings (PUT /api/mission/settings) wins over this.
     avoid: str = "off"
@@ -145,7 +145,6 @@ class Settings:
                 raise ValueError(f"{name}={raw!r} is not a valid {cast.__name__}") from exc
         if "avoid" not in kwargs:
             # Unset: on in the simulator, off on the real drone (where only people can be seen, and only
-            # with the optional person check). "hold", not "pass": going round ended done on 1 of 20
-            # simulator runs with a person and 0 of 20 with a cart (SPEC section 11.7).
+            # with the optional person check).
             kwargs["avoid"] = "hold" if str(kwargs.get("drone", "sim")).strip().lower() == "sim" else "off"
         return cls(**kwargs)

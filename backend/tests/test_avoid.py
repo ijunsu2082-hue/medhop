@@ -1,12 +1,14 @@
 """Unit tests for mission/avoid.py (experimental obstacle avoidance): the distance and sideways
-estimates against known camera geometry, lane membership, and every state transition. Pure: no
-simulator, no clock (time is passed in)."""
+estimates against known camera geometry, lane membership, and every state transition (clear, slow,
+hold, blocked). Pure: no simulator, no clock (time is passed in)."""
 import math
 import unittest
 
+from medhop.config import AVOID_MODES
+from medhop.mission import avoid
 from medhop.mission.avoid import (
-    BLOCKED, CLEAR, HOLD, PASSING, SIDESTEP, SLOW, AvoidConfig, Avoider, SignFix, blind_distance_m,
-    estimate, floor_distance_m, focal_fh, focal_fw, sign_position,
+    AVOID_STATES, BLOCKED, CLEAR, HOLD, SLOW, AvoidConfig, Avoider, blind_distance_m, estimate,
+    floor_distance_m, focal_fh, focal_fw,
 )
 
 CFG = AvoidConfig()
@@ -86,11 +88,13 @@ class EstimateTests(unittest.TestCase):
         self.assertFalse(seen(3.0, lateral=0.225 + 0.56).in_lane)       # 0.56 m away
         self.assertFalse(seen(3.0, lateral=-(0.225 + 0.56)).in_lane)
 
-    def test_the_sign_position_frame(self):
-        self.assertEqual(sign_position(SignFix(0.0, 0.5, 3.0), CFG), (0.0, 3.0))
-        x, z = sign_position(SignFix(0.0, 0.5 + focal_fw(CFG) * math.tan(math.radians(20)), 3.0), CFG)
-        self.assertAlmostEqual(x, -3.0 * math.sin(math.radians(20)), places=9)   # sign to the right: drone left
-        self.assertAlmostEqual(z, 3.0 * math.cos(math.radians(20)), places=9)
+
+class NoGoingRoundTests(unittest.TestCase):
+    def test_hold_is_the_only_avoiding_mode_and_there_is_no_way_to_go_round(self):
+        self.assertEqual(AVOID_MODES, ("off", "hold"))
+        self.assertEqual(AVOID_STATES, ("clear", "slow", "hold", "blocked"))
+        for name in ("SIDESTEP", "PASSING", "SignFix", "sign_position"):
+            self.assertFalse(hasattr(avoid, name), name)
 
 
 class StateTests(unittest.TestCase):
@@ -111,7 +115,7 @@ class StateTests(unittest.TestCase):
         self.assertEqual(self.step([low(3.5)]).state, CLEAR)
         self.assertEqual(self.step([low(2.5, lateral=1.5)]).state, CLEAR)     # not in the lane
         cmd = self.step([low(2.9)])
-        self.assertEqual((cmd.state, cmd.pitch_cap), (SLOW, 0.10))
+        self.assertEqual((cmd.state, cmd.pitch_cap, cmd.roll), (SLOW, 0.10, None))
         cmd = self.step([low(1.7)])
         self.assertEqual((cmd.state, cmd.pitch_cap, cmd.pitch), (HOLD, 0.0, None))
         cmd = self.step([low(0.85)])                                          # closer than 0.9 m: back off
@@ -119,11 +123,13 @@ class StateTests(unittest.TestCase):
         cmd = self.step([low(0.7)])                                           # base out of view: very close
         self.assertTrue(low(0.7).very_close)
         self.assertEqual((cmd.state, cmd.pitch), (HOLD, -0.08))
+        self.assertEqual(self.avoider.holds, 1)
 
     def test_the_drone_camera_reads_anything_inside_the_hold_distance_as_very_close(self):
         cmd = self.step([seen(1.7)])
         self.assertEqual((cmd.state, cmd.pitch), (HOLD, -0.08))
         self.assertIsNone(self.avoider.snapshot()["distance_m"])
+        self.assertEqual(set(self.avoider.snapshot()), {"state", "kind", "distance_m", "held_s"})
 
     def test_back_to_moving_only_after_the_lane_was_clear_for_a_second(self):
         self.step([seen(1.5)])
@@ -137,7 +143,14 @@ class StateTests(unittest.TestCase):
         for _ in range(3):
             cmd = self.step()
         self.assertEqual(cmd.state, CLEAR)
-        self.assertEqual(cmd.pitch_cap, None)
+        self.assertEqual((cmd.pitch_cap, cmd.pitch, cmd.roll), (None, None, None))
+        self.assertEqual([e["state"] for e in self.avoider.events], [HOLD, CLEAR])
+
+    def test_something_beyond_the_slow_distance_does_not_keep_it_holding(self):
+        self.step([seen(1.5)])
+        for _ in range(int(1.2 / DT)):
+            cmd = self.step([seen(3.5, kind="object", height=0.9)])
+        self.assertEqual(cmd.state, CLEAR)
 
     def test_no_current_evidence_never_clears(self):
         self.step([seen(1.5)])
@@ -146,68 +159,11 @@ class StateTests(unittest.TestCase):
         self.assertEqual(cmd.state, HOLD)
         self.assertEqual(cmd.pitch_cap, 0.0)
 
-    def test_mode_hold_never_goes_round(self):
-        self.step([seen(1.5)])
-        for _ in range(int(10.0 / DT)):
-            cmd = self.step([seen(2.8, lateral=0.1)], allow_pass=False)
-        self.assertEqual(cmd.state, HOLD)
+    def test_no_current_evidence_keeps_the_last_limit_while_moving(self):
+        self.step([seen(2.9, kind="object", height=0.9)])
+        self.assertEqual(self.step([], fresh=False).state, SLOW)
 
-    def test_patience_before_going_round(self):
-        self.step([seen(1.7)])                       # into hold (1.7 < 1.8 m)
-        for _ in range(int(3.8 / DT)):
-            self.assertEqual(self.step([seen(2.8, lateral=0.1)], allow_pass=True).state, HOLD)
-        for _ in range(int(0.4 / DT)):
-            cmd = self.step([seen(2.8, lateral=0.1)], allow_pass=True)
-        self.assertEqual(cmd.state, SIDESTEP)
-        self.assertTrue(cmd.freeze_yaw)
-        self.assertEqual(self.avoider.side, -1, "something right of centre: go left, the shorter way")
-
-    def test_a_blocker_whose_base_is_out_of_view_is_backed_away_from_first(self):
-        self.step([seen(1.5)])
-        for _ in range(int(6.0 / DT)):
-            cmd = self.step([seen(2.0)], allow_pass=True)      # base below the picture
-        self.assertEqual((cmd.state, cmd.pitch), (HOLD, -0.08))
-
-    def test_no_way_round(self):
-        wide = seen(2.8, kind="object", width=3.2, height=1.2)
-        self.step([seen(1.5)])
-        cmds = [self.step([wide], allow_pass=True) for _ in range(int(4.3 / DT))]
-        self.assertEqual(cmds[-1].state, BLOCKED)
-        self.assertTrue(cmds[-1].blocked)
-        self.assertEqual(cmds[-1].reason, "no_way_round")
-        self.assertEqual(self.avoider.blocked_reason, "no_way_round")
-
-    def test_something_else_on_one_side_makes_it_go_the_other_way(self):
-        self.step([seen(1.5)])
-        blocker = seen(2.8, lateral=-0.05)                       # slightly left: right is shorter
-        beside = seen(3.0, lateral=1.4, kind="object", width=0.6, height=0.9)
-        for _ in range(int(4.2 / DT)):
-            cmd = self.step([blocker, beside], allow_pass=True)
-        self.assertEqual(cmd.state, SIDESTEP)
-        self.assertEqual(self.avoider.side, -1)
-
-    def test_the_sidestep_limit_from_the_sign(self):
-        self.step([seen(1.5)])
-        for _ in range(int(4.2 / DT)):
-            self.step([seen(2.8)], allow_pass=True)
-        self.assertEqual(self.avoider.state, SIDESTEP)
-        far_off = SignFix(self.t, 0.5 + focal_fw(CFG) * math.tan(math.radians(30)), 3.0)   # 1.5 m off
-        cmd = self.step([seen(2.8, lateral=0.1)], allow_pass=True, sign=far_off)
-        self.assertEqual((cmd.state, cmd.reason), (BLOCKED, "no_way_round"))
-
-    def test_the_sidestep_time_limit_without_the_sign(self):
-        self.step([seen(1.5)])
-        for _ in range(int(4.2 / DT)):
-            self.step([seen(2.8)], allow_pass=True)
-        self.assertEqual(self.avoider.state, SIDESTEP)
-        limit = CFG.max_sidestep_m / CFG.sidestep_speed_m_s           # 10 s
-        cmds = [self.step([seen(2.8)], allow_pass=True) for _ in range(int((limit - 0.3) / DT))]
-        self.assertEqual(cmds[-1].state, SIDESTEP)
-        for _ in range(int(0.6 / DT)):
-            cmd = self.step([seen(2.8)], allow_pass=True)
-        self.assertEqual((cmd.state, cmd.reason), (BLOCKED, "no_way_round"))
-
-    def test_blocked_after_25_s_without_progress(self):
+    def test_blocked_after_25_s_held_and_it_stays_blocked(self):
         self.step([seen(1.5)])
         for _ in range(int(24.8 / DT)):
             cmd = self.step([seen(1.5)])
@@ -215,86 +171,59 @@ class StateTests(unittest.TestCase):
         for _ in range(int(0.4 / DT)):
             cmd = self.step([seen(1.5)])
         self.assertEqual((cmd.state, cmd.reason, cmd.blocked), (BLOCKED, "timeout", True))
+        self.assertEqual((cmd.pitch, cmd.roll), (0.0, 0.0))
         self.assertTrue(self.step().blocked, "blocked stays blocked")
+        self.assertTrue(self.step([seen(6.0, lateral=3.0)]).blocked, "even when the way clears")
         self.assertAlmostEqual(self.avoider.no_progress_s, 25.0, delta=0.1)
 
+    def test_time_holding_adds_up_over_several_holds(self):
+        for _ in range(2):
+            self.step([seen(1.5)])
+            for _ in range(int(10.0 / DT)):
+                self.step([seen(1.5)])
+            for _ in range(int(1.2 / DT)):
+                self.step()
+        self.assertEqual(self.avoider.state, CLEAR)
+        self.assertEqual(self.avoider.holds, 2)
+        self.assertAlmostEqual(self.avoider.no_progress_s, 22.4, delta=0.3)
+        self.step([seen(1.5)])
+        for _ in range(int(3.0 / DT)):
+            cmd = self.step([seen(1.5)])
+        self.assertEqual(cmd.state, BLOCKED)
 
-class GoingRoundTests(unittest.TestCase):
-    """A small kinematic stand-in for the drone (roll and pitch move it at 1 m/s per full stick, no lag,
-    yaw frozen, a steady sideways drift) around one static person, to drive the sidestep and the pass."""
+    def test_the_hold_freezes_yaw_and_starts_with_no_roll(self):
+        cmd = self.step([seen(1.5)])
+        self.assertEqual((cmd.state, cmd.freeze_yaw, cmd.roll), (HOLD, True, 0.0))
+        self.assertFalse(self.step([seen(1.5)], fresh=False).freeze_yaw is False)
+        self.assertFalse(Avoider().update(0.0, []).freeze_yaw, "clear: the approach steers as usual")
 
-    def run_round(self, drift=0.05, other=None, seconds=80.0):
-        avoider = Avoider(AvoidConfig())
-        x, z = 0.0, 3.0                  # drone sideways and distance to the person's front face
-        person_x, depth = 0.05, 0.3
-        t, roll, pitch, closest = 0.0, 0.0, 0.0, 9.0
-        log = []
-        while t < seconds:
-            t += DT
-            x += (roll + drift) * DT
-            z -= pitch * DT
-            items = []
-            if z > 0.05:
-                items.append(estimate("person", box_at(z, person_x - x), t, CFG))
-                if items[0].box[2] <= 0.0 or items[0].box[0] >= 1.0:
-                    items = []
-            if other is not None and t > other[0]:
-                items.append(estimate("person", box_at(other[1], other[2]), t, CFG))
-            cmd = avoider.update(t, items, allow_pass=True)
-            log.append((t, cmd.state))
-            roll = 0.0 if cmd.roll is None else cmd.roll
-            if cmd.pitch is not None:
-                pitch = cmd.pitch
-            else:
-                pitch = 0.2 if cmd.pitch_cap is None else min(0.2, cmd.pitch_cap)
-            # the person's footprint, sideways and along
-            dx = max(abs(x - person_x) - 0.225, 0.0)
-            dz = 0.0 if -depth <= z <= 0.0 else (z if z > 0 else -(z + depth))
-            closest = min(closest, math.hypot(dx, dz))
-            if cmd.handed_back or cmd.blocked:
-                return avoider, cmd, x, z, closest, log
-        return avoider, cmd, x, z, closest, log
+    def test_the_hold_rolls_against_a_sideways_drift_seen_on_the_obstacle(self):
+        """A drone drifting right sees the obstacle's box move left: the roll answers to the left."""
+        self.step([seen(2.8, kind="object", height=0.9)])            # slow first
+        self.assertEqual(self.step([seen(1.5)]).state, HOLD)
+        rolls = []
+        for k in range(int(3.0 / DT)):
+            # measurable (its base in view on the low camera), moving left as the drone drifts right
+            cmd = self.step([estimate("object", box_at(1.5, -0.02 * k, 0.45, 0.2, LOW), self.t, LOW)])
+            rolls.append(cmd.roll)
+        self.assertEqual(cmd.state, HOLD)
+        self.assertLess(rolls[-1], -0.05)
+        self.assertGreaterEqual(min(rolls), -0.15)
 
-    def test_goes_round_and_hands_back_beside_it(self):
-        avoider, cmd, x, z, closest, log = self.run_round()
-        states = [s for _t, s in log]
-        self.assertIn(HOLD, states)
-        self.assertIn(SIDESTEP, states)
-        self.assertIn(PASSING, states)
-        self.assertTrue(cmd.handed_back, states[-5:])
-        self.assertGreater(abs(x - 0.05) - 0.225, 0.85, "passed with at least about pass_clear_m of gap")
-        self.assertLess(z, -CFG.pass_beside_m + 0.05, "handed back once beside the front face")
-        self.assertGreater(closest, 0.8)
-        self.assertEqual(avoider.passes, 1)
-
-    def test_the_hold_learns_the_drift_and_the_pass_holds_its_line(self):
-        _avoider, cmd, x, _z, _closest, log = self.run_round(drift=0.08)
-        self.assertTrue(cmd.handed_back, log[-3:])
-        self.assertLess(abs(abs(x - 0.05) - 0.225 - 0.9), 0.35, x)
-
-    def test_someone_stepping_into_the_way_stops_the_pass(self):
-        avoider = Avoider(AvoidConfig())
-        t = 0.0
-        avoider.update(t, [estimate("person", box_at(1.5, 0.0), t, CFG)], allow_pass=True)
-        for _ in range(int(5.0 / DT)):
-            t += DT
-            avoider.update(t, [estimate("person", box_at(2.8, 0.0), t, CFG)], allow_pass=True)
-        self.assertEqual(avoider.state, SIDESTEP)
-        side = avoider.side
-        # the sidestep moves the drone: the blocker slides across the picture until the gap is wide
-        for k in range(1, 21):
-            t += DT
-            cmd = avoider.update(t, [estimate("person", box_at(2.8, -side * 0.06 * k), t, CFG)], allow_pass=True)
-        self.assertEqual(cmd.state, PASSING)
-        for _ in range(5):
-            t += DT
-            cmd = avoider.update(t, [estimate("person", box_at(2.7, -side * 1.2), t, CFG)], allow_pass=True)
-        self.assertGreater(cmd.pitch, 0.0)
-        t += DT
-        cmd = avoider.update(t, [estimate("person", box_at(2.7, -side * 1.2), t, CFG),
-                                 estimate("person", box_at(2.9, 0.1), t, CFG)], allow_pass=True)
-        self.assertEqual(cmd.state, PASSING)
-        self.assertEqual(cmd.pitch, 0.0, "something else in the lane: no forward stick")
+    def test_the_hold_rolls_against_a_sideways_drift_seen_on_the_sign(self):
+        """With the heading held still, the sign moving right in the picture means the drone moved left:
+        the roll answers to the right. The sign wins over an obstacle box that cannot be measured."""
+        self.assertEqual(self.step([seen(1.5)], sign=(0.5, 3.5)).state, HOLD)
+        f = focal_fw(CFG)
+        rolls = []
+        for k in range(int(3.0 / DT)):
+            lateral = -0.02 * k                                       # the drone drifts left
+            cx = 0.5 + f * (-lateral) / 3.5                           # so the sign appears to the right
+            cmd = self.step([seen(2.0)], sign=(cx, 3.5))              # the obstacle itself is very close
+            rolls.append(cmd.roll)
+        self.assertGreater(rolls[-1], 0.05)
+        self.assertLessEqual(max(rolls), 0.15)
+        self.assertEqual(cmd.pitch, -0.08, "still backing away from the very close obstacle")
 
 
 if __name__ == "__main__":
