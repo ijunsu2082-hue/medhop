@@ -11,12 +11,23 @@ import type { Mode } from "../../api/types";
 
 export { clamp } from "../util/num";
 
+/** (x1, y1, x2, y2) as fractions of the frame width and height. */
+export type FrameBox = readonly [x1: number, y1: number, x2: number, y2: number];
+
+/** One entry of Frame.obstacles: Python's (kind, (x1, y1, x2, y2)) tuple. */
+export type FrameObstacle = readonly [kind: string, box: FrameBox];
+
 export interface Frame<P = unknown> {
   /** What the frame shows. Python: `jpeg` (encoded bytes); in the browser, for example, a pose snapshot. */
   readonly payload: P;
   /** The link's monotonic clock domain (seconds). */
   readonly timestamp: number;
   readonly seq: number;
+  /**
+   * Simulator only: each simulated actor in view with its box, projected through the same camera that
+   * captured this frame. Missing or empty on the real drone (Python: `obstacles: tuple = ()`).
+   */
+  readonly obstacles?: readonly FrameObstacle[];
 }
 
 /** Raw status bytes. Units and meanings are NOT verified. (Not the status JSON's Telemetry in api/types.ts.) */

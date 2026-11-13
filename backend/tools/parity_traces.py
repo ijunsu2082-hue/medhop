@@ -7,7 +7,15 @@
 
 Groups: steering (mission/steering.py), pose (vision/pose.py), mixer (mixer.py, driven through the
 RecordingLink of tests/harness.py), num (the Python number semantics the port mirrors: round, hypot,
-sum, median, repr, clamp), rng (random.Random), config (Settings and the config dataclass defaults).
+sum, median, repr, clamp), rng (random.Random), config (Settings and the config dataclass defaults),
+sim_physics (drone/sim.py stepped with its noise at zero), sim_actors (drone/sim_actors.py and the
+boxes frames carry), projection (the simulator's pinhole camera), sim_harness (SimHarness.step of
+tests/harness.py with a scripted stand-in for the runner), and detector_calibration: the real OpenCV
+detector run on the simulator's own pictures and compared with geometric truth. That last one is
+measured rather than replayed and takes about a minute:
+
+    python tools/parity_traces.py detector_calibration    # measure again
+    python tools/parity_traces.py replayed                 # every group except the measured one
 
 Each group writes frontend/src/engine/__fixtures__/<group>.json. The vitest suites under
 frontend/src/engine replay every recorded input through the TypeScript port and compare the outputs;
@@ -39,6 +47,8 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
+
+from unittest import mock  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -1148,6 +1158,861 @@ def build_mixer() -> dict:
 
 
 # ---------------------------------------------------------------------------------------------- #
+# simulator: drone/sim.py in stepped mode, drone/sim_actors.py, and the camera both use
+#
+# The simulator's own noise comes from numpy's generator, which the TypeScript port cannot replay, so
+# every trace below runs with noise_velocity = noise_yaw_deg = 0. The generator is still consulted
+# (three standard normals per physics step in flight), but each draw is multiplied by a zero amplitude
+# and adding the resulting zero leaves the state as it was, so no draw reaches the trace. sensor_noise
+# is 0 as well: only the picture uses it, and building its noise pool is most of a SimLink's start-up. The picture
+# is patched out the way tests/test_sim_high_quality.py does it (SimLink._render_jpeg replaced on the
+# instance), and the room renderer is not built at all (it only draws, and building it takes seconds);
+# the camera matrix SimLink builds for both scenes is kept.
+
+QUIET = {"noise_velocity": 0.0, "noise_yaw_deg": 0.0, "sensor_noise": 0.0}
+ACTOR_FIELDS = ("kind", "x_m", "distance_m", "width_m", "depth_m", "height_m", "vx_m_s", "vd_m_s",
+                "move_from_s", "move_until_s")
+SIM_POSE_KEYS = ("x_m", "distance_m", "heading_deg", "altitude_m", "phase", "airborne")
+STEP_S = 1.0 / 60.0
+
+
+class _Clock:
+    """FakeClock of tests/harness.py, kept here so the simulator groups do not import the mission runner."""
+
+    def __init__(self, t: float = 1000.0) -> None:
+        self.t = float(t)
+
+    def __call__(self) -> float:
+        return self.t
+
+    def advance(self, dt: float) -> float:
+        self.t += dt
+        return self.t
+
+
+def _sim_config(profile: str, overrides: Dict[str, Any]) -> Any:
+    from medhop.drone.sim import SimConfig
+    kw = dict(overrides)
+    if "actors" in kw:
+        kw["actors"] = tuple(_actor_from_row(row) for row in kw["actors"])
+    return SimConfig.high_quality(**kw) if profile == "high" else SimConfig(**kw)
+
+
+def _actor_row(actor: Any) -> list:
+    return [getattr(actor, name) for name in ACTOR_FIELDS]
+
+
+def _actor_from_row(row: Sequence[Any]) -> Any:
+    from medhop.drone.sim_actors import Actor
+    return Actor(**dict(zip(ACTOR_FIELDS, row)))
+
+
+def _snap_row(snap: dict) -> dict:
+    return {"x": snap["x"], "z": snap["z"], "heading": snap["heading"], "cam_y": snap["cam_y"],
+            "marker_hidden": snap["marker_hidden"], "actors": [_actor_row(a) for a in snap.get("actors") or ()]}
+
+
+def _snap_list(snap: dict) -> list:
+    """A snapshot in short form: x, z, heading, cam_y, marker_hidden, then [x_m, distance_m] of each actor
+    (the other actor fields never change while it moves)."""
+    return [snap["x"], snap["z"], snap["heading"], snap["cam_y"], snap["marker_hidden"],
+            [[a.x_m, a.distance_m] for a in snap.get("actors") or ()]]
+
+
+def _hover_snap(distance_m: float, x_m: float, heading_rad: float, cam_y: float = 1.04, actors: tuple = ()) -> dict:
+    return {"x": float(x_m), "z": -abs(float(distance_m)), "heading": float(heading_rad), "cam_y": float(cam_y),
+            "marker_hidden": False, "actors": actors}
+
+
+class _TracedSim:
+    """A SimLink on a fake clock whose picture is replaced by the index of the capture it shows.
+
+    `captures` lists (capture time, snapshot) for every frame the simulator captured, in order. A
+    released frame's `jpeg` names its capture (or is `jpeg` itself when one is given: the harness
+    trace needs bytes it can decode)."""
+
+    def __init__(self, config: Any, realtime: bool = False, jpeg: Optional[bytes] = None) -> None:
+        from medhop.drone.sim import SimLink
+        self.clock = _Clock()
+        with mock.patch("medhop.drone.sim_scene.RoomRenderer", lambda *args, **kwargs: None):
+            self.sim = SimLink(config, clock=self.clock, realtime=realtime)
+        self.captures: List[Tuple[float, dict]] = []
+        self.test_snaps: List[dict] = []
+        self._index: Dict[int, int] = {}
+        self._jpeg = jpeg
+        take = self.sim._snapshot
+
+        def snapshot() -> dict:
+            snap = take()
+            self._index[id(snap)] = len(self.captures)
+            self.captures.append((self.sim._t, snap))
+            return snap
+
+        self.sim._snapshot = snapshot
+        self.sim._render_jpeg = self._render
+
+    def _render(self, snap: dict) -> bytes:
+        index = self._index.get(id(snap))
+        if index is None:                  # render_test_frame builds its own snapshot
+            self.test_snaps.append(snap)
+            return b""
+        return self._jpeg if self._jpeg is not None else str(index).encode()
+
+
+def _apply_sim_op(traced: _TracedSim, op: dict) -> Any:
+    sim, clock = traced.sim, traced.clock
+    kind = op["op"]
+    if kind == "advance":
+        sim.advance_to(clock.advance(op["dt"]))
+    elif kind == "axes":
+        sim.set_axes(*op["v"])
+    elif kind == "toggle":
+        return sim.takeoff_land_toggle()
+    elif kind == "estop":
+        return sim.emergency_stop()
+    elif kind == "calibrate":
+        sim.calibrate()
+    elif kind == "stop":
+        sim.stop()
+    elif kind == "start":
+        sim.start()
+    elif kind == "set_pose":
+        sim.set_pose(**op["kw"])
+    elif kind == "force_auto_land":
+        sim.force_auto_land(drop_battery=op.get("drop_battery", False), descent_m_s=op.get("descent_m_s"))
+    elif kind == "freeze_video":
+        sim.freeze_video(op["frozen"])
+    elif kind == "drop_marker":
+        sim.drop_marker(op["hidden"])
+    elif kind == "set_drift":
+        sim.set_drift(op["v"])
+    elif kind == "set_battery_raw":
+        sim.set_battery_raw(op["v"])
+    elif kind == "set_scenario":
+        try:
+            sim.set_scenario(op["name"])
+        except KeyError:
+            return {"error": "KeyError"}
+    elif kind == "set_actors":
+        sim.set_actors([_actor_from_row(row) for row in op["actors"]], origin_now=op.get("origin_now", True))
+    elif kind == "pose":
+        return sim.pose()
+    elif kind == "clearance":
+        return sim.clearance_m()
+    elif kind == "actors_now":
+        return [_actor_row(a) for a in sim.actors_now()]
+    elif kind == "status":
+        return [a.as_status() for a in sim.actors_now()]
+    elif kind == "scenario":
+        return sim.scenario
+    elif kind == "test_snapshot":
+        sim.render_test_frame(*op["args"])
+        return _snap_row(traced.test_snaps[-1])
+    else:
+        raise ValueError(f"unknown simulator op {kind!r}")
+    return None
+
+
+def _run_sim_scenario(name: str, profile: str, overrides: Dict[str, Any], ops: List[dict],
+                      realtime: bool = False, snapshots: bool = True) -> dict:
+    """Apply the ops one by one; after each, record the pose and whatever the simulator produced:
+    new captures (time and the snapshot in short form; without `snapshots` only how many and the last
+    time), the newest released frame when it is new (seq, release time, which capture it shows, its
+    actor boxes) and the telemetry when it changed. An advance is written as {"dt": ...} alone."""
+    config = {**QUIET, **overrides}
+    traced = _TracedSim(_sim_config(profile, config), realtime=realtime)
+    sim = traced.sim
+    steps, n_captures, last_seq, last_tel = [], 0, None, None
+    for op in ops:
+        step = {"dt": op["dt"]} if op["op"] == "advance" else dict(op)
+        out = _apply_sim_op(traced, op)
+        if out is not None:
+            step["out"] = out
+        pose = sim.pose()
+        step["pose"] = [pose[key] for key in SIM_POSE_KEYS]
+        if len(traced.captures) > n_captures:
+            new = traced.captures[n_captures:]
+            step["captures"] = ([[t, *_snap_list(snap)] for t, snap in new] if snapshots
+                                else {"count": len(new), "last": new[-1][0]})
+            n_captures = len(traced.captures)
+        frame = sim.latest_frame()
+        if frame is not None and frame.seq != last_seq:
+            last_seq = frame.seq
+            step["frame"] = [frame.seq, frame.timestamp, int(frame.jpeg.decode()),
+                             [[kind, list(box)] for kind, box in frame.obstacles]]
+        tel = sim.telemetry()
+        if tel is not None and tel != last_tel:
+            last_tel = tel
+            step["tel"] = [tel.fly_state_raw, tel.battery_raw, tel.flags_raw, tel.timestamp]
+        steps.append(step)
+    end = {"toggle_count": sim.toggle_count, "estop_count": sim.estop_count, "calibrate_count": sim.calibrate_count,
+           "last_axes_sent": list(sim.last_axes_sent), "scenario": sim.scenario,
+           "start_distance_m": sim.cfg.start_distance_m, "lateral_drift": sim.cfg.lateral_drift}
+    return {"name": name, "profile": profile, "config": config, "realtime": realtime, "snapshots": snapshots,
+            "steps": steps, "end": end}
+
+
+def _adv(n: int = 1, dt: float = STEP_S) -> List[dict]:
+    return [{"op": "advance", "dt": dt} for _ in range(n)]
+
+
+def _op(kind: str, **kw: Any) -> dict:
+    return {"op": kind, **kw}
+
+
+def _axes(throttle: float, yaw: float, pitch: float, roll: float) -> dict:
+    return {"op": "axes", "v": [throttle, yaw, pitch, roll]}
+
+
+def _sim_scripts() -> List[Tuple[str, str, Dict[str, Any], List[dict], bool, bool]]:
+    custom = [["object", 0.6, 1.2, 0.5, 0.3, 1.1, -0.3, 0.1, 0.5, 2.0]]
+    ground_flight = (
+        _adv(12) + [_op("toggle")] + _adv(110)                                  # takeoff: delay, then 1.5 s climb
+        + [_axes(0.0, 0.3, 0.5, -0.2)] + _adv(40)
+        + [_axes(0.4, -0.5, 0.2, 0.3)] + _adv(30)
+        + [_axes(-0.6, 0.0, 0.0, 0.0)] + _adv(50)                               # down to the 0.3 m floor
+        + [_axes(1.0, 0.0, 0.0, 0.0)] + _adv(35, 0.1)                           # up to the 1.9 m ceiling
+        + [_op("set_drift", v=0.25), _axes(0.0, 0.0, 1.0, 0.0)] + _adv(60, 0.05)   # into the wall
+        + [_op("set_pose", kw={"distance_m": 3.0, "x_m": 0.5, "heading_deg": -20.0})] + _adv(20)
+        + [_axes(0.0, 0.0, -1.0, 1.0)] + _adv(60, 0.1)                          # back and sideways to the limits
+        + [_axes(0.0, 0.0, 0.0, 0.0), _op("toggle"), _op("set_pose", kw={"airborne": True})] + _adv(12)
+        + [_op("freeze_video", frozen=True)] + _adv(30) + [_op("freeze_video", frozen=False)] + _adv(10)
+        + [_op("drop_marker", hidden=True)] + _adv(12) + [_op("drop_marker", hidden=False)] + _adv(3)
+        + [_op("estop")] + _adv(12)
+        + [_op("toggle")] + _adv(30) + [_op("toggle")] + _adv(60)                 # a takeoff turned into a landing
+        + [_op("toggle")] + _adv(40, 0.05)
+        + [_op("force_auto_land", drop_battery=True, descent_m_s=0.2)] + _adv(40, 0.05) + [_op("pose")]
+        + [_op("set_battery_raw", v=77)] + _adv(70, 0.05)
+        + [_op("force_auto_land")] + _adv(3)                                     # on the ground: nothing happens
+        + [_op("toggle")] + _adv(20, 0.05) + [_op("toggle")] + _adv(30, 0.05)
+        + [_op("set_pose", kw={"airborne": False, "distance_m": -1.7})] + _adv(3)
+        + [_op("stop"), _op("calibrate"), _op("pose"), _op("test_snapshot", args=[2.0, 0.3, 10.0])]
+        + _adv(10, 0.013) + _adv(5, 0.0333) + _adv(4, 0.25) + _adv(2, 0.0)
+    )
+    high_scenario = (
+        _adv(4, 0.05) + [_op("set_scenario", name="crossing"), _op("scenario"), _op("pose")] + _adv(4, 0.05)
+        + [_op("toggle")] + _adv(40, 0.05)
+        + [_axes(0.0, 0.1, 0.15, 0.0)] + _adv(120, 0.05)                         # the person crosses at 7 s
+        + [_op("clearance"), _op("actors_now"), _op("status")]
+        + [_op("set_scenario", name="blocked")] + _adv(80, 0.05) + [_op("clearance"), _op("actors_now")]
+        + [_op("set_scenario", name="no such scenario")]
+        + [_op("set_actors", actors=custom, origin_now=False)] + _adv(10, 0.05) + [_op("actors_now")]
+        + [_op("set_actors", actors=[]), _op("scenario"), _op("clearance")] + _adv(5, 0.05)
+        + [_op("toggle")] + _adv(40, 0.05)
+        + [_op("set_scenario", name="cart"), _op("pose"), _op("toggle")] + _adv(50, 0.05)
+        + [_op("set_pose", kw={"heading_deg": 30.0, "x_m": -1.0})] + _adv(10, 0.05)
+        + [_op("test_snapshot", args=[2.5, -0.2, -5.0])]
+    )
+    airborne_start = (
+        [_op("scenario"), _op("actors_now")] + _adv(1) + [_op("actors_now"), _axes(0.0, -0.4, 0.3, 0.1)]
+        + _adv(100) + [_op("clearance"), _op("status")]
+    )
+    gaps = (_adv(6, 0.05) + _adv(1, 2.0) + _adv(4, 0.05) + _adv(1, 0.3) + _adv(10, 0.05) + _adv(1, 0.6)
+            + [_axes(0.0, 0.5, 0.5, 0.0)] + _adv(10, 0.05))
+    custom_timing = (_adv(20, 0.013) + [_op("toggle")] + _adv(150, 0.013) + [_axes(0.2, 0.3, 0.4, -0.1)]
+                     + _adv(60, 0.021) + [_op("toggle")] + _adv(50, 0.03))
+    return [
+        ("drone_ground_flight", "drone", {}, ground_flight, False, True),
+        ("high_scenarios_reset_pose", "high", {"start_distance_m": 3.2, "reset_pose_on_takeoff": True},
+         high_scenario, False, True),
+        ("drone_airborne_start", "drone", {"start_airborne": True, "start_heading_deg": 25.0, "start_x_m": -0.4,
+                                           "actors": custom}, airborne_start, False, True),
+        ("drone_realtime_gaps", "drone", {"start_airborne": True}, gaps, True, True),
+        ("high_battery_minute", "high", {"start_airborne": True}, _adv(125, 0.5) + [_op("pose")], False, False),
+        ("drone_custom_timing", "drone", {"fps": 10.0, "command_delay_s": 0.2, "video_delay_s": 0.25,
+                                          "takeoff_s": 1.0, "land_s": 0.8, "hover_height_m": 1.2,
+                                          "marker_height_m": 1.1, "lateral_drift": -0.05},
+         custom_timing, False, True),
+    ]
+
+
+def build_sim_physics() -> dict:
+    scenarios = [_run_sim_scenario(name, profile, overrides, ops, realtime, snapshots)
+                 for name, profile, overrides, ops, realtime, snapshots in _sim_scripts()]
+    return {"pose_keys": list(SIM_POSE_KEYS), "actor_fields": list(ACTOR_FIELDS), "quiet": QUIET,
+            "physics_step_s": STEP_S, "scenarios": scenarios}
+
+
+# ---------------------------------------------------------------------------------------------- #
+# sim_actors: the actors, their motion, the scenario table and the boxes frames carry
+
+def _random_actor(rng: random.Random) -> Any:
+    from medhop.drone.sim_actors import Actor
+    return Actor(rng.choice(("person", "object")), x_m=r6(rng.uniform(-2.0, 2.0)),
+                 distance_m=r6(rng.uniform(0.3, 4.0)), width_m=r6(rng.uniform(0.2, 1.0)),
+                 depth_m=r6(rng.uniform(0.1, 0.6)), height_m=r6(rng.uniform(0.4, 2.0)))
+
+
+def _random_snap(rng: random.Random, near: Optional[Sequence[Any]] = None) -> dict:
+    """A camera anywhere in the room, or (with `near`) close to an actor so that its box crosses the near plane."""
+    if near:
+        a = rng.choice(list(near))
+        x = r6(a.x_m + rng.uniform(-0.6, 0.6))
+        z = r6(-(a.distance_m + rng.uniform(-0.3, 0.6)))
+    else:
+        x, z = r6(rng.uniform(-4.0, 4.0)), r6(rng.uniform(-7.5, -0.15))
+    return _hover_snap(-z, x, r6(rng.uniform(-math.pi, math.pi)), r6(rng.uniform(0.04, 1.9)))
+
+
+def build_sim_actors() -> dict:
+    from medhop.drone import sim_actors as sa
+    from medhop.drone.sim import SimLink
+
+    rng = random.Random(4242)
+    scenarios = [{"name": s.name, "start_distance_m": s.start_distance_m, "description": s.description,
+                  "actors": [_actor_row(a) for a in s.actors]} for s in sa.SCENARIOS.values()]
+
+    extra = [sa.Actor("object", 0.6, 1.2, 0.5, 0.3, 1.1, -0.3, 0.1, 0.5, 2.0),
+             sa.Actor("person", -1.0, 2.0, vd_m_s=0.4, move_from_s=3.0, move_until_s=3.0),   # no window: never moves
+             sa.Actor("person", 1.0, 2.0, vx_m_s=0.5, move_from_s=4.0, move_until_s=2.0)]    # until before from
+    times: List[Optional[float]] = [None, -1.0, 0.0, 0.5, 2.0, 3.0, 4.0, 6.0, 6.5, 7.0, 9.0, 10.5, 13.0, 20.0]
+    times += [round(0.37 * i, 2) for i in range(1, 40)]
+    motion = []
+    for s in sa.SCENARIOS.values():
+        for i, actor in enumerate(s.actors):
+            motion.append({"scenario": s.name, "index": i,
+                           "at": [[t, actor.at(t).x_m, actor.at(t).distance_m] for t in times]})
+    for i, actor in enumerate(extra):
+        motion.append({"scenario": "extra", "index": i, "actor": _actor_row(actor),
+                       "at": [[t, actor.at(t).x_m, actor.at(t).distance_m] for t in times]})
+
+    status = [{"actor": _actor_row(a), "out": a.as_status()} for a in extra + [
+        sa.Actor("person", 0.12345, 1.0005, 0.4445, 0.3335, 1.6665), sa.Actor("object", -2.0004999, 0.0015, 0.0025)]]
+
+    errors = []
+    for kw in ({"kind": "robot"}, {"width_m": 0.0}, {"depth_m": -0.1}, {"height_m": 0.0}, {"kind": "Person"}):
+        try:
+            sa.Actor(**kw)
+            errors.append({"init": kw, "error": None})
+        except ValueError as exc:
+            errors.append({"init": kw, "error": str(exc)})
+
+    footprint = []
+    for _ in range(60):
+        a = _random_actor(rng)
+        x, d = r6(rng.uniform(-3, 3)), r6(rng.uniform(0, 5))
+        footprint.append({"actor": _actor_row(a), "x_m": x, "distance_m": d, "out": sa.footprint_distance(a, x, d)})
+    a0 = sa.SCENARIOS["cart"].actors[0]
+    for x, d in ((a0.x_m, a0.distance_m), (a0.x_m + 0.3, a0.distance_m), (a0.x_m + 0.31, a0.distance_m + 0.21)):
+        footprint.append({"actor": _actor_row(a0), "x_m": x, "distance_m": d, "out": sa.footprint_distance(a0, x, d)})
+
+    corners = [{"actor": _actor_row(a), "out": sa.corners(a).tolist()} for a in extra[:2] + [a0]]
+
+    # camera_points (the near-plane clip of a box) and actor_box, through SimLink's own camera and K
+    cams = {}
+    for w, h in ((640, 360), (1280, 720)):
+        traced = _TracedSim(_sim_config("drone", {**QUIET, "width": w, "height": h}))
+        cams[(w, h)] = traced.sim._K
+    boxes = []
+    for i in range(60):
+        actors = [_random_actor(rng) for _ in range(rng.randint(1, 3))]
+        snap = _random_snap(rng, near=actors if i % 3 == 0 else None)
+        w, h = ((640, 360), (1280, 720))[i % 2]
+        cam, rot = SimLink._camera(snap)
+        case = {"snap": _snap_row({**snap, "actors": actors}), "width": w, "height": h, "actors": []}
+        for a in actors:
+            pts = sa.camera_points(a, cam, rot)
+            case["actors"].append({"camera_points": pts.tolist(), "uv": sa.project(pts, cams[(w, h)]).tolist(),
+                                   "box": sa.actor_box(a, cam, rot, cams[(w, h)], w, h)})
+        case["boxes"] = [[kind, list(box)] for kind, box in sa.actor_boxes(actors, cam, rot, cams[(w, h)], w, h)]
+        boxes.append(case)
+
+    # the boxes frames carry, from the simulator itself, at scripted drone poses while the actors move
+    frames = []
+    for profile in ("drone", "high"):
+        for name in sa.SCENARIO_NAMES:
+            traced = _TracedSim(_sim_config(profile, {**QUIET, "start_airborne": True, "start_distance_m": 3.5}))
+            sim = traced.sim
+            sim.set_scenario(name)
+            rows = []
+            for k in range(28):
+                t = 0.5 * k
+                pose = [r6(3.6 - 1.2 * math.sin(0.21 * t)), r6(0.5 * math.sin(0.37 * t)), r6(25.0 * math.sin(0.5 * t))]
+                sim.set_pose(distance_m=pose[0], x_m=pose[1], heading_deg=pose[2])
+                sim.advance_to(traced.clock.advance(0.5))
+                frame = sim.latest_frame()
+                row: Dict[str, Any] = {"set_pose": pose, "seq": None if frame is None else frame.seq}
+                if frame is not None:
+                    _t, snap = traced.captures[int(frame.jpeg.decode())]
+                    row["snap"] = _snap_list(snap)
+                    row["obstacles"] = [[kind, list(box)] for kind, box in frame.obstacles]
+                rows.append(row)
+            frames.append({"profile": profile, "scenario": name, "rows": rows})
+
+    return {"actor_fields": list(ACTOR_FIELDS), "kinds": list(sa.ACTOR_KINDS), "near_m": sa.NEAR_M,
+            "scenario_names": list(sa.SCENARIO_NAMES), "scenarios": scenarios, "motion": motion,
+            "status": status, "errors": errors, "footprint": footprint, "corners": corners, "boxes": boxes,
+            "frames": frames}
+
+
+# ---------------------------------------------------------------------------------------------- #
+# projection: the pinhole camera of sim.py (and sim_scene.py, whose geometry is the same)
+
+def _clip_near(points_cam: np.ndarray, near: float) -> List[np.ndarray]:
+    """Reference for the TypeScript polygon clip (the Python renderer clips with warpPerspective
+    masks, not polygons): Sutherland-Hodgman against the plane forward = near, keeping forward >= near,
+    with the crossing points computed as camera_points in sim_actors.py computes them."""
+    out: List[np.ndarray] = []
+    n = len(points_cam)
+    for i in range(n):
+        a, b = points_cam[i], points_cam[(i + 1) % n]
+        a_in, b_in = a[2] >= near, b[2] >= near
+        if a_in:
+            out.append(a)
+        if a_in != b_in:
+            t = (near - a[2]) / (b[2] - a[2])
+            out.append(a + t * (b - a))
+    return out
+
+
+def build_projection() -> dict:
+    from medhop.drone import sim_actors as sa
+    from medhop.drone.sim import SimLink
+
+    lenses = ((640, 360, 70.0), (1280, 720, 70.0), (640, 360, 90.0), (1280, 720, 55.0))
+    cameras = []
+    for w, h, hfov in lenses:
+        sim = _TracedSim(_sim_config("drone", {**QUIET, "width": w, "height": h, "hfov_deg": hfov})).sim
+        cameras.append({"width": w, "height": h, "hfov_deg": hfov, "focal": sim._focal, "K": sim._K.tolist()})
+
+    rng = random.Random(9090)
+    points = []
+    for i in range(60):
+        lens = i % len(lenses)
+        snap = _random_snap(rng)
+        cam, rot = SimLink._camera(snap)
+        world = [[r6(rng.uniform(-5, 5)), r6(rng.uniform(0, 2.6)), r6(rng.uniform(-8, 0))] for _ in range(6)]
+        if i % 5 == 0:   # exactly on the camera's own height and position
+            world.append([snap["x"] + 1.0, snap["cam_y"], snap["z"] + 1.0])
+        pc = (np.array(world) - cam) @ rot.T
+        keep = [k for k in range(len(world)) if abs(pc[k][2]) > 1e-6]
+        world = [world[k] for k in keep]
+        pc = pc[keep]
+        points.append({"snap": [snap["x"], snap["z"], snap["heading"], snap["cam_y"]], "lens": lens, "world": world,
+                       "cam": pc.tolist(), "uv": sa.project(pc, np.array(cameras[lens]["K"])).tolist()})
+
+    polygons = []
+    shapes = [
+        ("wall", [[-5.0, 2.6, 0.0], [5.0, 2.6, 0.0], [5.0, 0.0, 0.0], [-5.0, 0.0, 0.0]]),
+        ("floor", [[-5.0, 0.0, 0.0], [5.0, 0.0, 0.0], [5.0, 0.0, -8.0], [-5.0, 0.0, -8.0]]),
+        ("sign", [[-0.105, 1.12, 0.0], [0.105, 1.12, 0.0], [0.105, 0.823, 0.0], [-0.105, 0.823, 0.0]]),
+    ]
+    for i in range(48):
+        lens = i % len(lenses)
+        near = (sa.NEAR_M, 0.01, 0.3)[i % 3]
+        snap = _random_snap(rng)
+        if i < 21:
+            name, poly = shapes[i % 3]
+        else:   # a random triangle or pentagon around the camera, often across the near plane
+            name = "random"
+            cx, cz = snap["x"], snap["z"]
+            poly = [[r6(cx + rng.uniform(-2, 2)), r6(rng.uniform(0, 2.6)), r6(cz + rng.uniform(-2, 2))]
+                    for _ in range(rng.choice((3, 5)))]
+        cam, rot = SimLink._camera(snap)
+        pc = (np.array(poly, dtype=np.float64) - cam) @ rot.T
+        clipped = _clip_near(pc, near)
+        uv = sa.project(np.array(clipped).reshape(-1, 3), np.array(cameras[lens]["K"])).tolist()
+        polygons.append({"name": name, "snap": [snap["x"], snap["z"], snap["heading"], snap["cam_y"]], "lens": lens,
+                         "near": near, "world": poly, "cam": pc.tolist(),
+                         "clipped": [p.tolist() for p in clipped], "uv": uv})
+    return {"cameras": cameras, "points": points, "polygons": polygons}
+
+
+# ---------------------------------------------------------------------------------------------- #
+# sim_harness: SimHarness.step of tests/harness.py with the runner replaced by a recording script
+
+TINY_JPEG_SIDE = 4
+
+
+class _TruthDetector:
+    """Stands in for MarkerDetector in the harness trace: the frame's true marker corners (projected
+    from the snapshot it shows) through the real MarkerDetector arithmetic. No detection when the sign
+    is hidden, a corner is behind the camera or outside the frame."""
+
+    def __init__(self, traced: _TracedSim, marker_id: int) -> None:
+        self.traced = traced
+        self.marker_id = marker_id
+
+    def detect(self, image: Any, ts: float = 0.0) -> Any:
+        sim = self.traced.sim
+        delay = sim.cfg.video_delay_s
+        for t, snap in reversed(self.traced.captures):
+            if t + delay == ts:
+                break
+        else:
+            raise AssertionError(f"no capture for a frame released at {ts!r}")
+        if snap["marker_hidden"]:
+            return None
+        pc, uv = _marker_truth(sim, snap)
+        w, h = sim.cfg.width, sim.cfg.height
+        if (pc[:, 2] <= 0).any() or (uv < 0).any() or (uv[:, 0] > w - 1).any() or (uv[:, 1] > h - 1).any():
+            return None
+        return _python_marker_obs(uv, w, h, self.marker_id, ts)
+
+
+class _ScriptRunner:
+    """Stands in for MissionRunner.step: records every call, takes off once and steers at the marker."""
+
+    def __init__(self, harness: Any, takeoff_at: Optional[float]) -> None:
+        self.h = harness
+        self.takeoff_at = takeoff_at
+        self.calls: List[list] = []
+
+    def step(self, obs: Any, now: float) -> None:
+        from medhop.drone.base import clamp
+        h = self.h
+        toggled = None
+        if self.takeoff_at is not None and now >= self.takeoff_at:
+            self.takeoff_at = None
+            toggled = h.mixer.mission_toggle(now, landing=False)
+        if obs is not None and obs.marker is not None:
+            m = obs.marker
+            h.mixer.mission_command(clamp(1.2 * (m.cx - 0.5)), clamp(2.0 * (0.14 - m.size)), now)
+        pose = h.sim.pose()
+        row: List[Any] = [now, None if obs is None else _obs_row(obs), [pose[k] for k in SIM_POSE_KEYS]]
+        if toggled is not None:
+            row.append(toggled)
+        self.calls.append(row)
+
+
+def _obs_row(obs: Any) -> dict:
+    m = obs.marker
+    return {"ts": obs.ts, "seq": obs.seq, "brightness": obs.brightness,
+            "marker": None if m is None else [m.cx, m.cy, m.width, m.height, m.ts],
+            "obstacles": [[o.kind, list(o.box), o.ts] for o in obs.obstacles]}
+
+
+def build_sim_harness() -> dict:
+    import cv2
+    from medhop.mixer import ControlMixer
+    from tests.harness import SimHarness
+
+    tiny = cv2.imencode(".jpg", np.full((TINY_JPEG_SIDE, TINY_JPEG_SIDE), 128, np.uint8))[1].tobytes()
+    side = [["person", 1.1, 1.4, 0.45, 0.3, 1.7, 0.0, 0.0, 0.0, 0.0],
+            ["object", -1.6, 2.2, 0.5, 0.5, 0.8, 0.4, 0.0, 1.0, 3.0]]
+    cases = []
+    for name, profile, overrides, dropout, seed, seconds, takeoff_after in (
+            ("drone_from_the_ground", "drone", {"start_distance_m": 3.0, "start_heading_deg": 12.0, "actors": side},
+             0.25, 5, 10.0, 0.6),
+            ("high_airborne", "high", {"start_airborne": True, "start_distance_m": 3.2, "start_heading_deg": -15.0,
+                                       "start_x_m": 0.3}, 0.0, 0, 6.0, None)):
+        config = {**QUIET, **overrides}
+        traced = _TracedSim(_sim_config(profile, config), jpeg=tiny)
+        h = SimHarness.__new__(SimHarness)   # the real step(), without the runner, store and checks __init__ builds
+        h.clock = traced.clock
+        h.marker_dropout = float(dropout)
+        h._dropout_rng = random.Random(seed)
+        h.sim = traced.sim
+        h.mixer = ControlMixer(h.sim, rate_hz=20.0, clock=h.clock)
+        h.detector = _TruthDetector(traced, 7)
+        h.runner = _ScriptRunner(h, None if takeoff_after is None else h.clock.t + takeoff_after)
+        h.sent, h.observations = [], []
+        h._last_seq = 0
+        h._next_tick = h.clock.t
+        h._last_runner_step = h.clock.t
+        h.run(seconds)
+        cases.append({"name": name, "profile": profile, "config": config, "marker_dropout": dropout,
+                      "dropout_seed": seed, "seconds": seconds, "takeoff_after": takeoff_after,
+                      "runner_calls": h.runner.calls, "sent": [[t, list(axes)] for t, axes in h.sent],
+                      "observations": len(h.observations), "end_clock": h.clock.t})
+    return {"physics_dt": SimHarness.PHYSICS_DT, "control_dt": SimHarness.CONTROL_DT, "cases": cases}
+
+
+# ---------------------------------------------------------------------------------------------- #
+# detector_calibration: the real OpenCV detector on the simulator's own pictures, against geometric
+# truth (the sign's corners through the simulator's camera). `cases` is deterministic and cheap; the
+# measured part renders about 1400 frames and takes about a minute.
+
+CAL_DISTANCES = (0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0)
+CAL_OFFSETS = (-0.4, -0.2, 0.0, 0.2, 0.4)
+CAL_TURNS = (-20.0, -10.0, 0.0, 10.0, 20.0)
+CAL_SEED = 11
+
+
+def _marker_world(cfg: Any) -> np.ndarray:
+    half = cfg.marker_size_m / 2.0
+    top, bottom = cfg.marker_height_m + half, cfg.marker_height_m - half
+    return np.array([[-half, top, 0.0], [half, top, 0.0], [half, bottom, 0.0], [-half, bottom, 0.0]])
+
+
+def _marker_truth(sim: Any, snap: dict) -> Tuple[np.ndarray, np.ndarray]:
+    """The station marker's corners (TL, TR, BR, BL as printed) in camera coordinates and in pixels."""
+    from medhop.drone.sim import SimLink
+    from medhop.drone.sim_actors import project
+    cam, rot = SimLink._camera(snap)
+    pc = (_marker_world(sim.cfg) - cam) @ rot.T
+    return pc, project(pc, sim._K)
+
+
+class _CornerSource:
+    """Replaces the OpenCV detector inside MarkerDetector: reports exactly the corners it is given."""
+
+    def __init__(self) -> None:
+        self.quad: Optional[np.ndarray] = None
+        self.marker_id = 7
+
+    def detectMarkers(self, _gray: Any) -> Any:   # noqa: N802 (OpenCV's name)
+        if self.quad is None:
+            return (), None, ()
+        return (self.quad.reshape(1, 4, 2),), np.array([[self.marker_id]]), ()
+
+
+def _python_marker_obs(corners: Any, w: int, h: int, marker_id: int, ts: float) -> Any:
+    """MarkerDetector.detect's own arithmetic (and its MIN_WIDTH filter) on the given corners."""
+    detector = marker_module.MarkerDetector(marker_id)
+    source = _CornerSource()
+    source.quad = np.asarray(corners, dtype=np.float64)
+    source.marker_id = marker_id
+    detector._detector = source
+    return detector.detect(np.broadcast_to(np.uint8(0), (int(h), int(w))), ts=ts)
+
+
+def _obs_fields(obs: Any) -> Any:
+    if obs is None:
+        return None
+    return {"id": obs.id, "cx": obs.cx, "cy": obs.cy, "width": obs.width, "height": obs.height,
+            "corners": [list(c) for c in obs.corners], "ts": obs.ts, "frame_w": obs.frame_w, "frame_h": obs.frame_h}
+
+
+def build_detector_cases() -> List[dict]:
+    """Poses with the true corners (depth and pixels) and what MarkerDetector computes from them."""
+    rng = random.Random(777)
+    cases = []
+    for profile in ("drone", "high"):
+        sim = _TracedSim(_sim_config(profile, QUIET)).sim
+        for i in range(45):
+            if i < 6:   # behind, beside, below the sign, far away, and very close
+                d, x, turn, cam_y = ((1.0, 0.0, 180.0, 1.04), (1.5, 0.0, 60.0, 1.04), (2.0, 0.0, 0.0, 0.04),
+                                     (8.0, 0.0, 0.0, 1.04), (0.2, 0.0, 0.0, 1.0), (0.3, 0.05, 5.0, 1.04))[i]
+            else:
+                d, x = r6(rng.uniform(0.3, 7.5)), r6(rng.uniform(-1.5, 1.5))
+                turn, cam_y = r6(rng.uniform(-30.0, 30.0)), r6(rng.uniform(0.3, 1.9))
+            snap = _hover_snap(d, x, math.atan2(-x, d) + math.radians(turn), cam_y)
+            pc, uv = _marker_truth(sim, snap)
+            ts = r6(1000.0 + i * 0.07)
+            obs = _python_marker_obs(uv, sim.cfg.width, sim.cfg.height, 7, ts)
+            cases.append({"profile": profile, "snap": [snap["x"], snap["z"], snap["heading"], snap["cam_y"]],
+                          "ts": ts, "depth": pc[:, 2].tolist(), "corners": uv.tolist(), "obs": _obs_fields(obs)})
+    return cases
+
+
+def _stats(values: Sequence[float]) -> Optional[dict]:
+    if not values:
+        return None
+    v = np.asarray(values, dtype=np.float64)
+    return {"mean": round(float(v.mean()), 4), "median": round(float(np.median(v)), 4),
+            "p95": round(float(np.percentile(v, 95)), 4), "max": round(float(v.max()), 4)}
+
+
+def _border_margin(uv: np.ndarray, w: int, h: int) -> float:
+    """Smallest distance (pixels) from a corner to the frame's edge pixels; negative when one is outside."""
+    return float(min(uv[:, 0].min(), uv[:, 1].min(), (w - 1) - uv[:, 0].max(), (h - 1) - uv[:, 1].max()))
+
+
+def _true_width(uv: np.ndarray, w: int) -> float:
+    return 0.5 * (float(np.linalg.norm(uv[1] - uv[0])) + float(np.linalg.norm(uv[2] - uv[3]))) / w
+
+
+def _detect_rendered(sim: Any, detector: Any, snap: dict) -> Tuple[Any, float]:
+    import cv2
+    gray = cv2.imdecode(np.frombuffer(sim._render_jpeg(snap), np.uint8), cv2.IMREAD_GRAYSCALE)
+    return detector.detect(gray), float(gray.mean())
+
+
+def _actor_silhouette(sim: Any, actor: Any, snap: dict) -> np.ndarray:
+    from medhop.drone import sim_actors as sa
+    from medhop.drone.sim import SimLink
+    cam, rot = SimLink._camera(snap)
+    return sa.project(sa.camera_points(actor, cam, rot), sim._K)
+
+
+_SIGN_RECTS: Dict[Tuple[int, float, float], Tuple[int, int, int]] = {}
+
+
+def _drawn_marker_truth(sim: Any, snap: dict) -> np.ndarray:
+    """The marker's corners in pixels as the renderer actually draws them: on the sign texture level it
+    picks for this depth (wanted = focal / depth * 1.25 in the plain scene, render focal / depth * 1.1
+    in the room), with the texture's whole-pixel marker rectangle, whose edges lie half a texel
+    outside the centres of its first and last pixels (warpPerspective maps texel centres)."""
+    from medhop.drone.sim import SimLink
+    from medhop.drone.sim_actors import project
+    from medhop.vision.marker import station_sign
+    c = sim.cfg
+    cam, rot = SimLink._camera(snap)
+    depth = float(rot[2] @ (np.array([0.0, c.marker_height_m, 0.0]) - cam))
+    wanted = (sim._focal / depth * 1.25 if c.scene == "plain"
+              else sim._focal * max(1, int(c.supersample)) / depth * 1.1)
+    ppm = sim._sign_levels[0][0]
+    for level_ppm, _sheet in sim._sign_levels:
+        if level_ppm >= wanted:
+            ppm = level_ppm
+    key = (c.marker_id, c.marker_size_m, ppm)
+    if key not in _SIGN_RECTS:
+        _SIGN_RECTS[key] = station_sign(c.marker_id, c.marker_size_m, ppm)[1]
+    x0, y0, side = _SIGN_RECTS[key]
+    left, top = sim._sign_left_x + (x0 - 0.5) / ppm, sim._sign_top_y - (y0 - 0.5) / ppm
+    right, bottom = left + side / ppm, top - side / ppm
+    world = np.array([[left, top, 0.0], [right, top, 0.0], [right, bottom, 0.0], [left, bottom, 0.0]])
+    return project((world - cam) @ rot.T, sim._K)
+
+
+def _solve(f: Callable[[float], float], target: float, lo: float, hi: float) -> float:
+    """Bisection for an increasing f: the argument where f reaches target."""
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        if f(mid) < target:
+            lo = mid
+        else:
+            hi = mid
+    return 0.5 * (lo + hi)
+
+
+def _measure_profile(profile: str) -> dict:
+    from medhop.drone.sim import SimLink
+    from medhop.drone.sim_actors import Actor
+    from medhop.vision.marker import MarkerDetector
+
+    sim = SimLink(_sim_config(profile, {"seed": CAL_SEED}), realtime=False)
+    detector = MarkerDetector(sim.cfg.marker_id)
+    w, h = sim.cfg.width, sim.cfg.height
+    min_width = MarkerDetector.MIN_WIDTH
+
+    by_distance, all_err, all_coord, all_drawn, all_centred, brightness = [], [], [], [], [], []
+    for d in CAL_DISTANCES:
+        n_view = n_found = n_found_outside = n_outside = 0
+        err, du, dv, coord, width_rel, drawn = [], [], [], [], [], []
+        for x in CAL_OFFSETS:
+            for turn in CAL_TURNS:
+                snap = _hover_snap(d, x, math.atan2(-x, d) + math.radians(turn))
+                pc, uv = _marker_truth(sim, snap)
+                obs, mean_grey = _detect_rendered(sim, detector, snap)
+                brightness.append(mean_grey)
+                in_view = bool((pc[:, 2] > 0).all()) and _border_margin(uv, w, h) >= 0.0 \
+                    and _true_width(uv, w) >= min_width
+                if not in_view:
+                    n_outside += 1
+                    n_found_outside += obs is not None
+                    continue
+                n_view += 1
+                if obs is None:
+                    continue
+                n_found += 1
+                got = np.asarray(obs.corners, dtype=np.float64)
+                diff = got - uv
+                err.extend(np.hypot(diff[:, 0], diff[:, 1]).tolist())
+                du.extend(diff[:, 0].tolist())
+                dv.extend(diff[:, 1].tolist())
+                coord.extend(diff.ravel().tolist())
+                width_rel.append(obs.width / _true_width(uv, w) - 1.0)
+                off = got - _drawn_marker_truth(sim, snap)
+                drawn.extend(np.hypot(off[:, 0], off[:, 1]).tolist())
+        all_err += err
+        all_coord += coord
+        all_drawn += drawn
+        if du:
+            all_centred += (np.asarray(du) - np.mean(du)).tolist() + (np.asarray(dv) - np.mean(dv)).tolist()
+        by_distance.append({
+            "distance_m": d, "poses": len(CAL_OFFSETS) * len(CAL_TURNS), "in_view": n_view, "found": n_found,
+            "miss_rate": None if n_view == 0 else round(1.0 - n_found / n_view, 4),
+            "outside_view": n_outside, "found_outside_view": int(n_found_outside),
+            "marker_px": round(sim._focal * sim.cfg.marker_size_m / d, 2),
+            "corner_error_px": _stats(err),
+            "bias_u_px": None if not du else round(float(np.mean(du)), 4),
+            "bias_v_px": None if not dv else round(float(np.mean(dv)), 4),
+            "rms_per_coordinate_px": None if not coord else round(float(np.sqrt(np.mean(np.square(coord)))), 4),
+            "std_u_px": None if not du else round(float(np.std(du)), 4),
+            "std_v_px": None if not dv else round(float(np.std(dv)), 4),
+            "width_rel_error_mean": None if not width_rel else round(float(np.mean(width_rel)), 5),
+            "corner_error_vs_drawn_px": _stats(drawn),
+        })
+
+    # the frame's edge: turn until the sign leaves the picture on the left (or, below, the top)
+    edge = []
+    for d in (1.0, 2.0, 3.0):
+        for k in range(25):
+            target = -4.0 + 0.5 * k        # smallest distance from a true corner to the frame's edge pixels
+            turn = _solve(lambda t: -_border_margin(_marker_truth(sim, _hover_snap(d, 0.0, t))[1], w, h),
+                          -target, math.radians(0.0), math.radians(60.0))
+            snap = _hover_snap(d, 0.0, turn)
+            pc, uv = _marker_truth(sim, snap)
+            obs, _grey = _detect_rendered(sim, detector, snap)
+            edge.append({"distance_m": d, "edge": "left", "margin_px": round(_border_margin(uv, w, h), 3),
+                         "found": obs is not None})
+    for d in (1.5,):
+        for k in range(25):
+            target = -4.0 + 0.5 * k
+            cam_y = _solve(lambda y: _border_margin(_marker_truth(sim, _hover_snap(d, 0.0, 0.0, y))[1], w, h),
+                           target, 0.2, 1.04)     # lower: the sign rises to the top edge
+            snap = _hover_snap(d, 0.0, 0.0, cam_y)
+            pc, uv = _marker_truth(sim, snap)
+            obs, _grey = _detect_rendered(sim, detector, snap)
+            edge.append({"distance_m": d, "edge": "top", "margin_px": round(_border_margin(uv, w, h), 3),
+                         "found": obs is not None})
+    found_margins = [e["margin_px"] for e in edge if e["found"]]
+    missed_inside = [e["margin_px"] for e in edge if not e["found"] and e["margin_px"] >= 0]
+
+    # an actor covering the sign: from the side (a person) and from below (an object)
+    hiding = []
+    for d in (1.5, 2.5, 3.5):
+        snap0 = _hover_snap(d, 0.0, 0.0)
+        _pc, muv = _marker_truth(sim, snap0)
+        left_u, bottom_v = float(muv[:, 0].min()), float(muv[:, 1].max())
+        for side_name in ("side", "below"):
+            for k in range(41):
+                target = -10.0 + 0.5 * k        # how far the silhouette reaches into the marker square, px
+                if side_name == "side":
+                    def reach(x_m: float) -> float:
+                        a = Actor("person", x_m=x_m, distance_m=0.8, width_m=0.5, depth_m=0.2, height_m=2.0)
+                        return float(_actor_silhouette(sim, a, snap0)[:, 0].max()) - left_u
+                    x_m = _solve(reach, target, -2.0, 0.6)
+                    actor = Actor("person", x_m=x_m, distance_m=0.8, width_m=0.5, depth_m=0.2, height_m=2.0)
+                else:
+                    def rise(height_m: float) -> float:
+                        a = Actor("object", x_m=0.0, distance_m=0.8, width_m=0.6, depth_m=0.2, height_m=height_m)
+                        return bottom_v - float(_actor_silhouette(sim, a, snap0)[:, 1].min())
+                    height_m = _solve(rise, target, 0.2, 1.03)
+                    actor = Actor("object", x_m=0.0, distance_m=0.8, width_m=0.6, depth_m=0.2, height_m=height_m)
+                snap = dict(snap0, actors=(actor,))
+                obs, _grey = _detect_rendered(sim, detector, snap)
+                worst = None
+                if obs is not None:
+                    diff = np.asarray(obs.corners, dtype=np.float64) - muv
+                    worst = round(float(np.hypot(diff[:, 0], diff[:, 1]).max()), 3)
+                hiding.append({"distance_m": d, "from": side_name, "reach_px": target, "found": obs is not None,
+                               "worst_corner_error_px": worst, "actor": _actor_row(actor)})
+    found_reach = [r["reach_px"] for r in hiding if r["found"]]
+    missed_reach = [r["reach_px"] for r in hiding if not r["found"]]
+
+    ground_snap = _hover_snap(sim.cfg.start_distance_m, 0.0, 0.0, cam_y=0.04)
+    _obs, ground_grey = _detect_rendered(sim, detector, ground_snap)
+    in_view_total = sum(row["in_view"] for row in by_distance)
+    found_total = sum(row["found"] for row in by_distance)
+    return {
+        "profile": profile, "width": w, "height": h, "focal_px": sim._focal, "seed": CAL_SEED,
+        "grid": {"distances_m": list(CAL_DISTANCES), "offsets_m": list(CAL_OFFSETS),
+                 "turns_from_sign_deg": list(CAL_TURNS), "cam_y_m": 1.04},
+        "by_distance": by_distance,
+        "overall": {"in_view": in_view_total, "found": found_total,
+                    "miss_rate": round(1.0 - found_total / in_view_total, 4),
+                    "corner_error_px": _stats(all_err),
+                    "rms_per_coordinate_px": round(float(np.sqrt(np.mean(np.square(all_coord)))), 4),
+                    "std_per_coordinate_without_bias_px": round(float(np.std(all_centred)), 4),
+                    "corner_error_vs_drawn_px": _stats(all_drawn)},
+        "edge": {"rows": edge, "smallest_margin_found_px": min(found_margins) if found_margins else None,
+                 "largest_margin_missed_px": max(missed_inside) if missed_inside else None},
+        "hiding": {"rows": hiding, "largest_reach_found_px": max(found_reach) if found_reach else None,
+                   "smallest_reach_missed_px": min(missed_reach) if missed_reach else None},
+        "brightness": {"hover_median": round(float(np.median(brightness)), 2),
+                       "ground_at_start": round(ground_grey, 2)},
+    }
+
+
+def build_detector_calibration() -> dict:
+    return {"min_width": marker_module.MarkerDetector.MIN_WIDTH, "cases": build_detector_cases(),
+            "measured": [_measure_profile("high"), _measure_profile("drone")]}
+
+
+# ---------------------------------------------------------------------------------------------- #
 # command line
 
 GROUPS: Dict[str, Callable[[], dict]] = {
@@ -1157,7 +2022,17 @@ GROUPS: Dict[str, Callable[[], dict]] = {
     "num": build_num,
     "rng": build_rng,
     "config": build_config,
+    "sim_physics": build_sim_physics,
+    "sim_actors": build_sim_actors,
+    "projection": build_projection,
+    "sim_harness": build_sim_harness,
 }
+# Measured, not replayed: renders pictures and runs the real detector (about a minute). Its `cases`
+# part is deterministic and is what tests/test_parity_fixtures.py regenerates (build_detector_cases).
+MEASURED_GROUPS: Dict[str, Callable[[], dict]] = {
+    "detector_calibration": build_detector_calibration,
+}
+ALL_GROUPS: Dict[str, Callable[[], dict]] = {**GROUPS, **MEASURED_GROUPS}
 
 
 def fixture_path(name: str, out_dir: Path = FIXTURE_DIR) -> Path:
@@ -1166,7 +2041,7 @@ def fixture_path(name: str, out_dir: Path = FIXTURE_DIR) -> Path:
 
 def build_group(name: str) -> dict:
     """The group's data as written to its file (plain JSON values)."""
-    return encode({"group": name, "generator": f"backend/tools/parity_traces.py {name}", **GROUPS[name]()})
+    return encode({"group": name, "generator": f"backend/tools/parity_traces.py {name}", **ALL_GROUPS[name]()})
 
 
 def render_group(data: dict) -> str:
@@ -1184,11 +2059,19 @@ def load_fixture(path: Path) -> dict:
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("groups", nargs="+", choices=[*GROUPS, "all"], help="fixture groups, or all")
+    parser.add_argument("groups", nargs="+", choices=[*ALL_GROUPS, "all", "replayed"],
+                        help="fixture groups; all (every group), or replayed (all but the measured ones)")
     parser.add_argument("--check", action="store_true", help="compare with the files instead of writing them")
     parser.add_argument("--out-dir", type=Path, default=FIXTURE_DIR)
     args = parser.parse_args(argv)
-    names = list(GROUPS) if "all" in args.groups else list(dict.fromkeys(args.groups))
+    if "all" in args.groups:
+        names = list(ALL_GROUPS)
+    elif "replayed" in args.groups:
+        names = list(GROUPS)
+    else:
+        names = list(dict.fromkeys(args.groups))
+    if any(name in MEASURED_GROUPS for name in names):
+        print("detector_calibration renders and detects about 1400 frames: this takes a minute", file=sys.stderr)
     stale = []
     for name in names:
         text = render_group(build_group(name))

@@ -1,10 +1,13 @@
 """The TypeScript port's reference traces (frontend/src/engine/__fixtures__) match the Python.
 
 tools/parity_traces.py records traces from mission/steering.py, vision/pose.py and mixer.py (and from
-the Python number semantics they rely on); the vitest suites under frontend/src/engine replay them
-through the TypeScript port. These tests regenerate every group in memory and compare it with the
-committed file, so a change to the Python that is not followed by
-`python tools/parity_traces.py all` fails here.
+the Python number semantics they rely on), and from the simulator: drone/sim.py stepped with its noise
+at zero, drone/sim_actors.py, the camera, and SimHarness.step of tests/harness.py. The vitest suites
+under frontend/src/engine replay them through the TypeScript port. These tests regenerate every
+replayed group in memory and compare it with the committed file, so a change to the Python that is not
+followed by `python tools/parity_traces.py replayed` fails here. detector_calibration is measured, not
+replayed (it renders pictures and runs the real detector for about a minute): only its deterministic
+`cases` part is regenerated here.
 
 Comparison: strings, booleans, None and integers exactly; floats within 1e-9 relative or 1e-12
 absolute (the same machine reproduces them bit for bit; another machine's C library or OpenBLAS may
@@ -25,7 +28,9 @@ import parity_traces  # noqa: E402
 
 REL, ABS = 1e-9, 1e-12
 SPREAD_FACTOR = 16.0        # as in frontend/src/engine/vision/pose.test.ts
-MAX_TOTAL_BYTES = 1_500_000
+MAX_TOTAL_BYTES = 1_500_000             # the flight-logic groups
+SIMULATOR_GROUPS = ("sim_physics", "sim_actors", "projection", "sim_harness", "detector_calibration")
+MAX_SIMULATOR_BYTES = 1_500_000         # the simulator groups, on top
 INFORMATIONAL_KEYS = ("spread", "stopped_by_rule")
 
 
@@ -108,9 +113,23 @@ class ParityFixtureTests(unittest.TestCase):
                 first = parity_traces.render_group(parity_traces.build_group(name))
                 self.assertEqual(first, parity_traces.render_group(parity_traces.build_group(name)))
 
+    def test_the_detector_calibration_cases_match(self):
+        path = parity_traces.fixture_path("detector_calibration")
+        self.assertTrue(path.exists(), f"{path} is missing: run python tools/parity_traces.py detector_calibration")
+        committed = parity_traces.load_fixture(path)
+        regenerated = parity_traces.load_fixture_text(
+            parity_traces.render(parity_traces.encode(parity_traces.build_detector_cases())))
+        problems = []
+        compare(regenerated, committed["cases"], "detector_calibration.cases", problems)
+        self.assertEqual(problems, [], "detector_calibration.json is out of date with the Python; measure again with "
+                                       "python tools/parity_traces.py detector_calibration")
+        self.assertEqual([m["profile"] for m in committed["measured"]], ["high", "drone"])
+
     def test_the_fixtures_stay_small(self):
-        total = sum(parity_traces.fixture_path(name).stat().st_size for name in parity_traces.GROUPS)
-        self.assertLessEqual(total, MAX_TOTAL_BYTES)
+        sizes = {name: parity_traces.fixture_path(name).stat().st_size for name in parity_traces.ALL_GROUPS}
+        self.assertEqual(set(SIMULATOR_GROUPS) - set(sizes), set())
+        self.assertLessEqual(sum(v for k, v in sizes.items() if k not in SIMULATOR_GROUPS), MAX_TOTAL_BYTES)
+        self.assertLessEqual(sum(sizes[k] for k in SIMULATOR_GROUPS), MAX_SIMULATOR_BYTES)
 
     def test_the_comparison_notices_a_change(self):
         problems = []

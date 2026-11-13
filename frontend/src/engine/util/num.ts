@@ -23,6 +23,14 @@ export class ValueError extends Error {
   }
 }
 
+/** Python's KeyError (a lookup by an unknown key, such as an unknown simulator scenario name). */
+export class KeyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "KeyError";
+  }
+}
+
 /** Python's two-or-more argument `max(a, b, ...)`: a later value replaces the current one only if it is larger. */
 export function pyMax(first: number, ...rest: number[]): number {
   let current = first;

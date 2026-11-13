@@ -1,7 +1,7 @@
 // Ports the data shapes and constants of backend/medhop/vision/marker.py: MarkerObs (with its `size`
-// property), Observation, the station-sign geometry and MarkerDetector.MIN_WIDTH. The OpenCV ArUco
-// detector itself is not ported (classical computer vision on pixels; the browser engine computes
-// the marker's corners from the simulated pose instead).
+// property), Obstacle, Observation, the station-sign geometry and MarkerDetector.MIN_WIDTH. The OpenCV
+// ArUco detector itself is not ported (classical computer vision on pixels; the browser engine computes
+// the marker's corners from the simulated pose instead: vision/detector.ts).
 //
 // Both classes take one init object with the Python field names, like the dataclasses' keyword
 // arguments, so a field can be added later with a default without touching any caller: give the init
@@ -80,11 +80,43 @@ export class MarkerObs {
   }
 }
 
+export const OBSTACLE_KINDS = ["person", "object"] as const;
+
+/** x1, y1, x2, y2 as fractions of the frame */
+export type ObstacleBox = readonly [x1: number, y1: number, x2: number, y2: number];
+
+export interface ObstacleInit {
+  /** "person" or "object" (not checked, as in Python) */
+  kind: string;
+  box: ObstacleBox;
+  ts?: number;
+}
+
+/**
+ * Something seen in the way (experimental obstacle avoidance, SPEC section 11).
+ *
+ * In the simulator every frame carries the simulated actors' boxes (perfect detection). On the real
+ * drone only people are ever reported, and only by the optional person check (vision/person.py).
+ */
+export class Obstacle {
+  readonly kind: string;
+  readonly box: ObstacleBox;
+  /** when the frame it was seen in arrived */
+  readonly ts: number;
+
+  constructor(init: ObstacleInit) {
+    this.kind = init.kind;
+    this.box = init.box;
+    this.ts = init.ts ?? 0.0;
+  }
+}
+
 export interface ObservationInit {
   ts: number;
   seq: number;
   marker: MarkerObs | null;
   brightness?: number;
+  obstacles?: readonly Obstacle[];
 }
 
 /** What the vision step saw in one frame. */
@@ -95,11 +127,14 @@ export class Observation {
   readonly marker: MarkerObs | null;
   /** mean grey level, 0..255 */
   readonly brightness: number;
+  /** simulator only: the actors' boxes in this frame (empty on the real drone) */
+  readonly obstacles: readonly Obstacle[];
 
   constructor(init: ObservationInit) {
     this.ts = init.ts;
     this.seq = init.seq;
     this.marker = init.marker;
     this.brightness = init.brightness ?? 0.0;
+    this.obstacles = init.obstacles ?? [];
   }
 }
