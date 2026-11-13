@@ -1,0 +1,6571 @@
+{
+ "group":"care_status",
+ "generator":"backend/tools/parity_care.py care_status",
+ "constants":{
+  "statuses":["upcoming","due","arrived","acknowledged","needs_attention"],
+  "pending":["due","arrived","needs_attention"],
+  "upcoming":"upcoming",
+  "due":"due",
+  "arrived":"arrived",
+  "acknowledged":"acknowledged",
+  "needs_attention":"needs_attention"
+ },
+ "pure":[
+  {
+   "name":"upcoming_before_time",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,7,59,59],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[false,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"due_at_time",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,8,0,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"due_half_second_before",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,7,59,59.5],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[false,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"arrived",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":"r1","at":[2026,11,11,8,2,0],"detail":{"mode":"sim"}}],
+   "now":[2026,11,11,8,3,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:02",
+      "arrived_mode":"sim",
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"acknowledged_after_arrival",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,2,0],"detail":{}},
+    {"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,8,5,0],"detail":{}}
+   ],
+   "now":[2026,11,11,9,30,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":"08:02",
+      "arrived_mode":null,
+      "acknowledged_at":"08:05"
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"acknowledged_without_run",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,8,5,0],"detail":{}}],
+   "now":[2026,11,11,12,0,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"08:05"
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"grace_exact_boundary",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,8,15,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"grace_half_second_past",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,8,15,0.5],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"grace_one_second_past",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,8,15,1],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"needs_attention_keeps_arrival",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,2,0],"detail":{"mode":"real"}}],
+   "now":[2026,11,11,8,20,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":"08:02",
+      "arrived_mode":"real",
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"grace_30",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,8,20,0],
+   "grace_min":30,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"grace_0",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,8,0,1],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"grace_0_at_time",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,8,0,0],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"grace_half_minute",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,8,0,31],
+   "grace_min":0.5,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"all_five_statuses",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+    {"id":"d4","time":"09:00","label":"x","notes":""},
+    {"id":"d5","time":"09:10","label":"y","notes":""},
+    {"id":"d6","time":"09:12","label":"z","notes":""}
+   ],
+   "events":[
+    {"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"at":[2026,11,11,9,1,0],"detail":{}},
+    {"type":"arrived_at_station","dose_id":"d5","run_id":null,"at":[2026,11,11,9,11,0],"detail":{}}
+   ],
+   "now":[2026,11,11,9,12,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d4",
+      "time":"09:00",
+      "label":"x",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"09:01"
+     },
+     {
+      "id":"d5",
+      "time":"09:10",
+      "label":"y",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"09:11",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d6",
+      "time":"09:12",
+      "label":"z",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true,true,true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"unsorted_input",
+   "doses":[
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,7,0,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[false,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"early_arrival_early",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,7,50,0],"detail":{"mode":"real"}}],
+   "now":[2026,11,11,7,55,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"07:50",
+      "arrived_mode":"real",
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[false,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"early_arrival_after_time",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,7,50,0],"detail":{"mode":"real"}}],
+   "now":[2026,11,11,8,5,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"07:50",
+      "arrived_mode":"real",
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"early_arrival_late",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,7,50,0],"detail":{"mode":"real"}}],
+   "now":[2026,11,11,8,16,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":"07:50",
+      "arrived_mode":"real",
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"early_arrival_then_ack",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,7,50,0],"detail":{"mode":"real"}},
+    {"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,8,30,0],"detail":{}}
+   ],
+   "now":[2026,11,11,9,0,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":"07:50",
+      "arrived_mode":"real",
+      "acknowledged_at":"08:30"
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"arrival_detail_0",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,2,0]}],
+   "now":[2026,11,11,8,3,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:02",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"arrival_detail_1",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,2,0],"detail":{}}],
+   "now":[2026,11,11,8,3,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:02",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"arrival_detail_2",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,2,0],"detail":{"mode":"sim"}}],
+   "now":[2026,11,11,8,3,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:02",
+      "arrived_mode":"sim",
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"arrival_detail_3",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,2,0],"detail":{"mode":"real"}}],
+   "now":[2026,11,11,8,3,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:02",
+      "arrived_mode":"real",
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"arrival_detail_4",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,2,0],"detail":{"mode":null}}],
+   "now":[2026,11,11,8,3,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:02",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"arrival_detail_5",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,2,0],"detail":{"mode":"SIM"}}],
+   "now":[2026,11,11,8,3,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:02",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"arrival_detail_6",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,2,0],"detail":{"marker_width":0.16}}],
+   "now":[2026,11,11,8,3,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:02",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"arrival_detail_7",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,2,0],"detail":{"mode":"sim","run":2}}
+   ],
+   "now":[2026,11,11,8,3,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:02",
+      "arrived_mode":"sim",
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"latest_arrival_wins",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,9,0],"detail":{"mode":"real"}},
+    {"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,2,0],"detail":{"mode":"sim"}},
+    {"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,12,0]}
+   ],
+   "now":[2026,11,11,8,13,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:12",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"equal_arrival_times_later_event_wins",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,9,0],"detail":{"mode":"real"}},
+    {"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,8,9,0],"detail":{"mode":"sim"}}
+   ],
+   "now":[2026,11,11,8,10,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:09",
+      "arrived_mode":"sim",
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"several_acknowledgements_latest_kept",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,8,30,0],"detail":{}},
+    {"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,8,5,0],"detail":{}},
+    {"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,8,59,59.5],"detail":{}}
+   ],
+   "now":[2026,11,11,10,0,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"08:59"
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"another_doses_arrival",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d2","run_id":null,"at":[2026,11,11,8,2,0],"detail":{"mode":"sim"}}],
+   "now":[2026,11,11,8,3,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"08:02",
+      "arrived_mode":"sim",
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"events_without_dose_or_unknown",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"arrived_at_station","dose_id":null,"run_id":null,"at":[2026,11,11,8,2,0],"detail":{}},
+    {"type":"pickup_acknowledged","dose_id":"","run_id":null,"at":[2026,11,11,8,3,0],"detail":{}},
+    {"type":"pickup_acknowledged","dose_id":"d99","run_id":null,"at":[2026,11,11,8,4,0],"detail":{}},
+    {"type":"reminder_due","dose_id":"d1","run_id":null,"at":[2026,11,11,8,0,0],"detail":{}},
+    {"type":"needs_attention","dose_id":"d1","run_id":null,"at":[2026,11,11,8,16,0],"detail":{}},
+    {"type":"run_started","dose_id":"d1","run_id":"r9","at":[2026,11,11,8,1,0],"detail":{}}
+   ],
+   "now":[2026,11,11,8,20,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"next_earliest_pending",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,13,5,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"next_upcoming",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,8,5,0],"detail":{}}],
+   "now":[2026,11,11,9,0,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"08:05"
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"next_none_all_acknowledged",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,21,0,0],"detail":{}},
+    {"type":"pickup_acknowledged","dose_id":"d2","run_id":null,"at":[2026,11,11,21,0,0],"detail":{}},
+    {"type":"pickup_acknowledged","dose_id":"d3","run_id":null,"at":[2026,11,11,21,0,0],"detail":{}}
+   ],
+   "now":[2026,11,11,22,0,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"21:00"
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"21:00"
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"21:00"
+     }
+    ],
+    "next_due_id":null,
+    "time_has_come":[true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"next_none_no_doses",
+   "doses":[],
+   "events":[],
+   "now":[2026,11,11,8,0,0],
+   "grace_min":15,
+   "out":{"statuses":[],"next_due_id":null,"time_has_come":[],"day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]}
+  },
+  {
+   "name":"next_early_arrival_behind_due",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,8,5,0],"detail":{}},
+    {"type":"arrived_at_station","dose_id":"d3","run_id":null,"at":[2026,11,11,13,2,0],"detail":{}}
+   ],
+   "now":[2026,11,11,13,5,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"08:05"
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"13:02",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"next_early_arrival_behind_upcoming",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,8,5,0],"detail":{}},
+    {"type":"arrived_at_station","dose_id":"d3","run_id":null,"at":[2026,11,11,11,0,0],"detail":{}}
+   ],
+   "now":[2026,11,11,12,0,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"08:05"
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"11:00",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"next_early_arrival_alone",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,8,5,0],"detail":{}},
+    {"type":"pickup_acknowledged","dose_id":"d2","run_id":null,"at":[2026,11,11,13,5,0],"detail":{}},
+    {"type":"arrived_at_station","dose_id":"d3","run_id":null,"at":[2026,11,11,17,5,0],"detail":{}}
+   ],
+   "now":[2026,11,11,17,6,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"08:05"
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"13:05"
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"17:05",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d3",
+    "time_has_come":[true,true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"next_early_arrival_at_time",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"at":[2026,11,11,8,5,0],"detail":{}},
+    {"type":"pickup_acknowledged","dose_id":"d2","run_id":null,"at":[2026,11,11,13,5,0],"detail":{}},
+    {"type":"arrived_at_station","dose_id":"d3","run_id":null,"at":[2026,11,11,17,5,0],"detail":{}}
+   ],
+   "now":[2026,11,11,20,0,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"08:05"
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"13:05"
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"17:05",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d3",
+    "time_has_come":[true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"next_early_arrival_earliest",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d1","run_id":null,"at":[2026,11,11,7,50,0],"detail":{}}],
+   "now":[2026,11,11,7,55,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"07:50",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[false,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"evening_early_arrival_1",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d3","run_id":null,"at":[2026,11,11,17,5,0],"detail":{}}],
+   "now":[2026,11,11,17,5,30],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"17:05",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"evening_early_arrival_2",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d3","run_id":null,"at":[2026,11,11,17,5,0],"detail":{}}],
+   "now":[2026,11,11,19,59,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"17:05",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"evening_early_arrival_3",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d3","run_id":null,"at":[2026,11,11,17,5,0],"detail":{}}],
+   "now":[2026,11,11,20,0,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"17:05",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"evening_early_arrival_4",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d3","run_id":null,"at":[2026,11,11,17,5,0],"detail":{}}],
+   "now":[2026,11,11,20,15,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"17:05",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"evening_early_arrival_5",
+   "doses":[
+    {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+    {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+    {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":"d3","run_id":null,"at":[2026,11,11,17,5,0],"detail":{}}],
+   "now":[2026,11,11,20,16,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"08:00",
+      "label":"Morning dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"13:00",
+      "label":"Midday dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:00",
+      "label":"Evening dose (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":"17:05",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"edge_times_00",
+   "doses":[
+    {"id":"m","time":"00:00","label":"Midnight (demo)","notes":""},
+    {"id":"late","time":"23:59","label":"Late (demo)","notes":"after the news"},
+    {"id":"e","time":"23:50","label":"Evening (demo)"}
+   ],
+   "events":[],
+   "now":[2026,11,11,0,0,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"m",
+      "time":"00:00",
+      "label":"Midnight (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"e",
+      "time":"23:50",
+      "label":"Evening (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"late",
+      "time":"23:59",
+      "label":"Late (demo)",
+      "notes":"after the news",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"m",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"edge_times_23_49",
+   "doses":[
+    {"id":"m","time":"00:00","label":"Midnight (demo)","notes":""},
+    {"id":"late","time":"23:59","label":"Late (demo)","notes":"after the news"},
+    {"id":"e","time":"23:50","label":"Evening (demo)"}
+   ],
+   "events":[],
+   "now":[2026,11,11,23,49,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"m",
+      "time":"00:00",
+      "label":"Midnight (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"e",
+      "time":"23:50",
+      "label":"Evening (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"late",
+      "time":"23:59",
+      "label":"Late (demo)",
+      "notes":"after the news",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"m",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"edge_times_23_59_59",
+   "doses":[
+    {"id":"m","time":"00:00","label":"Midnight (demo)","notes":""},
+    {"id":"late","time":"23:59","label":"Late (demo)","notes":"after the news"},
+    {"id":"e","time":"23:50","label":"Evening (demo)"}
+   ],
+   "events":[],
+   "now":[2026,11,11,23,59,59.5],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"m",
+      "time":"00:00",
+      "label":"Midnight (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"e",
+      "time":"23:50",
+      "label":"Evening (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"late",
+      "time":"23:59",
+      "label":"Late (demo)",
+      "notes":"after the news",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"m",
+    "time_has_come":[true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"code_point_order_and_unicode_digits",
+   "doses":[
+    {"id":"\ud83d\ude00","time":"09:00","label":"astral id","notes":""},
+    {"id":"\uff10","time":"09:00","label":"full-width id","notes":""},
+    {"id":"d10","time":"09:00","label":"d10","notes":""},
+    {"id":"d9","time":"09:00","label":"d9","notes":""},
+    {"id":"u","time":"0\u0668:3\u0660","label":"Arabic-Indic digits in the time","notes":""},
+    {"id":"v","time":"08:30","label":"ASCII","notes":""}
+   ],
+   "events":[{"type":"pickup_acknowledged","dose_id":"\ud83d\ude00","run_id":null,"at":[2026,11,11,9,1,0],"detail":{}}],
+   "now":[2026,11,11,8,30,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"v",
+      "time":"08:30",
+      "label":"ASCII",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"09:00",
+      "label":"d10",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d9",
+      "time":"09:00",
+      "label":"d9",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"\uff10",
+      "time":"09:00",
+      "label":"full-width id",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"\ud83d\ude00",
+      "time":"09:00",
+      "label":"astral id",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"09:01"
+     },
+     {
+      "id":"u",
+      "time":"0\u0668:3\u0660",
+      "label":"Arabic-Indic digits in the time",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"v",
+    "time_has_come":[true,false,false,false,false,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"unicode_digit_time_due",
+   "doses":[
+    {"id":"\ud83d\ude00","time":"09:00","label":"astral id","notes":""},
+    {"id":"\uff10","time":"09:00","label":"full-width id","notes":""},
+    {"id":"d10","time":"09:00","label":"d10","notes":""},
+    {"id":"d9","time":"09:00","label":"d9","notes":""},
+    {"id":"u","time":"0\u0668:3\u0660","label":"Arabic-Indic digits in the time","notes":""},
+    {"id":"v","time":"08:30","label":"ASCII","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,8,45,59],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"v",
+      "time":"08:30",
+      "label":"ASCII",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"09:00",
+      "label":"d10",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d9",
+      "time":"09:00",
+      "label":"d9",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"\uff10",
+      "time":"09:00",
+      "label":"full-width id",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"\ud83d\ude00",
+      "time":"09:00",
+      "label":"astral id",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"u",
+      "time":"0\u0668:3\u0660",
+      "label":"Arabic-Indic digits in the time",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"v",
+    "time_has_come":[true,false,false,false,false,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_0",
+   "doses":[
+    {"id":"d3","time":"20:56","label":"Dose d3 (demo)","notes":""},
+    {"id":"x","time":"00:00","label":"Dose x (demo)","notes":""},
+    {"id":"d2","time":"08:09","label":"Dose d2 (demo)","notes":"x"},
+    {"id":"d4","time":"21:39","label":"Dose d4 (demo)","notes":"x"}
+   ],
+   "events":[{"type":"needs_attention","dose_id":"d99","run_id":null,"at":[2026,11,11,2,56,46]}],
+   "now":[2026,11,11,0,0,0],
+   "grace_min":30,
+   "out":{
+    "statuses":[
+     {
+      "id":"x",
+      "time":"00:00",
+      "label":"Dose x (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"08:09",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"20:56",
+      "label":"Dose d3 (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d4",
+      "time":"21:39",
+      "label":"Dose d4 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"x",
+    "time_has_come":[true,false,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_1",
+   "doses":[
+    {"id":"d1","time":"20:15","label":"Dose d1 (demo)","notes":"x"},
+    {"id":"x","time":"15:29","label":"Dose x (demo)","notes":"x"},
+    {"id":"d3","time":"23:45","label":"Dose d3 (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"hover_test","dose_id":null,"run_id":null,"at":[2026,11,11,17,52,49],"detail":{"mode":"real"}},
+    {"type":"pickup_acknowledged","dose_id":"d99","run_id":null,"at":[2026,11,11,10,25,9]},
+    {"type":"needs_attention","dose_id":"x","run_id":null,"at":[2026,11,11,9,48,7],"detail":{"mode":"sim","run":2}}
+   ],
+   "now":[2026,11,11,6,47,36.5],
+   "grace_min":1,
+   "out":{
+    "statuses":[
+     {
+      "id":"x",
+      "time":"15:29",
+      "label":"Dose x (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d1",
+      "time":"20:15",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"23:45",
+      "label":"Dose d3 (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"x",
+    "time_has_come":[false,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_2",
+   "doses":[{"id":"d3","time":"12:24","label":"Dose d3 (demo)","notes":""}],
+   "events":[
+    {"type":"hover_test","dose_id":null,"run_id":null,"at":[2026,11,11,18,11,44],"detail":{"marker_width":0.16}},
+    {"type":"pickup_acknowledged","dose_id":null,"run_id":null,"at":[2026,11,11,8,1,28]}
+   ],
+   "now":[2026,11,11,16,12,50],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d3",
+      "time":"12:24",
+      "label":"Dose d3 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d3",
+    "time_has_come":[true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_3",
+   "doses":[
+    {"id":"d3","time":"12:00","label":"Dose d3 (demo)","notes":""},
+    {"id":"d1","time":"16:37","label":"Dose d1 (demo)","notes":"x"},
+    {"id":"d2","time":"08:00","label":"Dose d2 (demo)","notes":"x"},
+    {"id":"x","time":"13:03","label":"Dose x (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,13,30,1],
+   "grace_min":90,
+   "out":{
+    "statuses":[
+     {
+      "id":"d2",
+      "time":"08:00",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"12:00",
+      "label":"Dose d3 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"x",
+      "time":"13:03",
+      "label":"Dose x (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d1",
+      "time":"16:37",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,true,true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_4",
+   "doses":[{"id":"x","time":"08:06","label":"Dose x (demo)","notes":""}],
+   "events":[
+    {"type":"needs_attention","dose_id":"d99","run_id":null,"at":[2026,11,11,16,29,18],"detail":{"mode":"sim"}},
+    {"type":"reminder_due","dose_id":"x","run_id":null,"at":[2026,11,11,10,9,31],"detail":{"mode":null}},
+    {
+     "type":"pickup_acknowledged",
+     "dose_id":null,
+     "run_id":null,
+     "at":[2026,11,11,15,44,27],
+     "detail":{"marker_width":0.16}
+    },
+    {"type":"pickup_acknowledged","dose_id":"d99","run_id":null,"at":[2026,11,11,12,2,33],"detail":{"mode":null}},
+    {"type":"pickup_acknowledged","dose_id":null,"run_id":null,"at":[2026,11,11,19,14,49],"detail":{"mode":"real"}}
+   ],
+   "now":[2026,11,11,2,28,46.5],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"x",
+      "time":"08:06",
+      "label":"Dose x (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"x",
+    "time_has_come":[false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_5",
+   "doses":[{"id":"d3","time":"05:49","label":"Dose d3 (demo)","notes":""}],
+   "events":[
+    {"type":"run_started","dose_id":"d3","run_id":null,"at":[2026,11,11,23,25,11],"detail":{"mode":"sim","run":2}},
+    {"type":"hover_test","dose_id":null,"run_id":null,"at":[2026,11,11,14,8,6],"detail":{"mode":null}},
+    {"type":"run_started","dose_id":"d99","run_id":null,"at":[2026,11,11,9,4,8]},
+    {"type":"run_started","dose_id":"d3","run_id":null,"at":[2026,11,11,1,0,33],"detail":{"mode":"real"}}
+   ],
+   "now":[2026,11,11,5,59,35.5],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d3",
+      "time":"05:49",
+      "label":"Dose d3 (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d3",
+    "time_has_come":[true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_6",
+   "doses":[{"id":"x","time":"18:29","label":"Dose x (demo)","notes":""}],
+   "events":[{"type":"needs_attention","dose_id":null,"run_id":null,"at":[2026,11,11,11,31,47],"detail":{"mode":"sim"}}],
+   "now":[2026,11,11,20,26,59.5],
+   "grace_min":30,
+   "out":{
+    "statuses":[
+     {
+      "id":"x",
+      "time":"18:29",
+      "label":"Dose x (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"x",
+    "time_has_come":[true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_7",
+   "doses":[
+    {"id":"d3","time":"23:10","label":"Dose d3 (demo)","notes":"x"},
+    {"id":"d10","time":"12:18","label":"Dose d10 (demo)","notes":"x"},
+    {"id":"x","time":"00:17","label":"Dose x (demo)","notes":""},
+    {"id":"d1","time":"23:59","label":"Dose d1 (demo)","notes":"x"}
+   ],
+   "events":[
+    {"type":"run_started","dose_id":"x","run_id":null,"at":[2026,11,11,19,6,3]},
+    {"type":"run_started","dose_id":"d1","run_id":null,"at":[2026,11,11,6,10,38],"detail":{"mode":"real"}}
+   ],
+   "now":[2026,11,11,1,29,21.5],
+   "grace_min":30,
+   "out":{
+    "statuses":[
+     {
+      "id":"x",
+      "time":"00:17",
+      "label":"Dose x (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"12:18",
+      "label":"Dose d10 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"23:10",
+      "label":"Dose d3 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d1",
+      "time":"23:59",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"x",
+    "time_has_come":[true,false,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_8",
+   "doses":[
+    {"id":"d2","time":"10:57","label":"Dose d2 (demo)","notes":"x"},
+    {"id":"d1","time":"23:59","label":"Dose d1 (demo)","notes":"x"}
+   ],
+   "events":[
+    {"type":"needs_attention","dose_id":"d2","run_id":null,"at":[2026,11,11,9,50,16],"detail":{"mode":"sim"}},
+    {"type":"hover_test","dose_id":"d1","run_id":null,"at":[2026,11,11,9,1,47]},
+    {"type":"pickup_acknowledged","dose_id":"d99","run_id":null,"at":[2026,11,11,13,21,53],"detail":{"mode":"SIM"}},
+    {"type":"hover_test","dose_id":"d99","run_id":null,"at":[2026,11,11,1,39,19],"detail":{"mode":"sim","run":2}},
+    {"type":"hover_test","dose_id":"d2","run_id":null,"at":[2026,11,11,10,8,54],"detail":{"mode":"SIM"}},
+    {"type":"pickup_acknowledged","dose_id":"d2","run_id":null,"at":[2026,11,11,3,17,52],"detail":{"mode":"SIM"}}
+   ],
+   "now":[2026,11,11,23,59,0],
+   "grace_min":1,
+   "out":{
+    "statuses":[
+     {
+      "id":"d2",
+      "time":"10:57",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"03:17"
+     },
+     {
+      "id":"d1",
+      "time":"23:59",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_9",
+   "doses":[
+    {"id":"d2","time":"07:51","label":"Dose d2 (demo)","notes":""},
+    {"id":"d3","time":"12:00","label":"Dose d3 (demo)","notes":"x"},
+    {"id":"x","time":"14:16","label":"Dose x (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"run_started","dose_id":"d99","run_id":null,"at":[2026,11,11,10,14,51],"detail":{}},
+    {"type":"pickup_acknowledged","dose_id":null,"run_id":null,"at":[2026,11,11,2,38,52],"detail":{"mode":"real"}}
+   ],
+   "now":[2026,11,11,8,37,16.5],
+   "grace_min":30,
+   "out":{
+    "statuses":[
+     {
+      "id":"d2",
+      "time":"07:51",
+      "label":"Dose d2 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"12:00",
+      "label":"Dose d3 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"x",
+      "time":"14:16",
+      "label":"Dose x (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_10",
+   "doses":[
+    {"id":"d10","time":"22:05","label":"Dose d10 (demo)","notes":""},
+    {"id":"d4","time":"19:44","label":"Dose d4 (demo)","notes":"x"},
+    {"id":"d3","time":"10:55","label":"Dose d3 (demo)","notes":"x"},
+    {"id":"d2","time":"04:36","label":"Dose d2 (demo)","notes":"x"}
+   ],
+   "events":[
+    {"type":"pickup_acknowledged","dose_id":"d3","run_id":null,"at":[2026,11,11,20,50,44]},
+    {"type":"run_started","dose_id":null,"run_id":null,"at":[2026,11,11,22,40,33],"detail":{"mode":"SIM"}},
+    {"type":"arrived_at_station","dose_id":"d2","run_id":null,"at":[2026,11,11,0,10,41],"detail":{}},
+    {"type":"needs_attention","dose_id":"d3","run_id":null,"at":[2026,11,11,16,27,15],"detail":{"mode":"sim"}},
+    {"type":"needs_attention","dose_id":"d99","run_id":null,"at":[2026,11,11,21,56,43],"detail":{"mode":"sim"}}
+   ],
+   "now":[2026,11,11,10,50,44.5],
+   "grace_min":90,
+   "out":{
+    "statuses":[
+     {
+      "id":"d2",
+      "time":"04:36",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":"00:10",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"10:55",
+      "label":"Dose d3 (demo)",
+      "notes":"x",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"20:50"
+     },
+     {
+      "id":"d4",
+      "time":"19:44",
+      "label":"Dose d4 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"22:05",
+      "label":"Dose d10 (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,false,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_11",
+   "doses":[
+    {"id":"d10","time":"19:32","label":"Dose d10 (demo)","notes":"x"},
+    {"id":"d4","time":"14:53","label":"Dose d4 (demo)","notes":"x"}
+   ],
+   "events":[
+    {"type":"reminder_due","dose_id":"d4","run_id":null,"at":[2026,11,11,15,40,51]},
+    {"type":"needs_attention","dose_id":"d4","run_id":null,"at":[2026,11,11,17,18,56]},
+    {"type":"run_started","dose_id":"d10","run_id":null,"at":[2026,11,11,4,23,23],"detail":{"mode":"real"}}
+   ],
+   "now":[2026,11,11,17,25,36.5],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d4",
+      "time":"14:53",
+      "label":"Dose d4 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"19:32",
+      "label":"Dose d10 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d4",
+    "time_has_come":[true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_12",
+   "doses":[{"id":"d1","time":"23:59","label":"Dose d1 (demo)","notes":"x"}],
+   "events":[],
+   "now":[2026,11,11,23,59,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"23:59",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_13",
+   "doses":[{"id":"x","time":"13:27","label":"Dose x (demo)","notes":""}],
+   "events":[
+    {"type":"arrived_at_station","dose_id":null,"run_id":null,"at":[2026,11,11,19,55,38],"detail":{"mode":null}},
+    {"type":"pickup_acknowledged","dose_id":"d99","run_id":null,"at":[2026,11,11,13,21,44],"detail":{"mode":"sim"}},
+    {"type":"arrived_at_station","dose_id":null,"run_id":null,"at":[2026,11,11,14,56,53],"detail":{"mode":"sim"}},
+    {"type":"run_started","dose_id":"d99","run_id":null,"at":[2026,11,11,10,28,4],"detail":{}},
+    {"type":"arrived_at_station","dose_id":"x","run_id":null,"at":[2026,11,11,17,54,42],"detail":{"mode":"SIM"}},
+    {"type":"arrived_at_station","dose_id":null,"run_id":null,"at":[2026,11,11,14,7,32]}
+   ],
+   "now":[2026,11,11,13,27,0],
+   "grace_min":30,
+   "out":{
+    "statuses":[
+     {
+      "id":"x",
+      "time":"13:27",
+      "label":"Dose x (demo)",
+      "notes":"",
+      "status":"arrived",
+      "arrived_at":"17:54",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"x",
+    "time_has_come":[true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_14",
+   "doses":[
+    {"id":"d4","time":"09:18","label":"Dose d4 (demo)","notes":"x"},
+    {"id":"d10","time":"07:43","label":"Dose d10 (demo)","notes":"x"}
+   ],
+   "events":[
+    {"type":"arrived_at_station","dose_id":"d4","run_id":null,"at":[2026,11,11,13,44,53],"detail":{}},
+    {"type":"run_started","dose_id":"d99","run_id":null,"at":[2026,11,11,21,18,46]},
+    {"type":"reminder_due","dose_id":"d99","run_id":null,"at":[2026,11,11,7,48,31],"detail":{"marker_width":0.16}}
+   ],
+   "now":[2026,11,11,7,44,0.5],
+   "grace_min":1,
+   "out":{
+    "statuses":[
+     {
+      "id":"d10",
+      "time":"07:43",
+      "label":"Dose d10 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d4",
+      "time":"09:18",
+      "label":"Dose d4 (demo)",
+      "notes":"x",
+      "status":"arrived",
+      "arrived_at":"13:44",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d10",
+    "time_has_come":[true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_15",
+   "doses":[{"id":"d3","time":"11:01","label":"Dose d3 (demo)","notes":"x"}],
+   "events":[
+    {"type":"run_started","dose_id":"d3","run_id":null,"at":[2026,11,11,19,36,48]},
+    {"type":"hover_test","dose_id":"d3","run_id":null,"at":[2026,11,11,3,56,42]},
+    {"type":"needs_attention","dose_id":null,"run_id":null,"at":[2026,11,11,16,7,4]}
+   ],
+   "now":[2026,11,11,11,1,0],
+   "grace_min":30,
+   "out":{
+    "statuses":[
+     {
+      "id":"d3",
+      "time":"11:01",
+      "label":"Dose d3 (demo)",
+      "notes":"x",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d3",
+    "time_has_come":[true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_16",
+   "doses":[{"id":"x","time":"18:01","label":"Dose x (demo)","notes":"x"}],
+   "events":[
+    {"type":"run_started","dose_id":"d99","run_id":null,"at":[2026,11,11,20,6,43],"detail":{"mode":"sim","run":2}},
+    {"type":"needs_attention","dose_id":"x","run_id":null,"at":[2026,11,11,7,55,11]},
+    {"type":"pickup_acknowledged","dose_id":"x","run_id":null,"at":[2026,11,11,21,13,46],"detail":{}}
+   ],
+   "now":[2026,11,11,0,1,20],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"x",
+      "time":"18:01",
+      "label":"Dose x (demo)",
+      "notes":"x",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"21:13"
+     }
+    ],
+    "next_due_id":null,
+    "time_has_come":[false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_17",
+   "doses":[
+    {"id":"d4","time":"06:24","label":"Dose d4 (demo)","notes":""},
+    {"id":"d3","time":"02:23","label":"Dose d3 (demo)","notes":"x"},
+    {"id":"d10","time":"03:10","label":"Dose d10 (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,2,25,4.5],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d3",
+      "time":"02:23",
+      "label":"Dose d3 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"03:10",
+      "label":"Dose d10 (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d4",
+      "time":"06:24",
+      "label":"Dose d4 (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d3",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_18",
+   "doses":[
+    {"id":"x","time":"22:27","label":"Dose x (demo)","notes":"x"},
+    {"id":"d3","time":"20:25","label":"Dose d3 (demo)","notes":"x"},
+    {"id":"d2","time":"23:59","label":"Dose d2 (demo)","notes":"x"}
+   ],
+   "events":[
+    {"type":"reminder_due","dose_id":"d3","run_id":null,"at":[2026,11,11,4,0,59],"detail":{"mode":"sim","run":2}},
+    {
+     "type":"pickup_acknowledged",
+     "dose_id":null,
+     "run_id":null,
+     "at":[2026,11,11,8,48,35],
+     "detail":{"mode":"sim","run":2}
+    },
+    {"type":"hover_test","dose_id":"x","run_id":null,"at":[2026,11,11,18,16,40],"detail":{"mode":null}}
+   ],
+   "now":[2026,11,11,22,42,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d3",
+      "time":"20:25",
+      "label":"Dose d3 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"x",
+      "time":"22:27",
+      "label":"Dose x (demo)",
+      "notes":"x",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"23:59",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d3",
+    "time_has_come":[true,true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_19",
+   "doses":[
+    {"id":"d2","time":"03:28","label":"Dose d2 (demo)","notes":""},
+    {"id":"d3","time":"02:45","label":"Dose d3 (demo)","notes":"x"},
+    {"id":"d10","time":"23:59","label":"Dose d10 (demo)","notes":""},
+    {"id":"d4","time":"23:44","label":"Dose d4 (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"arrived_at_station","dose_id":"d99","run_id":null,"at":[2026,11,11,6,19,36]},
+    {"type":"run_started","dose_id":"d10","run_id":null,"at":[2026,11,11,15,38,1],"detail":{"mode":"real"}},
+    {"type":"needs_attention","dose_id":"d99","run_id":null,"at":[2026,11,11,14,25,9],"detail":{"marker_width":0.16}},
+    {"type":"pickup_acknowledged","dose_id":"d3","run_id":null,"at":[2026,11,11,20,20,42]},
+    {"type":"arrived_at_station","dose_id":"d2","run_id":null,"at":[2026,11,11,9,31,5],"detail":{"mode":"SIM"}},
+    {"type":"run_started","dose_id":null,"run_id":null,"at":[2026,11,11,11,40,12],"detail":{"mode":"real"}}
+   ],
+   "now":[2026,11,11,23,59,0.5],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d3",
+      "time":"02:45",
+      "label":"Dose d3 (demo)",
+      "notes":"x",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"20:20"
+     },
+     {
+      "id":"d2",
+      "time":"03:28",
+      "label":"Dose d2 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":"09:31",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d4",
+      "time":"23:44",
+      "label":"Dose d4 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"23:59",
+      "label":"Dose d10 (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_20",
+   "doses":[
+    {"id":"d10","time":"04:04","label":"Dose d10 (demo)","notes":"x"},
+    {"id":"d2","time":"07:27","label":"Dose d2 (demo)","notes":""},
+    {"id":"x","time":"06:00","label":"Dose x (demo)","notes":""},
+    {"id":"d1","time":"09:59","label":"Dose d1 (demo)","notes":"x"}
+   ],
+   "events":[],
+   "now":[2026,11,11,16,57,4.5],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d10",
+      "time":"04:04",
+      "label":"Dose d10 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"x",
+      "time":"06:00",
+      "label":"Dose x (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"07:27",
+      "label":"Dose d2 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d1",
+      "time":"09:59",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d10",
+    "time_has_come":[true,true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_21",
+   "doses":[
+    {"id":"d1","time":"11:04","label":"Dose d1 (demo)","notes":""},
+    {"id":"x","time":"00:52","label":"Dose x (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,11,4,0],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"x",
+      "time":"00:52",
+      "label":"Dose x (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d1",
+      "time":"11:04",
+      "label":"Dose d1 (demo)",
+      "notes":"",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"x",
+    "time_has_come":[true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_22",
+   "doses":[
+    {"id":"d3","time":"09:50","label":"Dose d3 (demo)","notes":""},
+    {"id":"x","time":"23:05","label":"Dose x (demo)","notes":"x"},
+    {"id":"d10","time":"19:14","label":"Dose d10 (demo)","notes":""},
+    {"id":"d2","time":"00:00","label":"Dose d2 (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"arrived_at_station","dose_id":null,"run_id":null,"at":[2026,11,11,23,2,13],"detail":{"mode":null}},
+    {"type":"pickup_acknowledged","dose_id":"d10","run_id":null,"at":[2026,11,11,22,8,11],"detail":{"mode":null}},
+    {"type":"reminder_due","dose_id":"d10","run_id":null,"at":[2026,11,11,16,43,27],"detail":{"mode":"sim","run":2}}
+   ],
+   "now":[2026,11,11,23,5,0],
+   "grace_min":1,
+   "out":{
+    "statuses":[
+     {
+      "id":"d2",
+      "time":"00:00",
+      "label":"Dose d2 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"09:50",
+      "label":"Dose d3 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"19:14",
+      "label":"Dose d10 (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"22:08"
+     },
+     {
+      "id":"x",
+      "time":"23:05",
+      "label":"Dose x (demo)",
+      "notes":"x",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_23",
+   "doses":[
+    {"id":"d2","time":"00:00","label":"Dose d2 (demo)","notes":""},
+    {"id":"d1","time":"00:00","label":"Dose d1 (demo)","notes":"x"},
+    {"id":"d3","time":"05:25","label":"Dose d3 (demo)","notes":""},
+    {"id":"x","time":"06:54","label":"Dose x (demo)","notes":""}
+   ],
+   "events":[],
+   "now":[2026,11,11,17,47,16],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"00:00",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"00:00",
+      "label":"Dose d2 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d3",
+      "time":"05:25",
+      "label":"Dose d3 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"x",
+      "time":"06:54",
+      "label":"Dose x (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_24",
+   "doses":[{"id":"d2","time":"08:00","label":"Dose d2 (demo)","notes":"x"}],
+   "events":[{"type":"pickup_acknowledged","dose_id":null,"run_id":null,"at":[2026,11,11,15,32,9],"detail":{"mode":null}}],
+   "now":[2026,11,11,0,21,0.5],
+   "grace_min":30,
+   "out":{
+    "statuses":[
+     {
+      "id":"d2",
+      "time":"08:00",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_25",
+   "doses":[
+    {"id":"d4","time":"17:34","label":"Dose d4 (demo)","notes":"x"},
+    {"id":"d1","time":"18:49","label":"Dose d1 (demo)","notes":"x"}
+   ],
+   "events":[
+    {"type":"hover_test","dose_id":null,"run_id":null,"at":[2026,11,11,14,13,7]},
+    {"type":"reminder_due","dose_id":"d1","run_id":null,"at":[2026,11,11,4,7,41],"detail":{"mode":"sim","run":2}}
+   ],
+   "now":[2026,11,11,18,4,1],
+   "grace_min":30,
+   "out":{
+    "statuses":[
+     {
+      "id":"d4",
+      "time":"17:34",
+      "label":"Dose d4 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d1",
+      "time":"18:49",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d4",
+    "time_has_come":[true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_26",
+   "doses":[
+    {"id":"d4","time":"15:45","label":"Dose d4 (demo)","notes":""},
+    {"id":"d1","time":"12:00","label":"Dose d1 (demo)","notes":"x"},
+    {"id":"d2","time":"12:00","label":"Dose d2 (demo)","notes":"x"}
+   ],
+   "events":[
+    {"type":"hover_test","dose_id":null,"run_id":null,"at":[2026,11,11,14,41,40],"detail":{"mode":"sim","run":2}},
+    {"type":"hover_test","dose_id":"d2","run_id":null,"at":[2026,11,11,12,17,9],"detail":{"mode":"real"}},
+    {"type":"hover_test","dose_id":"d99","run_id":null,"at":[2026,11,11,1,39,52],"detail":{"marker_width":0.16}},
+    {"type":"hover_test","dose_id":"d1","run_id":null,"at":[2026,11,11,13,54,44]},
+    {"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"at":[2026,11,11,16,52,22]},
+    {"type":"needs_attention","dose_id":"d99","run_id":null,"at":[2026,11,11,23,52,40]}
+   ],
+   "now":[2026,11,11,12,0,0],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"12:00",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"12:00",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"due",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d4",
+      "time":"15:45",
+      "label":"Dose d4 (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"16:52"
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_27",
+   "doses":[
+    {"id":"d2","time":"08:00","label":"Dose d2 (demo)","notes":"x"},
+    {"id":"d10","time":"12:26","label":"Dose d10 (demo)","notes":""},
+    {"id":"d1","time":"02:07","label":"Dose d1 (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"reminder_due","dose_id":"d99","run_id":null,"at":[2026,11,11,22,42,7],"detail":{}},
+    {"type":"needs_attention","dose_id":"d10","run_id":null,"at":[2026,11,11,14,31,17],"detail":{"mode":"sim"}}
+   ],
+   "now":[2026,11,11,16,53,37.5],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"02:07",
+      "label":"Dose d1 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"08:00",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"12:26",
+      "label":"Dose d10 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_28",
+   "doses":[
+    {"id":"d2","time":"01:10","label":"Dose d2 (demo)","notes":""},
+    {"id":"d10","time":"22:12","label":"Dose d10 (demo)","notes":"x"}
+   ],
+   "events":[
+    {"type":"run_started","dose_id":null,"run_id":null,"at":[2026,11,11,2,45,3]},
+    {"type":"run_started","dose_id":null,"run_id":null,"at":[2026,11,11,3,55,17],"detail":{"marker_width":0.16}},
+    {"type":"needs_attention","dose_id":"d99","run_id":null,"at":[2026,11,11,13,15,2],"detail":{"mode":"sim","run":2}},
+    {"type":"reminder_due","dose_id":"d2","run_id":null,"at":[2026,11,11,21,52,53],"detail":{"mode":"sim","run":2}},
+    {"type":"pickup_acknowledged","dose_id":null,"run_id":null,"at":[2026,11,11,2,14,14],"detail":{"mode":null}},
+    {"type":"arrived_at_station","dose_id":"d99","run_id":null,"at":[2026,11,11,6,2,45]}
+   ],
+   "now":[2026,11,11,22,12,1],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d2",
+      "time":"01:10",
+      "label":"Dose d2 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"22:12",
+      "label":"Dose d10 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_29",
+   "doses":[{"id":"d1","time":"11:31","label":"Dose d1 (demo)","notes":""}],
+   "events":[{"type":"run_started","dose_id":"d99","run_id":null,"at":[2026,11,11,9,37,18],"detail":{}}],
+   "now":[2026,11,11,1,13,10.5],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"11:31",
+      "label":"Dose d1 (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_30",
+   "doses":[
+    {"id":"d2","time":"00:00","label":"Dose d2 (demo)","notes":"x"},
+    {"id":"d1","time":"12:44","label":"Dose d1 (demo)","notes":"x"}
+   ],
+   "events":[
+    {"type":"arrived_at_station","dose_id":"d99","run_id":null,"at":[2026,11,11,5,59,19],"detail":{"mode":"SIM"}},
+    {"type":"needs_attention","dose_id":"d99","run_id":null,"at":[2026,11,11,7,0,44],"detail":{"marker_width":0.16}},
+    {"type":"reminder_due","dose_id":"d1","run_id":null,"at":[2026,11,11,13,56,27],"detail":{}},
+    {
+     "type":"arrived_at_station",
+     "dose_id":"d99",
+     "run_id":null,
+     "at":[2026,11,11,5,12,44],
+     "detail":{"marker_width":0.16}
+    }
+   ],
+   "now":[2026,11,11,11,24,58],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d2",
+      "time":"00:00",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d1",
+      "time":"12:44",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_31",
+   "doses":[
+    {"id":"x","time":"08:55","label":"Dose x (demo)","notes":"x"},
+    {"id":"d4","time":"18:06","label":"Dose d4 (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"hover_test","dose_id":"x","run_id":null,"at":[2026,11,11,8,24,50],"detail":{}},
+    {"type":"hover_test","dose_id":"d4","run_id":null,"at":[2026,11,11,8,12,28],"detail":{"mode":"real"}},
+    {"type":"pickup_acknowledged","dose_id":"d99","run_id":null,"at":[2026,11,11,21,41,58],"detail":{"mode":"real"}},
+    {"type":"reminder_due","dose_id":"d4","run_id":null,"at":[2026,11,11,10,9,27],"detail":{}}
+   ],
+   "now":[2026,11,11,4,45,26.5],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"x",
+      "time":"08:55",
+      "label":"Dose x (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d4",
+      "time":"18:06",
+      "label":"Dose d4 (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"x",
+    "time_has_come":[false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_32",
+   "doses":[{"id":"d4","time":"03:24","label":"Dose d4 (demo)","notes":"x"}],
+   "events":[
+    {"type":"run_started","dose_id":"d4","run_id":null,"at":[2026,11,11,22,49,57],"detail":{"mode":"sim"}},
+    {"type":"reminder_due","dose_id":"d4","run_id":null,"at":[2026,11,11,6,10,41],"detail":{"mode":null}},
+    {"type":"needs_attention","dose_id":"d99","run_id":null,"at":[2026,11,11,16,48,44]},
+    {"type":"arrived_at_station","dose_id":"d4","run_id":null,"at":[2026,11,11,9,56,15],"detail":{}}
+   ],
+   "now":[2026,11,11,5,0,2.5],
+   "grace_min":90,
+   "out":{
+    "statuses":[
+     {
+      "id":"d4",
+      "time":"03:24",
+      "label":"Dose d4 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":"09:56",
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d4",
+    "time_has_come":[true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_33",
+   "doses":[{"id":"d1","time":"16:20","label":"Dose d1 (demo)","notes":""}],
+   "events":[
+    {"type":"hover_test","dose_id":null,"run_id":null,"at":[2026,11,11,9,12,35],"detail":{}},
+    {"type":"pickup_acknowledged","dose_id":"d99","run_id":null,"at":[2026,11,11,2,11,17],"detail":{"mode":"SIM"}},
+    {"type":"hover_test","dose_id":"d99","run_id":null,"at":[2026,11,11,6,24,53],"detail":{"mode":null}},
+    {"type":"hover_test","dose_id":"d99","run_id":null,"at":[2026,11,11,23,26,53],"detail":{"mode":"real"}}
+   ],
+   "now":[2026,11,11,8,47,15.5],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"16:20",
+      "label":"Dose d1 (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_34",
+   "doses":[
+    {"id":"d4","time":"12:00","label":"Dose d4 (demo)","notes":""},
+    {"id":"d2","time":"23:59","label":"Dose d2 (demo)","notes":"x"},
+    {"id":"d1","time":"01:17","label":"Dose d1 (demo)","notes":""}
+   ],
+   "events":[
+    {
+     "type":"pickup_acknowledged",
+     "dose_id":null,
+     "run_id":null,
+     "at":[2026,11,11,20,22,34],
+     "detail":{"marker_width":0.16}
+    },
+    {"type":"hover_test","dose_id":"d1","run_id":null,"at":[2026,11,11,4,12,36],"detail":{"marker_width":0.16}},
+    {"type":"run_started","dose_id":"d4","run_id":null,"at":[2026,11,11,4,46,50],"detail":{"mode":"SIM"}},
+    {"type":"needs_attention","dose_id":"d99","run_id":null,"at":[2026,11,11,13,8,13],"detail":{"mode":null}},
+    {"type":"reminder_due","dose_id":"d99","run_id":null,"at":[2026,11,11,6,32,41],"detail":{"mode":"real"}},
+    {
+     "type":"arrived_at_station",
+     "dose_id":"d99",
+     "run_id":null,
+     "at":[2026,11,11,18,22,2],
+     "detail":{"mode":"sim","run":2}
+    }
+   ],
+   "now":[2026,11,11,2,47,0.5],
+   "grace_min":90,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"01:17",
+      "label":"Dose d1 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d4",
+      "time":"12:00",
+      "label":"Dose d4 (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"23:59",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_35",
+   "doses":[
+    {"id":"d10","time":"22:49","label":"Dose d10 (demo)","notes":"x"},
+    {"id":"d4","time":"11:08","label":"Dose d4 (demo)","notes":""}
+   ],
+   "events":[{"type":"arrived_at_station","dose_id":null,"run_id":null,"at":[2026,11,11,23,45,25],"detail":{"mode":null}}],
+   "now":[2026,11,11,16,53,43.5],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d4",
+      "time":"11:08",
+      "label":"Dose d4 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"22:49",
+      "label":"Dose d10 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d4",
+    "time_has_come":[true,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_36",
+   "doses":[
+    {"id":"d10","time":"03:33","label":"Dose d10 (demo)","notes":""},
+    {"id":"d1","time":"03:31","label":"Dose d1 (demo)","notes":"x"},
+    {"id":"d4","time":"18:11","label":"Dose d4 (demo)","notes":""},
+    {"id":"d2","time":"08:43","label":"Dose d2 (demo)","notes":"x"}
+   ],
+   "events":[],
+   "now":[2026,11,11,3,48,1],
+   "grace_min":15,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"03:31",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d10",
+      "time":"03:33",
+      "label":"Dose d10 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d2",
+      "time":"08:43",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d4",
+      "time":"18:11",
+      "label":"Dose d4 (demo)",
+      "notes":"",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d1",
+    "time_has_come":[true,true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_37",
+   "doses":[
+    {"id":"x","time":"00:00","label":"Dose x (demo)","notes":""},
+    {"id":"d4","time":"20:45","label":"Dose d4 (demo)","notes":"x"},
+    {"id":"d1","time":"12:48","label":"Dose d1 (demo)","notes":"x"}
+   ],
+   "events":[
+    {"type":"hover_test","dose_id":"d4","run_id":null,"at":[2026,11,11,21,12,5],"detail":{"mode":"real"}},
+    {"type":"pickup_acknowledged","dose_id":"d99","run_id":null,"at":[2026,11,11,3,39,20],"detail":{"mode":"sim"}}
+   ],
+   "now":[2026,11,11,0,30,0.5],
+   "grace_min":30,
+   "out":{
+    "statuses":[
+     {
+      "id":"x",
+      "time":"00:00",
+      "label":"Dose x (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d1",
+      "time":"12:48",
+      "label":"Dose d1 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d4",
+      "time":"20:45",
+      "label":"Dose d4 (demo)",
+      "notes":"x",
+      "status":"upcoming",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"x",
+    "time_has_come":[true,false,false],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_38",
+   "doses":[
+    {"id":"x","time":"12:35","label":"Dose x (demo)","notes":"x"},
+    {"id":"d2","time":"15:59","label":"Dose d2 (demo)","notes":"x"},
+    {"id":"d1","time":"07:24","label":"Dose d1 (demo)","notes":""},
+    {"id":"d4","time":"13:25","label":"Dose d4 (demo)","notes":""}
+   ],
+   "events":[
+    {"type":"needs_attention","dose_id":"d99","run_id":null,"at":[2026,11,11,14,20,8],"detail":{"mode":"sim"}},
+    {"type":"needs_attention","dose_id":"d4","run_id":null,"at":[2026,11,11,7,43,5],"detail":{"mode":"sim"}},
+    {
+     "type":"pickup_acknowledged",
+     "dose_id":"d1",
+     "run_id":null,
+     "at":[2026,11,11,15,57,36],
+     "detail":{"mode":"sim","run":2}
+    },
+    {"type":"reminder_due","dose_id":null,"run_id":null,"at":[2026,11,11,11,31,10],"detail":{"mode":"real"}},
+    {
+     "type":"pickup_acknowledged",
+     "dose_id":"d4",
+     "run_id":null,
+     "at":[2026,11,11,17,36,52],
+     "detail":{"mode":"sim","run":2}
+    },
+    {"type":"arrived_at_station","dose_id":"d4","run_id":null,"at":[2026,11,11,3,10,52],"detail":{"mode":"SIM"}}
+   ],
+   "now":[2026,11,11,20,20,18],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d1",
+      "time":"07:24",
+      "label":"Dose d1 (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":"15:57"
+     },
+     {
+      "id":"x",
+      "time":"12:35",
+      "label":"Dose x (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     },
+     {
+      "id":"d4",
+      "time":"13:25",
+      "label":"Dose d4 (demo)",
+      "notes":"",
+      "status":"acknowledged",
+      "arrived_at":"03:10",
+      "arrived_mode":null,
+      "acknowledged_at":"17:36"
+     },
+     {
+      "id":"d2",
+      "time":"15:59",
+      "label":"Dose d2 (demo)",
+      "notes":"x",
+      "status":"needs_attention",
+      "arrived_at":null,
+      "arrived_mode":null,
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"x",
+    "time_has_come":[true,true,true,true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  },
+  {
+   "name":"random_39",
+   "doses":[{"id":"d2","time":"10:38","label":"Dose d2 (demo)","notes":""}],
+   "events":[{"type":"arrived_at_station","dose_id":"d2","run_id":null,"at":[2026,11,11,15,35,25],"detail":{"mode":"sim"}}],
+   "now":[2026,11,11,22,58,40.5],
+   "grace_min":0,
+   "out":{
+    "statuses":[
+     {
+      "id":"d2",
+      "time":"10:38",
+      "label":"Dose d2 (demo)",
+      "notes":"",
+      "status":"needs_attention",
+      "arrived_at":"15:35",
+      "arrived_mode":"sim",
+      "acknowledged_at":null
+     }
+    ],
+    "next_due_id":"d2",
+    "time_has_come":[true],
+    "day_bounds":[[2026,11,11,0,0,0],[2026,11,12,0,0,0]]
+   }
+  }
+ ],
+ "runs":[
+  {
+   "name":"a_day_with_the_demo_doses",
+   "grace_min":15,
+   "steps":[
+    {
+     "op":"ticks",
+     "from":[2026,11,11,7,0,0],
+     "to":[2026,11,11,8,0,0],
+     "every_s":30,
+     "out":[
+      [
+       120,
+       [
+        {
+         "ts":[2026,11,11,8,0,0],
+         "time_local":"08:00",
+         "type":"reminder_due",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)"}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"event",
+     "type":"arrived_at_station",
+     "dose_id":"d1",
+     "run_id":"r1",
+     "detail":{"mode":"sim"},
+     "at":[2026,11,11,8,2,0],
+     "out":{
+      "ts":[2026,11,11,8,2,0],
+      "time_local":"08:02",
+      "type":"arrived_at_station",
+      "dose_id":"d1",
+      "run_id":"r1",
+      "detail":{"mode":"sim"}
+     }
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,8,3,0],
+     "out":{
+      "now_local":"08:03",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"arrived",
+        "arrived_at":"08:02",
+        "arrived_mode":"sim",
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d1",
+     "detail":{"self_reported":true},
+     "at":[2026,11,11,8,5,0],
+     "out":{
+      "ts":[2026,11,11,8,5,0],
+      "time_local":"08:05",
+      "type":"pickup_acknowledged",
+      "dose_id":"d1",
+      "run_id":null,
+      "detail":{"self_reported":true}
+     }
+    },
+    {
+     "op":"ticks",
+     "from":[2026,11,11,8,5,0],
+     "to":[2026,11,11,13,20,0],
+     "every_s":60,
+     "out":[
+      [
+       295,
+       [
+        {
+         "ts":[2026,11,11,13,0,0],
+         "time_local":"13:00",
+         "type":"reminder_due",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"time":"13:00","label":"Midday dose (demo)"}
+        }
+       ]
+      ],
+      [
+       311,
+       [
+        {
+         "ts":[2026,11,11,13,16,0],
+         "time_local":"13:16",
+         "type":"needs_attention",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"time":"13:00","label":"Midday dose (demo)","grace_min":15}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,13,20,0],
+     "out":{
+      "now_local":"13:20",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"acknowledged",
+        "arrived_at":"08:02",
+        "arrived_mode":"sim",
+        "acknowledged_at":"08:05"
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d2"
+     }
+    },
+    {
+     "op":"event",
+     "type":"run_started",
+     "dose_id":"d3",
+     "run_id":"r2",
+     "at":[2026,11,11,17,4,0],
+     "out":{"ts":[2026,11,11,17,4,0],"time_local":"17:04","type":"run_started","dose_id":"d3","run_id":"r2","detail":{}}
+    },
+    {
+     "op":"event",
+     "type":"arrived_at_station",
+     "dose_id":"d3",
+     "run_id":"r2",
+     "detail":{"mode":"real"},
+     "at":[2026,11,11,17,5,0],
+     "out":{
+      "ts":[2026,11,11,17,5,0],
+      "time_local":"17:05",
+      "type":"arrived_at_station",
+      "dose_id":"d3",
+      "run_id":"r2",
+      "detail":{"mode":"real"}
+     }
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,17,6,0],
+     "out":{
+      "now_local":"17:06",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"acknowledged",
+        "arrived_at":"08:02",
+        "arrived_mode":"sim",
+        "acknowledged_at":"08:05"
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"arrived",
+        "arrived_at":"17:05",
+        "arrived_mode":"real",
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d2"
+     }
+    },
+    {
+     "op":"ticks",
+     "from":[2026,11,11,17,5,0],
+     "to":[2026,11,11,20,20,0],
+     "every_s":60,
+     "out":[
+      [
+       175,
+       [
+        {
+         "ts":[2026,11,11,20,0,0],
+         "time_local":"20:00",
+         "type":"reminder_due",
+         "dose_id":"d3",
+         "run_id":null,
+         "detail":{"time":"20:00","label":"Evening dose (demo)"}
+        }
+       ]
+      ],
+      [
+       191,
+       [
+        {
+         "ts":[2026,11,11,20,16,0],
+         "time_local":"20:16",
+         "type":"needs_attention",
+         "dose_id":"d3",
+         "run_id":null,
+         "detail":{"time":"20:00","label":"Evening dose (demo)","grace_min":15}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,20,30,0],
+     "out":{
+      "now_local":"20:30",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"acknowledged",
+        "arrived_at":"08:02",
+        "arrived_mode":"sim",
+        "acknowledged_at":"08:05"
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":"17:05",
+        "arrived_mode":"real",
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d2"
+     }
+    },
+    {"op":"ticks","from":[2026,11,11,23,58,0],"to":[2026,11,12,0,10,0],"every_s":60,"out":[]},
+    {
+     "op":"snapshot",
+     "at":[2026,11,12,0,0,0],
+     "out":{
+      "now_local":"00:00",
+      "date_local":"2026-11-12",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"ticks",
+     "from":[2026,11,12,7,59,0],
+     "to":[2026,11,12,8,1,0],
+     "every_s":20,
+     "out":[
+      [
+       3,
+       [
+        {
+         "ts":[2026,11,12,8,0,0],
+         "time_local":"08:00",
+         "type":"reminder_due",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)"}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,12,8,1,0],
+     "out":{
+      "now_local":"08:01",
+      "date_local":"2026-11-12",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"due",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    }
+   ]
+  },
+  {
+   "name":"late_dose_across_midnight",
+   "grace_min":15,
+   "steps":[
+    {
+     "op":"add_dose",
+     "args":["23:50","Late dose (demo)"],
+     "at":[2026,11,11,23,0,0],
+     "out":{"id":"d4","time":"23:50","label":"Late dose (demo)","notes":""}
+    },
+    {
+     "op":"event",
+     "type":"arrived_at_station",
+     "dose_id":"d4",
+     "detail":{"mode":"sim"},
+     "at":[2026,11,11,23,51,0],
+     "out":{
+      "ts":[2026,11,11,23,51,0],
+      "time_local":"23:51",
+      "type":"arrived_at_station",
+      "dose_id":"d4",
+      "run_id":null,
+      "detail":{"mode":"sim"}
+     }
+    },
+    {
+     "op":"ticks",
+     "from":[2026,11,11,23,49,0],
+     "to":[2026,11,12,0,30,0],
+     "every_s":30,
+     "out":[
+      [
+       0,
+       [
+        {
+         "ts":[2026,11,11,23,49,0],
+         "time_local":"23:49",
+         "type":"reminder_due",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)"}
+        },
+        {
+         "ts":[2026,11,11,23,49,0],
+         "time_local":"23:49",
+         "type":"needs_attention",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)","grace_min":15}
+        },
+        {
+         "ts":[2026,11,11,23,49,0],
+         "time_local":"23:49",
+         "type":"reminder_due",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"time":"13:00","label":"Midday dose (demo)"}
+        },
+        {
+         "ts":[2026,11,11,23,49,0],
+         "time_local":"23:49",
+         "type":"needs_attention",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"time":"13:00","label":"Midday dose (demo)","grace_min":15}
+        },
+        {
+         "ts":[2026,11,11,23,49,0],
+         "time_local":"23:49",
+         "type":"reminder_due",
+         "dose_id":"d3",
+         "run_id":null,
+         "detail":{"time":"20:00","label":"Evening dose (demo)"}
+        },
+        {
+         "ts":[2026,11,11,23,49,0],
+         "time_local":"23:49",
+         "type":"needs_attention",
+         "dose_id":"d3",
+         "run_id":null,
+         "detail":{"time":"20:00","label":"Evening dose (demo)","grace_min":15}
+        }
+       ]
+      ],
+      [
+       2,
+       [
+        {
+         "ts":[2026,11,11,23,50,0],
+         "time_local":"23:50",
+         "type":"reminder_due",
+         "dose_id":"d4",
+         "run_id":null,
+         "detail":{"time":"23:50","label":"Late dose (demo)"}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,23,59,59],
+     "out":{
+      "now_local":"23:59",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d4",
+        "time":"23:50",
+        "label":"Late dose (demo)",
+        "notes":"",
+        "status":"arrived",
+        "arrived_at":"23:51",
+        "arrived_mode":"sim",
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,12,0,0,0],
+     "out":{
+      "now_local":"00:00",
+      "date_local":"2026-11-12",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d4",
+        "time":"23:50",
+        "label":"Late dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,12,0,5,1],
+     "out":{
+      "now_local":"00:05",
+      "date_local":"2026-11-12",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d4",
+        "time":"23:50",
+        "label":"Late dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,12,0,30,0],
+     "out":{
+      "now_local":"00:30",
+      "date_local":"2026-11-12",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d4",
+        "time":"23:50",
+        "label":"Late dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    }
+   ]
+  },
+  {
+   "name":"doses_edited_and_added_during_the_day",
+   "grace_min":15,
+   "steps":[
+    {
+     "op":"ticks",
+     "from":[2026,11,11,7,59,0],
+     "to":[2026,11,11,8,0,0],
+     "every_s":30,
+     "out":[
+      [
+       2,
+       [
+        {
+         "ts":[2026,11,11,8,0,0],
+         "time_local":"08:00",
+         "type":"reminder_due",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)"}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"update_dose",
+     "args":["d1","09:00",null,null],
+     "at":[2026,11,11,8,30,0],
+     "out":{"id":"d1","time":"09:00","label":"Morning dose (demo)","notes":""}
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,8,30,0],
+     "out":{
+      "now_local":"08:30",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"09:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"ticks",
+     "from":[2026,11,11,8,31,0],
+     "to":[2026,11,11,9,20,0],
+     "every_s":60,
+     "out":[
+      [
+       45,
+       [
+        {
+         "ts":[2026,11,11,9,16,0],
+         "time_local":"09:16",
+         "type":"needs_attention",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"09:00","label":"Morning dose (demo)","grace_min":15}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["09:30","Added late (demo)","past its time"],
+     "at":[2026,11,11,10,0,0],
+     "out":{"id":"d4","time":"09:30","label":"Added late (demo)","notes":"past its time"}
+    },
+    {
+     "op":"tick",
+     "at":[2026,11,11,10,0,0],
+     "out":[
+      {
+       "ts":[2026,11,11,10,0,0],
+       "time_local":"10:00",
+       "type":"reminder_due",
+       "dose_id":"d4",
+       "run_id":null,
+       "detail":{"time":"09:30","label":"Added late (demo)"}
+      },
+      {
+       "ts":[2026,11,11,10,0,0],
+       "time_local":"10:00",
+       "type":"needs_attention",
+       "dose_id":"d4",
+       "run_id":null,
+       "detail":{"time":"09:30","label":"Added late (demo)","grace_min":15}
+      }
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["10:05","Added early (demo)"],
+     "at":[2026,11,11,10,1,0],
+     "out":{"id":"d5","time":"10:05","label":"Added early (demo)","notes":""}
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,10,1,0],
+     "out":{
+      "now_local":"10:01",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"09:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d4",
+        "time":"09:30",
+        "label":"Added late (demo)",
+        "notes":"past its time",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d5",
+        "time":"10:05",
+        "label":"Added early (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"ticks",
+     "from":[2026,11,11,10,1,0],
+     "to":[2026,11,11,10,21,0],
+     "every_s":60,
+     "out":[
+      [
+       4,
+       [
+        {
+         "ts":[2026,11,11,10,5,0],
+         "time_local":"10:05",
+         "type":"reminder_due",
+         "dose_id":"d5",
+         "run_id":null,
+         "detail":{"time":"10:05","label":"Added early (demo)"}
+        }
+       ]
+      ],
+      [
+       20,
+       [
+        {
+         "ts":[2026,11,11,10,21,0],
+         "time_local":"10:21",
+         "type":"needs_attention",
+         "dose_id":"d5",
+         "run_id":null,
+         "detail":{"time":"10:05","label":"Added early (demo)","grace_min":15}
+        }
+       ]
+      ]
+     ]
+    },
+    {"op":"delete_dose","args":["d2"],"at":[2026,11,11,12,0,0],"out":true},
+    {
+     "op":"update_dose",
+     "args":["d3",null,"Evening, renamed (demo)",null],
+     "at":[2026,11,11,12,1,0],
+     "out":{"id":"d3","time":"20:00","label":"Evening, renamed (demo)","notes":""}
+    },
+    {
+     "op":"ticks",
+     "from":[2026,11,11,12,0,0],
+     "to":[2026,11,11,20,0,0],
+     "every_s":300,
+     "out":[
+      [
+       96,
+       [
+        {
+         "ts":[2026,11,11,20,0,0],
+         "time_local":"20:00",
+         "type":"reminder_due",
+         "dose_id":"d3",
+         "run_id":null,
+         "detail":{"time":"20:00","label":"Evening, renamed (demo)"}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["21:00","After a delete (demo)"],
+     "at":[2026,11,11,20,1,0],
+     "out":{"id":"d6","time":"21:00","label":"After a delete (demo)","notes":""}
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,21,0,0],
+     "out":{
+      "now_local":"21:00",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"09:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d4",
+        "time":"09:30",
+        "label":"Added late (demo)",
+        "notes":"past its time",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d5",
+        "time":"10:05",
+        "label":"Added early (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening, renamed (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d6",
+        "time":"21:00",
+        "label":"After a delete (demo)",
+        "notes":"",
+        "status":"due",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"update_dose",
+     "args":["d6","20:59",null,null],
+     "at":[2026,11,11,21,0,0],
+     "out":{"id":"d6","time":"20:59","label":"After a delete (demo)","notes":""}
+    },
+    {
+     "op":"tick",
+     "at":[2026,11,11,21,0,0],
+     "out":[
+      {
+       "ts":[2026,11,11,21,0,0],
+       "time_local":"21:00",
+       "type":"needs_attention",
+       "dose_id":"d3",
+       "run_id":null,
+       "detail":{"time":"20:00","label":"Evening, renamed (demo)","grace_min":15}
+      },
+      {
+       "ts":[2026,11,11,21,0,0],
+       "time_local":"21:00",
+       "type":"reminder_due",
+       "dose_id":"d6",
+       "run_id":null,
+       "detail":{"time":"20:59","label":"After a delete (demo)"}
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name":"acknowledged_before_its_time",
+   "grace_min":15,
+   "steps":[
+    {
+     "op":"event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d1",
+     "at":[2026,11,11,7,55,0],
+     "out":{
+      "ts":[2026,11,11,7,55,0],
+      "time_local":"07:55",
+      "type":"pickup_acknowledged",
+      "dose_id":"d1",
+      "run_id":null,
+      "detail":{}
+     }
+    },
+    {
+     "op":"event",
+     "type":"arrived_at_station",
+     "dose_id":"d3",
+     "at":[2026,11,11,17,5,0],
+     "out":{
+      "ts":[2026,11,11,17,5,0],
+      "time_local":"17:05",
+      "type":"arrived_at_station",
+      "dose_id":"d3",
+      "run_id":null,
+      "detail":{}
+     }
+    },
+    {
+     "op":"event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d3",
+     "at":[2026,11,11,17,30,0],
+     "out":{
+      "ts":[2026,11,11,17,30,0],
+      "time_local":"17:30",
+      "type":"pickup_acknowledged",
+      "dose_id":"d3",
+      "run_id":null,
+      "detail":{}
+     }
+    },
+    {"op":"tick","at":[2026,11,11,9,0,0],"out":[]},
+    {
+     "op":"tick",
+     "at":[2026,11,11,20,0,0],
+     "out":[
+      {
+       "ts":[2026,11,11,20,0,0],
+       "time_local":"20:00",
+       "type":"reminder_due",
+       "dose_id":"d2",
+       "run_id":null,
+       "detail":{"time":"13:00","label":"Midday dose (demo)"}
+      },
+      {
+       "ts":[2026,11,11,20,0,0],
+       "time_local":"20:00",
+       "type":"needs_attention",
+       "dose_id":"d2",
+       "run_id":null,
+       "detail":{"time":"13:00","label":"Midday dose (demo)","grace_min":15}
+      }
+     ]
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,20,0,0],
+     "out":{
+      "now_local":"20:00",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"acknowledged",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":"07:55"
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"acknowledged",
+        "arrived_at":"17:05",
+        "arrived_mode":null,
+        "acknowledged_at":"17:30"
+       }
+      ],
+      "next_due_id":"d2"
+     }
+    },
+    {"op":"tick","at":[2026,11,11,21,0,0],"out":[]}
+   ]
+  },
+  {
+   "name":"midnight_boundaries",
+   "grace_min":15,
+   "steps":[
+    {
+     "op":"event",
+     "type":"arrived_at_station",
+     "dose_id":"d1",
+     "at":[2026,11,10,8,2,0],
+     "out":{
+      "ts":[2026,11,10,8,2,0],
+      "time_local":"08:02",
+      "type":"arrived_at_station",
+      "dose_id":"d1",
+      "run_id":null,
+      "detail":{}
+     }
+    },
+    {
+     "op":"event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d1",
+     "at":[2026,11,10,23,59,59.5],
+     "out":{
+      "ts":[2026,11,10,23,59,59.5],
+      "time_local":"23:59",
+      "type":"pickup_acknowledged",
+      "dose_id":"d1",
+      "run_id":null,
+      "detail":{}
+     }
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,8,5,0],
+     "out":{
+      "now_local":"08:05",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"due",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d2",
+     "at":[2026,11,11,0,0,0],
+     "out":{
+      "ts":[2026,11,11,0,0,0],
+      "time_local":"00:00",
+      "type":"pickup_acknowledged",
+      "dose_id":"d2",
+      "run_id":null,
+      "detail":{}
+     }
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,0,0,1],
+     "out":{
+      "now_local":"00:00",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"acknowledged",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":"00:00"
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,10,23,59,59],
+     "out":{
+      "now_local":"23:59",
+      "date_local":"2026-11-10",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"acknowledged",
+        "arrived_at":"08:02",
+        "arrived_mode":null,
+        "acknowledged_at":"23:59"
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d2"
+     }
+    },
+    {
+     "op":"add_dose",
+     "args":["00:00","Midnight dose (demo)"],
+     "at":[2026,11,11,0,0,2],
+     "out":{"id":"d4","time":"00:00","label":"Midnight dose (demo)","notes":""}
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,12,0,0,0],
+     "out":{
+      "now_local":"00:00",
+      "date_local":"2026-11-12",
+      "doses":[
+       {
+        "id":"d4",
+        "time":"00:00",
+        "label":"Midnight dose (demo)",
+        "notes":"",
+        "status":"due",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d4"
+     }
+    },
+    {
+     "op":"tick",
+     "at":[2026,11,12,0,0,0],
+     "out":[
+      {
+       "ts":[2026,11,12,0,0,0],
+       "time_local":"00:00",
+       "type":"reminder_due",
+       "dose_id":"d4",
+       "run_id":null,
+       "detail":{"time":"00:00","label":"Midnight dose (demo)"}
+      }
+     ]
+    },
+    {
+     "op":"tick",
+     "at":[2026,11,12,0,15,0.5],
+     "out":[
+      {
+       "ts":[2026,11,12,0,15,0.5],
+       "time_local":"00:15",
+       "type":"needs_attention",
+       "dose_id":"d4",
+       "run_id":null,
+       "detail":{"time":"00:00","label":"Midnight dose (demo)","grace_min":15}
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name":"backend_started_late",
+   "grace_min":15,
+   "steps":[
+    {
+     "op":"tick",
+     "at":[2026,11,11,21,0,0],
+     "out":[
+      {
+       "ts":[2026,11,11,21,0,0],
+       "time_local":"21:00",
+       "type":"reminder_due",
+       "dose_id":"d1",
+       "run_id":null,
+       "detail":{"time":"08:00","label":"Morning dose (demo)"}
+      },
+      {
+       "ts":[2026,11,11,21,0,0],
+       "time_local":"21:00",
+       "type":"needs_attention",
+       "dose_id":"d1",
+       "run_id":null,
+       "detail":{"time":"08:00","label":"Morning dose (demo)","grace_min":15}
+      },
+      {
+       "ts":[2026,11,11,21,0,0],
+       "time_local":"21:00",
+       "type":"reminder_due",
+       "dose_id":"d2",
+       "run_id":null,
+       "detail":{"time":"13:00","label":"Midday dose (demo)"}
+      },
+      {
+       "ts":[2026,11,11,21,0,0],
+       "time_local":"21:00",
+       "type":"needs_attention",
+       "dose_id":"d2",
+       "run_id":null,
+       "detail":{"time":"13:00","label":"Midday dose (demo)","grace_min":15}
+      },
+      {
+       "ts":[2026,11,11,21,0,0],
+       "time_local":"21:00",
+       "type":"reminder_due",
+       "dose_id":"d3",
+       "run_id":null,
+       "detail":{"time":"20:00","label":"Evening dose (demo)"}
+      },
+      {
+       "ts":[2026,11,11,21,0,0],
+       "time_local":"21:00",
+       "type":"needs_attention",
+       "dose_id":"d3",
+       "run_id":null,
+       "detail":{"time":"20:00","label":"Evening dose (demo)","grace_min":15}
+      }
+     ]
+    },
+    {"op":"tick","at":[2026,11,11,21,1,0],"out":[]},
+    {"op":"reopen","at":[2026,11,11,21,2,0],"out":null},
+    {"op":"tick","at":[2026,11,11,21,2,0],"out":[]},
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,21,3,0],
+     "out":{
+      "now_local":"21:03",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    }
+   ]
+  },
+  {
+   "name":"grace_zero",
+   "grace_min":0,
+   "steps":[
+    {
+     "op":"ticks",
+     "from":[2026,11,11,7,59,30],
+     "to":[2026,11,11,8,1,0],
+     "every_s":0.5,
+     "out":[
+      [
+       60,
+       [
+        {
+         "ts":[2026,11,11,8,0,0],
+         "time_local":"08:00",
+         "type":"reminder_due",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)"}
+        }
+       ]
+      ],
+      [
+       61,
+       [
+        {
+         "ts":[2026,11,11,8,0,0.5],
+         "time_local":"08:00",
+         "type":"needs_attention",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)","grace_min":0}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,8,0,0.5],
+     "out":{
+      "now_local":"08:00",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    }
+   ]
+  },
+  {
+   "name":"grace_thirty_with_arrival",
+   "grace_min":30,
+   "steps":[
+    {
+     "op":"event",
+     "type":"arrived_at_station",
+     "dose_id":"d2",
+     "detail":{"mode":"real"},
+     "at":[2026,11,11,13,10,0],
+     "out":{
+      "ts":[2026,11,11,13,10,0],
+      "time_local":"13:10",
+      "type":"arrived_at_station",
+      "dose_id":"d2",
+      "run_id":null,
+      "detail":{"mode":"real"}
+     }
+    },
+    {
+     "op":"ticks",
+     "from":[2026,11,11,12,59,0],
+     "to":[2026,11,11,13,31,0],
+     "every_s":60,
+     "out":[
+      [
+       0,
+       [
+        {
+         "ts":[2026,11,11,12,59,0],
+         "time_local":"12:59",
+         "type":"reminder_due",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)"}
+        },
+        {
+         "ts":[2026,11,11,12,59,0],
+         "time_local":"12:59",
+         "type":"needs_attention",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)","grace_min":30}
+        }
+       ]
+      ],
+      [
+       1,
+       [
+        {
+         "ts":[2026,11,11,13,0,0],
+         "time_local":"13:00",
+         "type":"reminder_due",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"time":"13:00","label":"Midday dose (demo)"}
+        }
+       ]
+      ],
+      [
+       32,
+       [
+        {
+         "ts":[2026,11,11,13,31,0],
+         "time_local":"13:31",
+         "type":"needs_attention",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"time":"13:00","label":"Midday dose (demo)","grace_min":30}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,13,31,0],
+     "out":{
+      "now_local":"13:31",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":"13:10",
+        "arrived_mode":"real",
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    }
+   ]
+  },
+  {
+   "name":"fractional_seconds",
+   "grace_min":15,
+   "steps":[
+    {
+     "op":"tick",
+     "at":[2026,11,11,8,0,0.5],
+     "out":[
+      {
+       "ts":[2026,11,11,8,0,0.5],
+       "time_local":"08:00",
+       "type":"reminder_due",
+       "dose_id":"d1",
+       "run_id":null,
+       "detail":{"time":"08:00","label":"Morning dose (demo)"}
+      }
+     ]
+    },
+    {
+     "op":"event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d2",
+     "at":[2026,11,11,13,14,59.5],
+     "out":{
+      "ts":[2026,11,11,13,14,59.5],
+      "time_local":"13:14",
+      "type":"pickup_acknowledged",
+      "dose_id":"d2",
+      "run_id":null,
+      "detail":{}
+     }
+    },
+    {
+     "op":"tick",
+     "at":[2026,11,11,13,15,0.5],
+     "out":[
+      {
+       "ts":[2026,11,11,13,15,0.5],
+       "time_local":"13:15",
+       "type":"needs_attention",
+       "dose_id":"d1",
+       "run_id":null,
+       "detail":{"time":"08:00","label":"Morning dose (demo)","grace_min":15}
+      }
+     ]
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,11,13,15,0.5],
+     "out":{
+      "now_local":"13:15",
+      "date_local":"2026-11-11",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"acknowledged",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":"13:14"
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"tick",
+     "at":[2026,11,11,20,15,0.5],
+     "out":[
+      {
+       "ts":[2026,11,11,20,15,0.5],
+       "time_local":"20:15",
+       "type":"reminder_due",
+       "dose_id":"d3",
+       "run_id":null,
+       "detail":{"time":"20:00","label":"Evening dose (demo)"}
+      },
+      {
+       "ts":[2026,11,11,20,15,0.5],
+       "time_local":"20:15",
+       "type":"needs_attention",
+       "dose_id":"d3",
+       "run_id":null,
+       "detail":{"time":"20:00","label":"Evening dose (demo)","grace_min":15}
+      }
+     ]
+    },
+    {"op":"tick","at":[2026,11,11,20,15,1],"out":[]}
+   ]
+  },
+  {
+   "name":"turn_of_the_month",
+   "grace_min":15,
+   "steps":[
+    {
+     "op":"ticks",
+     "from":[2026,11,30,19,59,0],
+     "to":[2026,12,1,8,1,0],
+     "every_s":600,
+     "out":[
+      [
+       0,
+       [
+        {
+         "ts":[2026,11,30,19,59,0],
+         "time_local":"19:59",
+         "type":"reminder_due",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)"}
+        },
+        {
+         "ts":[2026,11,30,19,59,0],
+         "time_local":"19:59",
+         "type":"needs_attention",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)","grace_min":15}
+        },
+        {
+         "ts":[2026,11,30,19,59,0],
+         "time_local":"19:59",
+         "type":"reminder_due",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"time":"13:00","label":"Midday dose (demo)"}
+        },
+        {
+         "ts":[2026,11,30,19,59,0],
+         "time_local":"19:59",
+         "type":"needs_attention",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"time":"13:00","label":"Midday dose (demo)","grace_min":15}
+        }
+       ]
+      ],
+      [
+       1,
+       [
+        {
+         "ts":[2026,11,30,20,9,0],
+         "time_local":"20:09",
+         "type":"reminder_due",
+         "dose_id":"d3",
+         "run_id":null,
+         "detail":{"time":"20:00","label":"Evening dose (demo)"}
+        }
+       ]
+      ],
+      [
+       2,
+       [
+        {
+         "ts":[2026,11,30,20,19,0],
+         "time_local":"20:19",
+         "type":"needs_attention",
+         "dose_id":"d3",
+         "run_id":null,
+         "detail":{"time":"20:00","label":"Evening dose (demo)","grace_min":15}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,11,30,23,59,59],
+     "out":{
+      "now_local":"23:59",
+      "date_local":"2026-11-30",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,12,1,0,0,0],
+     "out":{
+      "now_local":"00:00",
+      "date_local":"2026-12-01",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    }
+   ]
+  },
+  {
+   "name":"turn_of_the_year",
+   "grace_min":15,
+   "steps":[
+    {
+     "op":"event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d3",
+     "at":[2026,12,31,20,5,0],
+     "out":{
+      "ts":[2026,12,31,20,5,0],
+      "time_local":"20:05",
+      "type":"pickup_acknowledged",
+      "dose_id":"d3",
+      "run_id":null,
+      "detail":{}
+     }
+    },
+    {
+     "op":"snapshot",
+     "at":[2026,12,31,23,55,0],
+     "out":{
+      "now_local":"23:55",
+      "date_local":"2026-12-31",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"needs_attention",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"acknowledged",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":"20:05"
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    },
+    {
+     "op":"ticks",
+     "from":[2026,12,31,23,55,0],
+     "to":[2027,1,1,8,0,0],
+     "every_s":900,
+     "out":[
+      [
+       0,
+       [
+        {
+         "ts":[2026,12,31,23,55,0],
+         "time_local":"23:55",
+         "type":"reminder_due",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)"}
+        },
+        {
+         "ts":[2026,12,31,23,55,0],
+         "time_local":"23:55",
+         "type":"needs_attention",
+         "dose_id":"d1",
+         "run_id":null,
+         "detail":{"time":"08:00","label":"Morning dose (demo)","grace_min":15}
+        },
+        {
+         "ts":[2026,12,31,23,55,0],
+         "time_local":"23:55",
+         "type":"reminder_due",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"time":"13:00","label":"Midday dose (demo)"}
+        },
+        {
+         "ts":[2026,12,31,23,55,0],
+         "time_local":"23:55",
+         "type":"needs_attention",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"time":"13:00","label":"Midday dose (demo)","grace_min":15}
+        }
+       ]
+      ]
+     ]
+    },
+    {
+     "op":"snapshot",
+     "at":[2027,1,1,0,5,0],
+     "out":{
+      "now_local":"00:05",
+      "date_local":"2027-01-01",
+      "doses":[
+       {
+        "id":"d1",
+        "time":"08:00",
+        "label":"Morning dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d2",
+        "time":"13:00",
+        "label":"Midday dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       },
+       {
+        "id":"d3",
+        "time":"20:00",
+        "label":"Evening dose (demo)",
+        "notes":"",
+        "status":"upcoming",
+        "arrived_at":null,
+        "arrived_mode":null,
+        "acknowledged_at":null
+       }
+      ],
+      "next_due_id":"d1"
+     }
+    }
+   ]
+  }
+ ]
+}

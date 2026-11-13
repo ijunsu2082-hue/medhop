@@ -1,0 +1,4007 @@
+{
+ "group":"care_store",
+ "generator":"backend/tools/parity_care.py care_store",
+ "constants":{
+  "event_types":[
+   "reminder_due",
+   "run_started",
+   "arrived_at_station",
+   "run_aborted",
+   "pickup_acknowledged",
+   "needs_attention",
+   "hover_test",
+   "auto_run_skipped"
+  ],
+  "seed_doses":[
+   {"time":"08:00","label":"Morning dose (demo)","notes":""},
+   {"time":"13:00","label":"Midday dose (demo)","notes":""},
+   {"time":"20:00","label":"Evening dose (demo)","notes":""}
+  ],
+  "label_max":80,
+  "notes_max":300,
+  "avoid_modes":["off","hold"]
+ },
+ "scenarios":[
+  {
+   "name":"validators",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {"op":"validate_time","args":["08:00"],"out":"08:00","files":{}},
+    {"op":"validate_time","args":[" 08:00 "],"out":"08:00"},
+    {"op":"validate_time","args":["8:00"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":["24:00"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":["23:59"],"out":"23:59"},
+    {"op":"validate_time","args":["00:00"],"out":"00:00"},
+    {"op":"validate_time","args":["12:60"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":["12:5"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":[""],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":[null],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":[800],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":[8.0],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":[true],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":[["08:00"]],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":["noon"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":["08:00:00"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":["08-00"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":["08:00\n"],"out":"08:00"},
+    {"op":"validate_time","args":["\u0085 08:00\u001f\u3000"],"out":"08:00"},
+    {"op":"validate_time","args":["\ufeff08:00"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"validate_time","args":["0\u0668:3\u0660"],"out":"0\u0668:3\u0660"},
+    {"op":"validate_time","args":["1\u0669:00"],"out":"1\u0669:00"},
+    {
+     "op":"validate_time",
+     "args":["\uff10\uff18:\uff10\uff10"],
+     "out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}
+    },
+    {"op":"validate_time","args":["2\u0663:59"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {
+     "op":"validate_time",
+     "args":["\ud835\udfce8:00"],
+     "out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}
+    },
+    {"op":"validate_label","args":["Morning"],"out":"Morning"},
+    {"op":"validate_label","args":["  x  "],"out":"x"},
+    {"op":"validate_label","args":[""],"out":{"error":"ValueError","message":"label must not be empty"}},
+    {"op":"validate_label","args":["   "],"out":{"error":"ValueError","message":"label must not be empty"}},
+    {"op":"validate_label","args":[null],"out":{"error":"ValueError","message":"label must not be empty"}},
+    {"op":"validate_label","args":[5],"out":{"error":"ValueError","message":"label must not be empty"}},
+    {"op":"validate_label","args":[false],"out":{"error":"ValueError","message":"label must not be empty"}},
+    {
+     "op":"validate_label",
+     "args":["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
+     "out":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+     "op":"validate_label",
+     "args":["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
+     "out":{"error":"ValueError","message":"label must be at most 80 characters"}
+    },
+    {
+     "op":"validate_label",
+     "args":[" xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx "],
+     "out":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+     "op":"validate_label",
+     "args":[
+      "\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a"
+     ],
+     "out":"\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a"
+    },
+    {
+     "op":"validate_label",
+     "args":[
+      "\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a"
+     ],
+     "out":{"error":"ValueError","message":"label must be at most 80 characters"}
+    },
+    {
+     "op":"validate_label",
+     "args":[
+      "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9"
+     ],
+     "out":"\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9"
+    },
+    {
+     "op":"validate_label",
+     "args":[
+      "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9"
+     ],
+     "out":{"error":"ValueError","message":"label must be at most 80 characters"}
+    },
+    {"op":"validate_label","args":["\u001fx\u001f"],"out":"x"},
+    {"op":"validate_label","args":["\ufeffx"],"out":"\ufeffx"},
+    {"op":"validate_label","args":["\u0085\u2003x\u00a0"],"out":"x"},
+    {"op":"validate_label","args":["\u200bx"],"out":"\u200bx"},
+    {"op":"validate_notes","args":[null],"out":""},
+    {"op":"validate_notes","args":[""],"out":""},
+    {"op":"validate_notes","args":[" a "],"out":"a"},
+    {"op":"validate_notes","args":[5],"out":{"error":"ValueError","message":"notes must be text"}},
+    {"op":"validate_notes","args":[["x"]],"out":{"error":"ValueError","message":"notes must be text"}},
+    {
+     "op":"validate_notes",
+     "args":[
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     ],
+     "out":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+     "op":"validate_notes",
+     "args":[
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     ],
+     "out":{"error":"ValueError","message":"notes must be at most 300 characters"}
+    },
+    {
+     "op":"validate_notes",
+     "args":[
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  "
+     ],
+     "out":{"error":"ValueError","message":"notes must be at most 300 characters"}
+    },
+    {
+     "op":"validate_notes",
+     "args":[
+      "                                                                                                                                                                                                                                                                                                            "
+     ],
+     "out":""
+    },
+    {
+     "op":"validate_notes",
+     "args":[
+      "\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a"
+     ],
+     "out":"\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a"
+    },
+    {
+     "op":"validate_notes",
+     "args":[
+      "\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a\ud83d\udc8a"
+     ],
+     "out":{"error":"ValueError","message":"notes must be at most 300 characters"}
+    },
+    {"op":"validate_notes","args":["line one\nline two"],"out":"line one\nline two"},
+    {"op":"validate_notes","args":["\u001ftrim me\u001f"],"out":"trim me"}
+   ]
+  },
+  {
+   "name":"first_open_seeds_the_demo_doses",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    },
+    {"op":"get_dose","args":["d1"],"out":{"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""}},
+    {"op":"get_dose","args":["nope"],"out":null},
+    {"op":"reopen","out":null},
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    },
+    {"op":"events","out":[]}
+   ]
+  },
+  {
+   "name":"add_update_delete",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_dose",
+     "args":["09:30","Extra dose (demo)","with water"],
+     "out":{"id":"d4","time":"09:30","label":"Extra dose (demo)","notes":"with water"},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"09:30","label":"Extra dose (demo)","notes":"with water"}
+       ],
+       "next_id":5
+      }
+     }
+    },
+    {
+     "op":"update_dose",
+     "args":["d4","10:15",null,""],
+     "out":{"id":"d4","time":"10:15","label":"Extra dose (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"10:15","label":"Extra dose (demo)","notes":""}
+       ],
+       "next_id":5
+      }
+     }
+    },
+    {
+     "op":"delete_dose",
+     "args":["d2"],
+     "out":true,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"10:15","label":"Extra dose (demo)","notes":""}
+       ],
+       "next_id":5
+      }
+     }
+    },
+    {"op":"delete_dose","args":["d2"],"out":false},
+    {"op":"reopen","out":null},
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d4","time":"10:15","label":"Extra dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    },
+    {"op":"get_dose","args":["d4"],"out":{"id":"d4","time":"10:15","label":"Extra dose (demo)","notes":""}},
+    {"op":"get_dose","args":["d2"],"out":null},
+    {
+     "op":"add_dose",
+     "args":["06:00","Early (demo)"],
+     "out":{"id":"d5","time":"06:00","label":"Early (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"10:15","label":"Extra dose (demo)","notes":""},
+        {"id":"d5","time":"06:00","label":"Early (demo)","notes":""}
+       ],
+       "next_id":6
+      }
+     }
+    },
+    {
+     "op":"add_dose",
+     "args":[" 07:15 ","  Padded (demo)  ","  padded notes  "],
+     "out":{"id":"d6","time":"07:15","label":"Padded (demo)","notes":"padded notes"},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"10:15","label":"Extra dose (demo)","notes":""},
+        {"id":"d5","time":"06:00","label":"Early (demo)","notes":""},
+        {"id":"d6","time":"07:15","label":"Padded (demo)","notes":"padded notes"}
+       ],
+       "next_id":7
+      }
+     }
+    },
+    {"op":"update_dose","args":["d1"],"out":{"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""}},
+    {
+     "op":"update_dose",
+     "args":["d1",null,null,"a note"],
+     "out":{"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":"a note"},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":"a note"},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"10:15","label":"Extra dose (demo)","notes":""},
+        {"id":"d5","time":"06:00","label":"Early (demo)","notes":""},
+        {"id":"d6","time":"07:15","label":"Padded (demo)","notes":"padded notes"}
+       ],
+       "next_id":7
+      }
+     }
+    },
+    {
+     "op":"update_dose",
+     "args":["d1",null,"Renamed (demo)"],
+     "out":{"id":"d1","time":"08:00","label":"Renamed (demo)","notes":"a note"},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Renamed (demo)","notes":"a note"},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"10:15","label":"Extra dose (demo)","notes":""},
+        {"id":"d5","time":"06:00","label":"Early (demo)","notes":""},
+        {"id":"d6","time":"07:15","label":"Padded (demo)","notes":"padded notes"}
+       ],
+       "next_id":7
+      }
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d5","time":"06:00","label":"Early (demo)","notes":""},
+      {"id":"d6","time":"07:15","label":"Padded (demo)","notes":"padded notes"},
+      {"id":"d1","time":"08:00","label":"Renamed (demo)","notes":"a note"},
+      {"id":"d4","time":"10:15","label":"Extra dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    }
+   ]
+  },
+  {
+   "name":"errors_change_nothing",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"add_dose","args":["8:00","x"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"add_dose","args":["08:00","   "],"out":{"error":"ValueError","message":"label must not be empty"}},
+    {
+     "op":"add_dose",
+     "args":["08:00","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
+     "out":{"error":"ValueError","message":"label must be at most 80 characters"}
+    },
+    {"op":"add_dose","args":["bad",""],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"add_dose","args":["08:00","",5],"out":{"error":"ValueError","message":"label must not be empty"}},
+    {"op":"add_dose","args":["08:00","ok",5],"out":{"error":"ValueError","message":"notes must be text"}},
+    {
+     "op":"add_dose",
+     "args":[
+      "08:00",
+      "ok",
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+     ],
+     "out":{"error":"ValueError","message":"notes must be at most 300 characters"}
+    },
+    {"op":"add_dose","args":[null,"ok"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {
+     "op":"add_dose",
+     "args":["08:00","No notes (demo)",null],
+     "out":{"id":"d4","time":"08:00","label":"No notes (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"08:00","label":"No notes (demo)","notes":""}
+       ],
+       "next_id":5
+      }
+     }
+    },
+    {"op":"update_dose","args":["nope",null,"x"],"out":{"error":"KeyError","message":"'nope'"}},
+    {"op":"update_dose","args":["nope","bad"],"out":{"error":"KeyError","message":"'nope'"}},
+    {"op":"update_dose","args":["","08:00"],"out":{"error":"KeyError","message":"''"}},
+    {"op":"update_dose","args":["d1","25:00"],"out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}},
+    {"op":"update_dose","args":["d1","09:00",""],"out":{"error":"ValueError","message":"label must not be empty"}},
+    {"op":"update_dose","args":["d1","09:00","fine",7],"out":{"error":"ValueError","message":"notes must be text"}},
+    {"op":"get_dose","args":["d1"],"out":{"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""}},
+    {
+     "op":"update_dose",
+     "args":["d1","",null,null],
+     "out":{"error":"ValueError","message":"time must be 24-hour HH:MM"}
+    },
+    {"op":"delete_dose","args":["nope"],"out":false},
+    {"op":"delete_dose","args":[""],"out":false},
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d4","time":"08:00","label":"No notes (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    }
+   ]
+  },
+  {
+   "name":"ids_are_never_reused",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"delete_dose",
+     "args":["d3"],
+     "out":true,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_dose",
+     "args":["21:00","Later (demo)"],
+     "out":{"id":"d4","time":"21:00","label":"Later (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d4","time":"21:00","label":"Later (demo)","notes":""}
+       ],
+       "next_id":5
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d4",
+     "at":[2026,11,11,21,5,0],
+     "out":{
+      "ts":[2026,11,11,21,5,0],
+      "time_local":"21:05",
+      "type":"pickup_acknowledged",
+      "dose_id":"d4",
+      "run_id":null,
+      "detail":{}
+     },
+     "files":{
+      "events":{
+       "lines":[{"ts":[2026,11,11,21,5,0],"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"detail":{}}],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d4","time":"21:00","label":"Later (demo)","notes":""}
+       ],
+       "next_id":5
+      }
+     }
+    },
+    {
+     "op":"delete_dose",
+     "args":["d4"],
+     "out":true,
+     "files":{
+      "events":{
+       "lines":[{"ts":[2026,11,11,21,5,0],"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"detail":{}}],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""}
+       ],
+       "next_id":5
+      }
+     }
+    },
+    {
+     "op":"add_dose",
+     "args":["22:00","Latest (demo)"],
+     "out":{"id":"d5","time":"22:00","label":"Latest (demo)","notes":""},
+     "files":{
+      "events":{
+       "lines":[{"ts":[2026,11,11,21,5,0],"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"detail":{}}],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d5","time":"22:00","label":"Latest (demo)","notes":""}
+       ],
+       "next_id":6
+      }
+     }
+    },
+    {
+     "op":"delete_dose",
+     "args":["d1"],
+     "out":true,
+     "files":{
+      "events":{
+       "lines":[{"ts":[2026,11,11,21,5,0],"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"detail":{}}],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d5","time":"22:00","label":"Latest (demo)","notes":""}
+       ],
+       "next_id":6
+      }
+     }
+    },
+    {
+     "op":"delete_dose",
+     "args":["d2"],
+     "out":true,
+     "files":{
+      "events":{
+       "lines":[{"ts":[2026,11,11,21,5,0],"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"detail":{}}],
+       "trailing_newline":true
+      },
+      "schedule":{"doses":[{"id":"d5","time":"22:00","label":"Latest (demo)","notes":""}],"next_id":6}
+     }
+    },
+    {
+     "op":"delete_dose",
+     "args":["d5"],
+     "out":true,
+     "files":{
+      "events":{
+       "lines":[{"ts":[2026,11,11,21,5,0],"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"detail":{}}],
+       "trailing_newline":true
+      },
+      "schedule":{"doses":[],"next_id":6}
+     }
+    },
+    {"op":"reopen","out":null},
+    {"op":"list_doses","out":[]},
+    {
+     "op":"add_dose",
+     "args":["07:00","After emptying (demo)"],
+     "out":{"id":"d6","time":"07:00","label":"After emptying (demo)","notes":""},
+     "files":{
+      "events":{
+       "lines":[{"ts":[2026,11,11,21,5,0],"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"detail":{}}],
+       "trailing_newline":true
+      },
+      "schedule":{"doses":[{"id":"d6","time":"07:00","label":"After emptying (demo)","notes":""}],"next_id":7}
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"reminder_due",
+     "dose_id":"d40",
+     "at":[2026,11,11,21,6,0],
+     "out":{"ts":[2026,11,11,21,6,0],"time_local":"21:06","type":"reminder_due","dose_id":"d40","run_id":null,"detail":{}},
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,21,5,0],"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"detail":{}},
+        {"ts":[2026,11,11,21,6,0],"type":"reminder_due","dose_id":"d40","run_id":null,"detail":{}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{"doses":[{"id":"d6","time":"07:00","label":"After emptying (demo)","notes":""}],"next_id":7}
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"hover_test",
+     "dose_id":"x7",
+     "at":[2026,11,11,21,7,0],
+     "out":{"ts":[2026,11,11,21,7,0],"time_local":"21:07","type":"hover_test","dose_id":"x7","run_id":null,"detail":{}},
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,21,5,0],"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"detail":{}},
+        {"ts":[2026,11,11,21,6,0],"type":"reminder_due","dose_id":"d40","run_id":null,"detail":{}},
+        {"ts":[2026,11,11,21,7,0],"type":"hover_test","dose_id":"x7","run_id":null,"detail":{}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{"doses":[{"id":"d6","time":"07:00","label":"After emptying (demo)","notes":""}],"next_id":7}
+     }
+    },
+    {
+     "op":"add_dose",
+     "args":["07:30","After an event for d40 (demo)"],
+     "out":{"id":"d41","time":"07:30","label":"After an event for d40 (demo)","notes":""},
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,21,5,0],"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"detail":{}},
+        {"ts":[2026,11,11,21,6,0],"type":"reminder_due","dose_id":"d40","run_id":null,"detail":{}},
+        {"ts":[2026,11,11,21,7,0],"type":"hover_test","dose_id":"x7","run_id":null,"detail":{}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d6","time":"07:00","label":"After emptying (demo)","notes":""},
+        {"id":"d41","time":"07:30","label":"After an event for d40 (demo)","notes":""}
+       ],
+       "next_id":42
+      }
+     }
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["07:45","After reopening (demo)"],
+     "out":{"id":"d42","time":"07:45","label":"After reopening (demo)","notes":""},
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,21,5,0],"type":"pickup_acknowledged","dose_id":"d4","run_id":null,"detail":{}},
+        {"ts":[2026,11,11,21,6,0],"type":"reminder_due","dose_id":"d40","run_id":null,"detail":{}},
+        {"ts":[2026,11,11,21,7,0],"type":"hover_test","dose_id":"x7","run_id":null,"detail":{}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d6","time":"07:00","label":"After emptying (demo)","notes":""},
+        {"id":"d41","time":"07:30","label":"After an event for d40 (demo)","notes":""},
+        {"id":"d42","time":"07:45","label":"After reopening (demo)","notes":""}
+       ],
+       "next_id":43
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name":"ids_from_a_hand_edited_schedule",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [{\"id\": \"d\\u0669\\u0669\", \"time\": \"08:00\", \"label\": \"Arabic-Indic id (demo)\", \"notes\": \"\"}, {\"id\": \"d007\", \"time\": \"09:00\", \"label\": \"Leading zeros (demo)\", \"notes\": \"\"}], \"next_id\": 3}",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d\u0669\u0669","time":"08:00","label":"Arabic-Indic id (demo)","notes":""},
+        {"id":"d007","time":"09:00","label":"Leading zeros (demo)","notes":""}
+       ],
+       "next_id":3
+      }
+     }
+    },
+    {"op":"open","out":null},
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d\u0669\u0669","time":"08:00","label":"Arabic-Indic id (demo)","notes":""},
+      {"id":"d007","time":"09:00","label":"Leading zeros (demo)","notes":""}
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["10:00","Next (demo)"],
+     "out":{"id":"d100","time":"10:00","label":"Next (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d\u0669\u0669","time":"08:00","label":"Arabic-Indic id (demo)","notes":""},
+        {"id":"d007","time":"09:00","label":"Leading zeros (demo)","notes":""},
+        {"id":"d100","time":"10:00","label":"Next (demo)","notes":""}
+       ],
+       "next_id":101
+      }
+     }
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": 100000000000000000000}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":100000000000000000000}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Large next id (demo)"],
+     "out":{"id":"d100000000000000000000","time":"10:00","label":"Large next id (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[{"id":"d100000000000000000000","time":"10:00","label":"Large next id (demo)","notes":""}],
+       "next_id":100000000000000000001
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name":"next_id_values",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {"op":"clock","at":[2026,11,11,9,0,0],"out":null,"files":{}},
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": \"12\"}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":"12"}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d12","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d12","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":13}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": \" 0_9 \"}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":" 0_9 "}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d9","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d9","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":10}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": 3.9}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":3.9}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d3","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d3","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":4}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": -4}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":-4}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":2}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": null}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":null}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":2}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": true}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":true}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":2}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": \"x\"}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":"x"}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":2}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": []}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":[]}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":2}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": \"\\u0664\\u0662\"}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":"\u0664\u0662"}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d42","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d42","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":43}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": 0}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":0}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":2}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": \"+7\"}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":"+7"}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d7","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d7","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":8}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": \"7.0\"}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":"7.0"}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":2}}
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [], \"next_id\": {\"n\": 1}}",
+     "out":null,
+     "files":{"schedule":{"doses":[],"next_id":{"n":1}}}
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":2}}
+    },
+    {"op":"write_raw","name":"schedule","text":"{\"doses\": []}","out":null,"files":{"schedule":{"doses":[]}}},
+    {"op":"reopen","out":null},
+    {
+     "op":"add_dose",
+     "args":["10:00","Probe (demo)"],
+     "out":{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""},
+     "files":{"schedule":{"doses":[{"id":"d1","time":"10:00","label":"Probe (demo)","notes":""}],"next_id":2}}
+    }
+   ]
+  },
+  {
+   "name":"invalid_doses_are_skipped_without_rewriting",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"{\"doses\": [{\"id\": \"d1\", \"time\": \"08:00\", \"label\": \"Morning (demo)\", \"notes\": \"\"}, {\"id\": \"d7\", \"time\": \"25:00\", \"label\": \"Hand edited (demo)\"}, {\"id\": \"d2\", \"time\": \"09:00\"}, {\"time\": \"09:30\", \"label\": \"No id (demo)\"}, {\"id\": \"d3\", \"time\": \"10:00\", \"label\": \"Notes a number (demo)\", \"notes\": 5}, {\"id\": null, \"time\": \"10:30\", \"label\": \"Id None (demo)\"}, {\"id\": 12, \"time\": \"11:00\", \"label\": \"Id a number (demo)\", \"notes\": null}, {\"id\": true, \"time\": \"11:30\", \"label\": \"Id True (demo)\"}, {\"id\": [\"d9\"], \"time\": \"11:45\", \"label\": \"Id a list (demo)\"}, \"d5\", null, [\"d6\", \"12:00\", \"x\"], {\"id\": \"d8\", \"time\": \" 12:00 \", \"label\": \"  Padded (demo)  \", \"notes\": \"  n  \"}, {\"id\": \"d9\", \"time\": \"13:00\", \"label\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}, {\"id\": \"d10\", \"time\": \"14:00\", \"label\": \"Long notes (demo)\", \"notes\": \"nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn\"}, {\"id\": \"d1\", \"time\": \"15:00\", \"label\": \"Duplicate id (demo)\", \"notes\": \"\"}], \"next_id\": 8}",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning (demo)","notes":""},
+        {"id":"d7","time":"25:00","label":"Hand edited (demo)"},
+        {"id":"d2","time":"09:00"},
+        {"time":"09:30","label":"No id (demo)"},
+        {"id":"d3","time":"10:00","label":"Notes a number (demo)","notes":5},
+        {"id":null,"time":"10:30","label":"Id None (demo)"},
+        {"id":12,"time":"11:00","label":"Id a number (demo)","notes":null},
+        {"id":true,"time":"11:30","label":"Id True (demo)"},
+        {"id":["d9"],"time":"11:45","label":"Id a list (demo)"},
+        "d5",
+        null,
+        ["d6","12:00","x"],
+        {"id":"d8","time":" 12:00 ","label":"  Padded (demo)  ","notes":"  n  "},
+        {
+         "id":"d9",
+         "time":"13:00",
+         "label":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        },
+        {
+         "id":"d10",
+         "time":"14:00",
+         "label":"Long notes (demo)",
+         "notes":"nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+        },
+        {"id":"d1","time":"15:00","label":"Duplicate id (demo)","notes":""}
+       ],
+       "next_id":8
+      }
+     }
+    },
+    {"op":"open","out":null},
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning (demo)","notes":""},
+      {"id":"None","time":"10:30","label":"Id None (demo)","notes":""},
+      {"id":"12","time":"11:00","label":"Id a number (demo)","notes":""},
+      {"id":"True","time":"11:30","label":"Id True (demo)","notes":""},
+      {"id":"['d9']","time":"11:45","label":"Id a list (demo)","notes":""},
+      {"id":"d8","time":"12:00","label":"Padded (demo)","notes":"n"},
+      {"id":"d1","time":"15:00","label":"Duplicate id (demo)","notes":""}
+     ]
+    },
+    {"op":"get_dose","args":["d1"],"out":{"id":"d1","time":"08:00","label":"Morning (demo)","notes":""}},
+    {"op":"get_dose","args":["None"],"out":{"id":"None","time":"10:30","label":"Id None (demo)","notes":""}},
+    {"op":"get_dose","args":["12"],"out":{"id":"12","time":"11:00","label":"Id a number (demo)","notes":""}},
+    {"op":"get_dose","args":["['d9']"],"out":{"id":"['d9']","time":"11:45","label":"Id a list (demo)","notes":""}},
+    {
+     "op":"update_dose",
+     "args":["d1","07:00",null,null],
+     "out":{"id":"d1","time":"07:00","label":"Morning (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"07:00","label":"Morning (demo)","notes":""},
+        {"id":"None","time":"10:30","label":"Id None (demo)","notes":""},
+        {"id":"12","time":"11:00","label":"Id a number (demo)","notes":""},
+        {"id":"True","time":"11:30","label":"Id True (demo)","notes":""},
+        {"id":"['d9']","time":"11:45","label":"Id a list (demo)","notes":""},
+        {"id":"d8","time":"12:00","label":"Padded (demo)","notes":"n"},
+        {"id":"d1","time":"15:00","label":"Duplicate id (demo)","notes":""}
+       ],
+       "next_id":8
+      }
+     }
+    },
+    {
+     "op":"delete_dose",
+     "args":["d1"],
+     "out":true,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"None","time":"10:30","label":"Id None (demo)","notes":""},
+        {"id":"12","time":"11:00","label":"Id a number (demo)","notes":""},
+        {"id":"True","time":"11:30","label":"Id True (demo)","notes":""},
+        {"id":"['d9']","time":"11:45","label":"Id a list (demo)","notes":""},
+        {"id":"d8","time":"12:00","label":"Padded (demo)","notes":"n"}
+       ],
+       "next_id":8
+      }
+     }
+    },
+    {
+     "op":"add_dose",
+     "args":["09:00","New (demo)"],
+     "out":{"id":"d9","time":"09:00","label":"New (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"None","time":"10:30","label":"Id None (demo)","notes":""},
+        {"id":"12","time":"11:00","label":"Id a number (demo)","notes":""},
+        {"id":"True","time":"11:30","label":"Id True (demo)","notes":""},
+        {"id":"['d9']","time":"11:45","label":"Id a list (demo)","notes":""},
+        {"id":"d8","time":"12:00","label":"Padded (demo)","notes":"n"},
+        {"id":"d9","time":"09:00","label":"New (demo)","notes":""}
+       ],
+       "next_id":10
+      }
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d9","time":"09:00","label":"New (demo)","notes":""},
+      {"id":"None","time":"10:30","label":"Id None (demo)","notes":""},
+      {"id":"12","time":"11:00","label":"Id a number (demo)","notes":""},
+      {"id":"True","time":"11:30","label":"Id True (demo)","notes":""},
+      {"id":"['d9']","time":"11:45","label":"Id a list (demo)","notes":""},
+      {"id":"d8","time":"12:00","label":"Padded (demo)","notes":"n"}
+     ]
+    }
+   ]
+  },
+  {
+   "name":"schedule_not_json_is_set_aside",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {"op":"write_raw","name":"schedule","text":"{not json","out":null,"files":{"schedule":{"$raw":"{not json"}}},
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"$raw":"{not json"}
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["09:00","New (demo)"],
+     "out":{"id":"d4","time":"09:00","label":"New (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"09:00","label":"New (demo)","notes":""}
+       ],
+       "next_id":5
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"$raw":"{not json"}
+     }
+    }
+   ]
+  },
+  {
+   "name":"schedule_a_list_is_set_aside",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {"op":"write_raw","name":"schedule","text":"[]","out":null,"files":{"schedule":[]}},
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":[]
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["09:00","New (demo)"],
+     "out":{"id":"d4","time":"09:00","label":"New (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"09:00","label":"New (demo)","notes":""}
+       ],
+       "next_id":5
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":[]
+     }
+    }
+   ]
+  },
+  {
+   "name":"schedule_doses_not_a_list_is_set_aside",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {"op":"write_raw","name":"schedule","text":"{\"doses\": \"d1\"}","out":null,"files":{"schedule":{"doses":"d1"}}},
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"doses":"d1"}
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["09:00","New (demo)"],
+     "out":{"id":"d4","time":"09:00","label":"New (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"09:00","label":"New (demo)","notes":""}
+       ],
+       "next_id":5
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"doses":"d1"}
+     }
+    }
+   ]
+  },
+  {
+   "name":"schedule_null_is_set_aside",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {"op":"write_raw","name":"schedule","text":"null","out":null,"files":{"schedule":null}},
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":null
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["09:00","New (demo)"],
+     "out":{"id":"d4","time":"09:00","label":"New (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"09:00","label":"New (demo)","notes":""}
+       ],
+       "next_id":5
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":null
+     }
+    }
+   ]
+  },
+  {
+   "name":"schedule_a_string_is_set_aside",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {"op":"write_raw","name":"schedule","text":"\"schedule\"","out":null,"files":{"schedule":"schedule"}},
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":"schedule"
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["09:00","New (demo)"],
+     "out":{"id":"d4","time":"09:00","label":"New (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"09:00","label":"New (demo)","notes":""}
+       ],
+       "next_id":5
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":"schedule"
+     }
+    }
+   ]
+  },
+  {
+   "name":"schedule_doses_null_is_set_aside",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {"op":"write_raw","name":"schedule","text":"{\"doses\": null}","out":null,"files":{"schedule":{"doses":null}}},
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"doses":null}
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["09:00","New (demo)"],
+     "out":{"id":"d4","time":"09:00","label":"New (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"09:00","label":"New (demo)","notes":""}
+       ],
+       "next_id":5
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"doses":null}
+     }
+    }
+   ]
+  },
+  {
+   "name":"schedule_empty_is_set_aside",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {"op":"write_raw","name":"schedule","text":"","out":null,"files":{"schedule":{"$raw":""}}},
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"$raw":""}
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["09:00","New (demo)"],
+     "out":{"id":"d4","time":"09:00","label":"New (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"09:00","label":"New (demo)","notes":""}
+       ],
+       "next_id":5
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"$raw":""}
+     }
+    }
+   ]
+  },
+  {
+   "name":"schedule_byte_order_mark_is_set_aside",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"\ufeff{\"doses\": [], \"next_id\": 4}",
+     "out":null,
+     "files":{"schedule":{"$raw":"\ufeff{\"doses\": [], \"next_id\": 4}"}}
+    },
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"$raw":"\ufeff{\"doses\": [], \"next_id\": 4}"}
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    },
+    {
+     "op":"add_dose",
+     "args":["09:00","New (demo)"],
+     "out":{"id":"d4","time":"09:00","label":"New (demo)","notes":""},
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""},
+        {"id":"d4","time":"09:00","label":"New (demo)","notes":""}
+       ],
+       "next_id":5
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"$raw":"\ufeff{\"doses\": [], \"next_id\": 4}"}
+     }
+    }
+   ]
+  },
+  {
+   "name":"corrupt_twice_in_one_second",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {"op":"write_raw","name":"schedule","text":"{first","out":null,"files":{"schedule":{"$raw":"{first"}}},
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"$raw":"{first"}
+     }
+    },
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"[second]",
+     "out":null,
+     "files":{"schedule":{"$raw":"[second]"},"schedule.corrupt@2026-11-11T09:00:00":{"$raw":"{first"}}
+    },
+    {
+     "op":"reopen",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"$raw":"[second]"}
+     }
+    },
+    {"op":"clock","at":[2026,11,11,9,0,1],"out":null},
+    {
+     "op":"write_raw",
+     "name":"schedule",
+     "text":"third",
+     "out":null,
+     "files":{"schedule":{"$raw":"third"},"schedule.corrupt@2026-11-11T09:00:00":{"$raw":"[second]"}}
+    },
+    {
+     "op":"reopen",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "schedule.corrupt@2026-11-11T09:00:00":{"$raw":"[second]"},
+      "schedule.corrupt@2026-11-11T09:00:01":{"$raw":"third"}
+     }
+    },
+    {
+     "op":"list_doses",
+     "out":[
+      {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+      {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+      {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+     ]
+    }
+   ]
+  },
+  {
+   "name":"event_types_and_order",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"add_event","type":"bogus","out":{"error":"ValueError","message":"unknown event type 'bogus'"}},
+    {"op":"add_event","type":"","out":{"error":"ValueError","message":"unknown event type ''"}},
+    {
+     "op":"add_event",
+     "type":"Reminder_due",
+     "out":{"error":"ValueError","message":"unknown event type 'Reminder_due'"}
+    },
+    {
+     "op":"add_event",
+     "type":"reminder_due",
+     "dose_id":"d1",
+     "run_id":"r1",
+     "detail":{"n":0},
+     "at":[2026,11,11,8,0,0],
+     "out":{
+      "ts":[2026,11,11,8,0,0],
+      "time_local":"08:00",
+      "type":"reminder_due",
+      "dose_id":"d1",
+      "run_id":"r1",
+      "detail":{"n":0}
+     },
+     "files":{
+      "events":{
+       "lines":[{"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}}],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"run_started",
+     "dose_id":"d1",
+     "run_id":"r1",
+     "detail":{"n":1},
+     "at":[2026,11,11,8,1,0],
+     "out":{"ts":[2026,11,11,8,1,0],"time_local":"08:01","type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"arrived_at_station",
+     "dose_id":"d1",
+     "run_id":"r1",
+     "detail":{"n":2},
+     "at":[2026,11,11,8,2,0],
+     "out":{
+      "ts":[2026,11,11,8,2,0],
+      "time_local":"08:02",
+      "type":"arrived_at_station",
+      "dose_id":"d1",
+      "run_id":"r1",
+      "detail":{"n":2}
+     },
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+        {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"run_aborted",
+     "dose_id":"d1",
+     "run_id":"r1",
+     "detail":{"n":3},
+     "at":[2026,11,11,8,3,0],
+     "out":{"ts":[2026,11,11,8,3,0],"time_local":"08:03","type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}},
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+        {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}},
+        {"ts":[2026,11,11,8,3,0],"type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d1",
+     "run_id":"r1",
+     "detail":{"n":4},
+     "at":[2026,11,11,8,4,0],
+     "out":{
+      "ts":[2026,11,11,8,4,0],
+      "time_local":"08:04",
+      "type":"pickup_acknowledged",
+      "dose_id":"d1",
+      "run_id":"r1",
+      "detail":{"n":4}
+     },
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+        {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}},
+        {"ts":[2026,11,11,8,3,0],"type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}},
+        {"ts":[2026,11,11,8,4,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":"r1","detail":{"n":4}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"needs_attention",
+     "dose_id":"d1",
+     "run_id":"r1",
+     "detail":{"n":5},
+     "at":[2026,11,11,8,5,0],
+     "out":{
+      "ts":[2026,11,11,8,5,0],
+      "time_local":"08:05",
+      "type":"needs_attention",
+      "dose_id":"d1",
+      "run_id":"r1",
+      "detail":{"n":5}
+     },
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+        {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}},
+        {"ts":[2026,11,11,8,3,0],"type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}},
+        {"ts":[2026,11,11,8,4,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":"r1","detail":{"n":4}},
+        {"ts":[2026,11,11,8,5,0],"type":"needs_attention","dose_id":"d1","run_id":"r1","detail":{"n":5}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"hover_test",
+     "dose_id":"d1",
+     "run_id":"r1",
+     "detail":{"n":6},
+     "at":[2026,11,11,8,6,0],
+     "out":{"ts":[2026,11,11,8,6,0],"time_local":"08:06","type":"hover_test","dose_id":"d1","run_id":"r1","detail":{"n":6}},
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+        {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}},
+        {"ts":[2026,11,11,8,3,0],"type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}},
+        {"ts":[2026,11,11,8,4,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":"r1","detail":{"n":4}},
+        {"ts":[2026,11,11,8,5,0],"type":"needs_attention","dose_id":"d1","run_id":"r1","detail":{"n":5}},
+        {"ts":[2026,11,11,8,6,0],"type":"hover_test","dose_id":"d1","run_id":"r1","detail":{"n":6}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"auto_run_skipped",
+     "dose_id":"d1",
+     "run_id":"r1",
+     "detail":{"n":7},
+     "at":[2026,11,11,8,7,0],
+     "out":{
+      "ts":[2026,11,11,8,7,0],
+      "time_local":"08:07",
+      "type":"auto_run_skipped",
+      "dose_id":"d1",
+      "run_id":"r1",
+      "detail":{"n":7}
+     },
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+        {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}},
+        {"ts":[2026,11,11,8,3,0],"type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}},
+        {"ts":[2026,11,11,8,4,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":"r1","detail":{"n":4}},
+        {"ts":[2026,11,11,8,5,0],"type":"needs_attention","dose_id":"d1","run_id":"r1","detail":{"n":5}},
+        {"ts":[2026,11,11,8,6,0],"type":"hover_test","dose_id":"d1","run_id":"r1","detail":{"n":6}},
+        {"ts":[2026,11,11,8,7,0],"type":"auto_run_skipped","dose_id":"d1","run_id":"r1","detail":{"n":7}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"hover_test",
+     "detail":{"pass":true,"drift_m_estimate":0.12},
+     "at":[2026,11,11,7,30,0],
+     "out":{
+      "ts":[2026,11,11,7,30,0],
+      "time_local":"07:30",
+      "type":"hover_test",
+      "dose_id":null,
+      "run_id":null,
+      "detail":{"pass":true,"drift_m_estimate":0.12}
+     },
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+        {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}},
+        {"ts":[2026,11,11,8,3,0],"type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}},
+        {"ts":[2026,11,11,8,4,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":"r1","detail":{"n":4}},
+        {"ts":[2026,11,11,8,5,0],"type":"needs_attention","dose_id":"d1","run_id":"r1","detail":{"n":5}},
+        {"ts":[2026,11,11,8,6,0],"type":"hover_test","dose_id":"d1","run_id":"r1","detail":{"n":6}},
+        {"ts":[2026,11,11,8,7,0],"type":"auto_run_skipped","dose_id":"d1","run_id":"r1","detail":{"n":7}},
+        {
+         "ts":[2026,11,11,7,30,0],
+         "type":"hover_test",
+         "dose_id":null,
+         "run_id":null,
+         "detail":{"pass":true,"drift_m_estimate":0.12}
+        }
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"hover_test",
+     "at":[2026,11,11,7,30,0],
+     "out":{"ts":[2026,11,11,7,30,0],"time_local":"07:30","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+        {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}},
+        {"ts":[2026,11,11,8,3,0],"type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}},
+        {"ts":[2026,11,11,8,4,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":"r1","detail":{"n":4}},
+        {"ts":[2026,11,11,8,5,0],"type":"needs_attention","dose_id":"d1","run_id":"r1","detail":{"n":5}},
+        {"ts":[2026,11,11,8,6,0],"type":"hover_test","dose_id":"d1","run_id":"r1","detail":{"n":6}},
+        {"ts":[2026,11,11,8,7,0],"type":"auto_run_skipped","dose_id":"d1","run_id":"r1","detail":{"n":7}},
+        {
+         "ts":[2026,11,11,7,30,0],
+         "type":"hover_test",
+         "dose_id":null,
+         "run_id":null,
+         "detail":{"pass":true,"drift_m_estimate":0.12}
+        },
+        {"ts":[2026,11,11,7,30,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"clock","at":[2026,11,11,9,30,0.5],"out":null},
+    {
+     "op":"add_event",
+     "type":"run_aborted",
+     "run_id":"r2",
+     "detail":{"reason":"marker_lost"},
+     "out":{
+      "ts":[2026,11,11,9,30,0.5],
+      "time_local":"09:30",
+      "type":"run_aborted",
+      "dose_id":null,
+      "run_id":"r2",
+      "detail":{"reason":"marker_lost"}
+     },
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+        {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}},
+        {"ts":[2026,11,11,8,3,0],"type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}},
+        {"ts":[2026,11,11,8,4,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":"r1","detail":{"n":4}},
+        {"ts":[2026,11,11,8,5,0],"type":"needs_attention","dose_id":"d1","run_id":"r1","detail":{"n":5}},
+        {"ts":[2026,11,11,8,6,0],"type":"hover_test","dose_id":"d1","run_id":"r1","detail":{"n":6}},
+        {"ts":[2026,11,11,8,7,0],"type":"auto_run_skipped","dose_id":"d1","run_id":"r1","detail":{"n":7}},
+        {
+         "ts":[2026,11,11,7,30,0],
+         "type":"hover_test",
+         "dose_id":null,
+         "run_id":null,
+         "detail":{"pass":true,"drift_m_estimate":0.12}
+        },
+        {"ts":[2026,11,11,7,30,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+        {
+         "ts":[2026,11,11,9,30,0.5],
+         "type":"run_aborted",
+         "dose_id":null,
+         "run_id":"r2",
+         "detail":{"reason":"marker_lost"}
+        }
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"auto_run_skipped",
+     "dose_id":"d2",
+     "detail":{"blockers":["not_ready","stale_due"]},
+     "out":{
+      "ts":[2026,11,11,9,30,0.5],
+      "time_local":"09:30",
+      "type":"auto_run_skipped",
+      "dose_id":"d2",
+      "run_id":null,
+      "detail":{"blockers":["not_ready","stale_due"]}
+     },
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+        {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}},
+        {"ts":[2026,11,11,8,3,0],"type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}},
+        {"ts":[2026,11,11,8,4,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":"r1","detail":{"n":4}},
+        {"ts":[2026,11,11,8,5,0],"type":"needs_attention","dose_id":"d1","run_id":"r1","detail":{"n":5}},
+        {"ts":[2026,11,11,8,6,0],"type":"hover_test","dose_id":"d1","run_id":"r1","detail":{"n":6}},
+        {"ts":[2026,11,11,8,7,0],"type":"auto_run_skipped","dose_id":"d1","run_id":"r1","detail":{"n":7}},
+        {
+         "ts":[2026,11,11,7,30,0],
+         "type":"hover_test",
+         "dose_id":null,
+         "run_id":null,
+         "detail":{"pass":true,"drift_m_estimate":0.12}
+        },
+        {"ts":[2026,11,11,7,30,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+        {
+         "ts":[2026,11,11,9,30,0.5],
+         "type":"run_aborted",
+         "dose_id":null,
+         "run_id":"r2",
+         "detail":{"reason":"marker_lost"}
+        },
+        {
+         "ts":[2026,11,11,9,30,0.5],
+         "type":"auto_run_skipped",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"blockers":["not_ready","stale_due"]}
+        }
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d2",
+     "detail":null,
+     "at":[2026,11,11,9,30,0.5],
+     "out":{
+      "ts":[2026,11,11,9,30,0.5],
+      "time_local":"09:30",
+      "type":"pickup_acknowledged",
+      "dose_id":"d2",
+      "run_id":null,
+      "detail":{}
+     },
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+        {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+        {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}},
+        {"ts":[2026,11,11,8,3,0],"type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}},
+        {"ts":[2026,11,11,8,4,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":"r1","detail":{"n":4}},
+        {"ts":[2026,11,11,8,5,0],"type":"needs_attention","dose_id":"d1","run_id":"r1","detail":{"n":5}},
+        {"ts":[2026,11,11,8,6,0],"type":"hover_test","dose_id":"d1","run_id":"r1","detail":{"n":6}},
+        {"ts":[2026,11,11,8,7,0],"type":"auto_run_skipped","dose_id":"d1","run_id":"r1","detail":{"n":7}},
+        {
+         "ts":[2026,11,11,7,30,0],
+         "type":"hover_test",
+         "dose_id":null,
+         "run_id":null,
+         "detail":{"pass":true,"drift_m_estimate":0.12}
+        },
+        {"ts":[2026,11,11,7,30,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+        {
+         "ts":[2026,11,11,9,30,0.5],
+         "type":"run_aborted",
+         "dose_id":null,
+         "run_id":"r2",
+         "detail":{"reason":"marker_lost"}
+        },
+        {
+         "ts":[2026,11,11,9,30,0.5],
+         "type":"auto_run_skipped",
+         "dose_id":"d2",
+         "run_id":null,
+         "detail":{"blockers":["not_ready","stale_due"]}
+        },
+        {"ts":[2026,11,11,9,30,0.5],"type":"pickup_acknowledged","dose_id":"d2","run_id":null,"detail":{}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"events",
+     "out":[
+      {
+       "ts":[2026,11,11,9,30,0.5],
+       "time_local":"09:30",
+       "type":"pickup_acknowledged",
+       "dose_id":"d2",
+       "run_id":null,
+       "detail":{}
+      },
+      {
+       "ts":[2026,11,11,9,30,0.5],
+       "time_local":"09:30",
+       "type":"auto_run_skipped",
+       "dose_id":"d2",
+       "run_id":null,
+       "detail":{"blockers":["not_ready","stale_due"]}
+      },
+      {
+       "ts":[2026,11,11,9,30,0.5],
+       "time_local":"09:30",
+       "type":"run_aborted",
+       "dose_id":null,
+       "run_id":"r2",
+       "detail":{"reason":"marker_lost"}
+      },
+      {
+       "ts":[2026,11,11,8,7,0],
+       "time_local":"08:07",
+       "type":"auto_run_skipped",
+       "dose_id":"d1",
+       "run_id":"r1",
+       "detail":{"n":7}
+      },
+      {"ts":[2026,11,11,8,6,0],"time_local":"08:06","type":"hover_test","dose_id":"d1","run_id":"r1","detail":{"n":6}},
+      {
+       "ts":[2026,11,11,8,5,0],
+       "time_local":"08:05",
+       "type":"needs_attention",
+       "dose_id":"d1",
+       "run_id":"r1",
+       "detail":{"n":5}
+      },
+      {
+       "ts":[2026,11,11,8,4,0],
+       "time_local":"08:04",
+       "type":"pickup_acknowledged",
+       "dose_id":"d1",
+       "run_id":"r1",
+       "detail":{"n":4}
+      },
+      {
+       "ts":[2026,11,11,8,3,0],
+       "time_local":"08:03",
+       "type":"run_aborted",
+       "dose_id":"d1",
+       "run_id":"r1",
+       "detail":{"n":3}
+      },
+      {
+       "ts":[2026,11,11,8,2,0],
+       "time_local":"08:02",
+       "type":"arrived_at_station",
+       "dose_id":"d1",
+       "run_id":"r1",
+       "detail":{"n":2}
+      },
+      {
+       "ts":[2026,11,11,8,1,0],
+       "time_local":"08:01",
+       "type":"run_started",
+       "dose_id":"d1",
+       "run_id":"r1",
+       "detail":{"n":1}
+      },
+      {
+       "ts":[2026,11,11,8,0,0],
+       "time_local":"08:00",
+       "type":"reminder_due",
+       "dose_id":"d1",
+       "run_id":"r1",
+       "detail":{"n":0}
+      },
+      {"ts":[2026,11,11,7,30,0],"time_local":"07:30","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {
+       "ts":[2026,11,11,7,30,0],
+       "time_local":"07:30",
+       "type":"hover_test",
+       "dose_id":null,
+       "run_id":null,
+       "detail":{"pass":true,"drift_m_estimate":0.12}
+      }
+     ]
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"events",
+     "args":[4],
+     "out":[
+      {
+       "ts":[2026,11,11,9,30,0.5],
+       "time_local":"09:30",
+       "type":"pickup_acknowledged",
+       "dose_id":"d2",
+       "run_id":null,
+       "detail":{}
+      },
+      {
+       "ts":[2026,11,11,9,30,0.5],
+       "time_local":"09:30",
+       "type":"auto_run_skipped",
+       "dose_id":"d2",
+       "run_id":null,
+       "detail":{"blockers":["not_ready","stale_due"]}
+      },
+      {
+       "ts":[2026,11,11,9,30,0.5],
+       "time_local":"09:30",
+       "type":"run_aborted",
+       "dose_id":null,
+       "run_id":"r2",
+       "detail":{"reason":"marker_lost"}
+      },
+      {
+       "ts":[2026,11,11,8,7,0],
+       "time_local":"08:07",
+       "type":"auto_run_skipped",
+       "dose_id":"d1",
+       "run_id":"r1",
+       "detail":{"n":7}
+      }
+     ]
+    },
+    {
+     "op":"events_between",
+     "start":[2026,11,11,7,30,0],
+     "end":[2026,11,11,8,3,0],
+     "out":[
+      {
+       "ts":[2026,11,11,7,30,0],
+       "type":"hover_test",
+       "dose_id":null,
+       "run_id":null,
+       "detail":{"pass":true,"drift_m_estimate":0.12}
+      },
+      {"ts":[2026,11,11,7,30,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+      {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+      {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}}
+     ]
+    },
+    {"op":"events_between","start":[2026,11,11,8,0,0.5],"end":[2026,11,11,8,0,0.5],"out":[]},
+    {
+     "op":"events_between",
+     "start":[2026,11,11,0,0,0],
+     "end":[2026,11,12,0,0,0],
+     "out":[
+      {
+       "ts":[2026,11,11,7,30,0],
+       "type":"hover_test",
+       "dose_id":null,
+       "run_id":null,
+       "detail":{"pass":true,"drift_m_estimate":0.12}
+      },
+      {"ts":[2026,11,11,7,30,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":"r1","detail":{"n":0}},
+      {"ts":[2026,11,11,8,1,0],"type":"run_started","dose_id":"d1","run_id":"r1","detail":{"n":1}},
+      {"ts":[2026,11,11,8,2,0],"type":"arrived_at_station","dose_id":"d1","run_id":"r1","detail":{"n":2}},
+      {"ts":[2026,11,11,8,3,0],"type":"run_aborted","dose_id":"d1","run_id":"r1","detail":{"n":3}},
+      {"ts":[2026,11,11,8,4,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":"r1","detail":{"n":4}},
+      {"ts":[2026,11,11,8,5,0],"type":"needs_attention","dose_id":"d1","run_id":"r1","detail":{"n":5}},
+      {"ts":[2026,11,11,8,6,0],"type":"hover_test","dose_id":"d1","run_id":"r1","detail":{"n":6}},
+      {"ts":[2026,11,11,8,7,0],"type":"auto_run_skipped","dose_id":"d1","run_id":"r1","detail":{"n":7}},
+      {"ts":[2026,11,11,9,30,0.5],"type":"run_aborted","dose_id":null,"run_id":"r2","detail":{"reason":"marker_lost"}},
+      {
+       "ts":[2026,11,11,9,30,0.5],
+       "type":"auto_run_skipped",
+       "dose_id":"d2",
+       "run_id":null,
+       "detail":{"blockers":["not_ready","stale_due"]}
+      },
+      {"ts":[2026,11,11,9,30,0.5],"type":"pickup_acknowledged","dose_id":"d2","run_id":null,"detail":{}}
+     ]
+    },
+    {"op":"events_between","start":[2026,11,11,10,0,0],"end":[2026,11,11,11,0,0],"out":[]}
+   ]
+  },
+  {
+   "name":"event_limit_is_capped",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":true,
+   "steps":[
+    {
+     "op":"write_event_lines",
+     "type":"hover_test",
+     "count":503,
+     "at":[2026,11,11,8,0,0],
+     "out":null,
+     "files":{
+      "events":{
+       "count":503,
+       "first":{"ts":[2026,11,11,8,0,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+       "last":{"ts":[2026,11,11,8,8,22],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+       "trailing_newline":true
+      }
+     }
+    },
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "events":{
+       "count":503,
+       "first":{"ts":[2026,11,11,8,0,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+       "last":{"ts":[2026,11,11,8,8,22],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"events_summary",
+     "out":{
+      "count":50,
+      "first":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      "last":{"ts":[2026,11,11,8,7,33],"time_local":"08:07","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    },
+    {
+     "op":"events_summary",
+     "args":[3],
+     "out":{
+      "count":3,
+      "first":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      "last":{"ts":[2026,11,11,8,8,20],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    },
+    {
+     "op":"events_summary",
+     "args":[0],
+     "out":{
+      "count":1,
+      "first":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      "last":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    },
+    {
+     "op":"events_summary",
+     "args":[-5],
+     "out":{
+      "count":1,
+      "first":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      "last":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    },
+    {
+     "op":"events_summary",
+     "args":[2.7],
+     "out":{
+      "count":2,
+      "first":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      "last":{"ts":[2026,11,11,8,8,21],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    },
+    {
+     "op":"events_summary",
+     "args":[500],
+     "out":{
+      "count":500,
+      "first":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      "last":{"ts":[2026,11,11,8,0,3],"time_local":"08:00","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    },
+    {
+     "op":"events_summary",
+     "args":[501],
+     "out":{
+      "count":500,
+      "first":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      "last":{"ts":[2026,11,11,8,0,3],"time_local":"08:00","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    },
+    {
+     "op":"events_summary",
+     "args":[10000],
+     "out":{
+      "count":500,
+      "first":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      "last":{"ts":[2026,11,11,8,0,3],"time_local":"08:00","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    },
+    {
+     "op":"events_summary",
+     "args":[true],
+     "out":{
+      "count":1,
+      "first":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      "last":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d2",
+     "at":[2026,11,11,7,0,0],
+     "out":{
+      "ts":[2026,11,11,7,0,0],
+      "time_local":"07:00",
+      "type":"pickup_acknowledged",
+      "dose_id":"d2",
+      "run_id":null,
+      "detail":{}
+     },
+     "files":{
+      "events":{
+       "count":504,
+       "first":{"ts":[2026,11,11,8,0,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+       "last":{"ts":[2026,11,11,7,0,0],"type":"pickup_acknowledged","dose_id":"d2","run_id":null,"detail":{}},
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"run_started",
+     "dose_id":"d2",
+     "run_id":"r1",
+     "at":[2026,11,11,9,0,0],
+     "out":{"ts":[2026,11,11,9,0,0],"time_local":"09:00","type":"run_started","dose_id":"d2","run_id":"r1","detail":{}},
+     "files":{
+      "events":{
+       "count":505,
+       "first":{"ts":[2026,11,11,8,0,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+       "last":{"ts":[2026,11,11,9,0,0],"type":"run_started","dose_id":"d2","run_id":"r1","detail":{}},
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"events_summary",
+     "args":[2],
+     "out":{
+      "count":2,
+      "first":{"ts":[2026,11,11,9,0,0],"time_local":"09:00","type":"run_started","dose_id":"d2","run_id":"r1","detail":{}},
+      "last":{"ts":[2026,11,11,8,8,22],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    },
+    {
+     "op":"events_between",
+     "start":[2026,11,11,6,0,0],
+     "end":[2026,11,11,8,0,1],
+     "out":[
+      {"ts":[2026,11,11,7,0,0],"type":"pickup_acknowledged","dose_id":"d2","run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,0,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     ]
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"events_summary",
+     "args":[1000],
+     "out":{
+      "count":500,
+      "first":{"ts":[2026,11,11,9,0,0],"time_local":"09:00","type":"run_started","dose_id":"d2","run_id":"r1","detail":{}},
+      "last":{"ts":[2026,11,11,8,0,4],"time_local":"08:00","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    },
+    {
+     "op":"events_summary",
+     "args":[500],
+     "out":{
+      "count":500,
+      "first":{"ts":[2026,11,11,9,0,0],"time_local":"09:00","type":"run_started","dose_id":"d2","run_id":"r1","detail":{}},
+      "last":{"ts":[2026,11,11,8,0,4],"time_local":"08:00","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     }
+    }
+   ]
+  },
+  {
+   "name":"damaged_event_log",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"write_raw",
+     "name":"events",
+     "text":"{\"ts\": {{2026,11,11,8,0,0}}, \"type\": \"reminder_due\", \"dose_id\": \"d1\", \"run_id\": null, \"detail\": {\"time\": \"08:00\"}}\ngarbage\n\n   \n[1, 2]\nnull\n5\n{\"ts\": {{2026,11,11,8,5,0}}, \"type\": \"hover_test\", \"detail\": \"x\"}\n{\"ts\": {{2026,11,11,8,6,0}}, \"type\": \"hover_test\", \"detail\": [1]}\n{\"ts\": {{2026,11,11,8,7,0}}, \"type\": \"hover_test\", \"detail\": []}\n{\"ts\": {{2026,11,11,8,8,0}}, \"type\": \"hover_test\", \"detail\": 0}\n{\"ts\": {{2026,11,11,8,9,0}}, \"type\": \"hover_test\", \"detail\": null}\n{\"ts\": {{2026,11,11,8,10,0}}, \"type\": \"hover_test\"}\n{\"type\": \"hover_test\", \"detail\": {}}\n{\"ts\": {{2026,11,11,8,11,0}}, \"detail\": {}}\n{\"ts\": null, \"type\": \"hover_test\"}\n{\"ts\": \"soon\", \"type\": \"hover_test\"}\n{\"ts\": \" {{2026,11,11,8,12,0}} \", \"type\": \"hover_test\", \"detail\": {\"ts\": \"as text\"}}\n{\"ts\": {{2026,11,11,8,13,0}}, \"type\": 5, \"dose_id\": \"d2\"}\n{\"ts\": {{2026,11,11,8,14,0}}, \"type\": null, \"run_id\": \"r3\"}\n{\"ts\": {{2026,11,11,7,0,0}}, \"type\": \"pickup_acknowledged\", \"dose_id\": \"d3\", \"detail\": {\"self_reported\": true}}\r\n\u0085{\"ts\": {{2026,11,11,7,1,0}}, \"type\": \"arrived_at_station\", \"dose_id\": \"d3\"}\u001f\r{\"ts\": {{2026,11,11,7,2,0}}, \"type\": \"run_started\", \"dose_id\": \"d3\", \"run_id\": \"r1\"}\n{\"ts\": {{2026,11,11,7,3,0}}, \"type\": \"run_sta",
+     "out":null,
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":null,"detail":{"time":"08:00"}},
+        {"$raw":"garbage"},
+        {"$raw":""},
+        {"$raw":"   "},
+        [1,2],
+        null,
+        5,
+        {"ts":[2026,11,11,8,5,0],"type":"hover_test","detail":"x"},
+        {"ts":[2026,11,11,8,6,0],"type":"hover_test","detail":[1]},
+        {"ts":[2026,11,11,8,7,0],"type":"hover_test","detail":[]},
+        {"ts":[2026,11,11,8,8,0],"type":"hover_test","detail":0},
+        {"ts":[2026,11,11,8,9,0],"type":"hover_test","detail":null},
+        {"ts":[2026,11,11,8,10,0],"type":"hover_test"},
+        {"type":"hover_test","detail":{}},
+        {"ts":[2026,11,11,8,11,0],"detail":{}},
+        {"ts":null,"type":"hover_test"},
+        {"ts":"soon","type":"hover_test"},
+        {"ts":{"$ts_text":[2026,11,11,8,12,0]},"type":"hover_test","detail":{"ts":"as text"}},
+        {"ts":[2026,11,11,8,13,0],"type":5,"dose_id":"d2"},
+        {"ts":[2026,11,11,8,14,0],"type":null,"run_id":"r3"},
+        {"ts":[2026,11,11,7,0,0],"type":"pickup_acknowledged","dose_id":"d3","detail":{"self_reported":true}},
+        {
+         "$raw":"\u0085{\"ts\": {{2026,11,11,7,1,0}}, \"type\": \"arrived_at_station\", \"dose_id\": \"d3\"}\u001f\r{\"ts\": {{2026,11,11,7,2,0}}, \"type\": \"run_started\", \"dose_id\": \"d3\", \"run_id\": \"r1\"}"
+        },
+        {"$raw":"{\"ts\": {{2026,11,11,7,3,0}}, \"type\": \"run_sta"}
+       ],
+       "trailing_newline":false
+      }
+     }
+    },
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":null,"detail":{"time":"08:00"}},
+        {"$raw":"garbage"},
+        {"$raw":""},
+        {"$raw":"   "},
+        [1,2],
+        null,
+        5,
+        {"ts":[2026,11,11,8,5,0],"type":"hover_test","detail":"x"},
+        {"ts":[2026,11,11,8,6,0],"type":"hover_test","detail":[1]},
+        {"ts":[2026,11,11,8,7,0],"type":"hover_test","detail":[]},
+        {"ts":[2026,11,11,8,8,0],"type":"hover_test","detail":0},
+        {"ts":[2026,11,11,8,9,0],"type":"hover_test","detail":null},
+        {"ts":[2026,11,11,8,10,0],"type":"hover_test"},
+        {"type":"hover_test","detail":{}},
+        {"ts":[2026,11,11,8,11,0],"detail":{}},
+        {"ts":null,"type":"hover_test"},
+        {"ts":"soon","type":"hover_test"},
+        {"ts":{"$ts_text":[2026,11,11,8,12,0]},"type":"hover_test","detail":{"ts":"as text"}},
+        {"ts":[2026,11,11,8,13,0],"type":5,"dose_id":"d2"},
+        {"ts":[2026,11,11,8,14,0],"type":null,"run_id":"r3"},
+        {"ts":[2026,11,11,7,0,0],"type":"pickup_acknowledged","dose_id":"d3","detail":{"self_reported":true}},
+        {
+         "$raw":"\u0085{\"ts\": {{2026,11,11,7,1,0}}, \"type\": \"arrived_at_station\", \"dose_id\": \"d3\"}\u001f\r{\"ts\": {{2026,11,11,7,2,0}}, \"type\": \"run_started\", \"dose_id\": \"d3\", \"run_id\": \"r1\"}"
+        },
+        {"$raw":"{\"ts\": {{2026,11,11,7,3,0}}, \"type\": \"run_sta"}
+       ],
+       "trailing_newline":false
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"events",
+     "args":[100],
+     "out":[
+      {"ts":[2026,11,11,8,14,0],"time_local":"08:14","type":"None","dose_id":null,"run_id":"r3","detail":{}},
+      {"ts":[2026,11,11,8,13,0],"time_local":"08:13","type":"5","dose_id":"d2","run_id":null,"detail":{}},
+      {
+       "ts":[2026,11,11,8,12,0],
+       "time_local":"08:12",
+       "type":"hover_test",
+       "dose_id":null,
+       "run_id":null,
+       "detail":{"ts":"as text"}
+      },
+      {"ts":[2026,11,11,8,10,0],"time_local":"08:10","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,9,0],"time_local":"08:09","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,8,0],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,7,0],"time_local":"08:07","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {
+       "ts":[2026,11,11,8,0,0],
+       "time_local":"08:00",
+       "type":"reminder_due",
+       "dose_id":"d1",
+       "run_id":null,
+       "detail":{"time":"08:00"}
+      },
+      {"ts":[2026,11,11,7,2,0],"time_local":"07:02","type":"run_started","dose_id":"d3","run_id":"r1","detail":{}},
+      {
+       "ts":[2026,11,11,7,1,0],
+       "time_local":"07:01",
+       "type":"arrived_at_station",
+       "dose_id":"d3",
+       "run_id":null,
+       "detail":{}
+      },
+      {
+       "ts":[2026,11,11,7,0,0],
+       "time_local":"07:00",
+       "type":"pickup_acknowledged",
+       "dose_id":"d3",
+       "run_id":null,
+       "detail":{"self_reported":true}
+      }
+     ]
+    },
+    {
+     "op":"add_event",
+     "type":"pickup_acknowledged",
+     "dose_id":"d1",
+     "at":[2026,11,11,8,20,0],
+     "out":{
+      "ts":[2026,11,11,8,20,0],
+      "time_local":"08:20",
+      "type":"pickup_acknowledged",
+      "dose_id":"d1",
+      "run_id":null,
+      "detail":{}
+     },
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":null,"detail":{"time":"08:00"}},
+        {"$raw":"garbage"},
+        {"$raw":""},
+        {"$raw":"   "},
+        [1,2],
+        null,
+        5,
+        {"ts":[2026,11,11,8,5,0],"type":"hover_test","detail":"x"},
+        {"ts":[2026,11,11,8,6,0],"type":"hover_test","detail":[1]},
+        {"ts":[2026,11,11,8,7,0],"type":"hover_test","detail":[]},
+        {"ts":[2026,11,11,8,8,0],"type":"hover_test","detail":0},
+        {"ts":[2026,11,11,8,9,0],"type":"hover_test","detail":null},
+        {"ts":[2026,11,11,8,10,0],"type":"hover_test"},
+        {"type":"hover_test","detail":{}},
+        {"ts":[2026,11,11,8,11,0],"detail":{}},
+        {"ts":null,"type":"hover_test"},
+        {"ts":"soon","type":"hover_test"},
+        {"ts":{"$ts_text":[2026,11,11,8,12,0]},"type":"hover_test","detail":{"ts":"as text"}},
+        {"ts":[2026,11,11,8,13,0],"type":5,"dose_id":"d2"},
+        {"ts":[2026,11,11,8,14,0],"type":null,"run_id":"r3"},
+        {"ts":[2026,11,11,7,0,0],"type":"pickup_acknowledged","dose_id":"d3","detail":{"self_reported":true}},
+        {
+         "$raw":"\u0085{\"ts\": {{2026,11,11,7,1,0}}, \"type\": \"arrived_at_station\", \"dose_id\": \"d3\"}\u001f\r{\"ts\": {{2026,11,11,7,2,0}}, \"type\": \"run_started\", \"dose_id\": \"d3\", \"run_id\": \"r1\"}"
+        },
+        {"$raw":"{\"ts\": {{2026,11,11,7,3,0}}, \"type\": \"run_sta"},
+        {"ts":[2026,11,11,8,20,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"detail":{}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"events",
+     "args":[100],
+     "out":[
+      {
+       "ts":[2026,11,11,8,20,0],
+       "time_local":"08:20",
+       "type":"pickup_acknowledged",
+       "dose_id":"d1",
+       "run_id":null,
+       "detail":{}
+      },
+      {"ts":[2026,11,11,8,14,0],"time_local":"08:14","type":"None","dose_id":null,"run_id":"r3","detail":{}},
+      {"ts":[2026,11,11,8,13,0],"time_local":"08:13","type":"5","dose_id":"d2","run_id":null,"detail":{}},
+      {
+       "ts":[2026,11,11,8,12,0],
+       "time_local":"08:12",
+       "type":"hover_test",
+       "dose_id":null,
+       "run_id":null,
+       "detail":{"ts":"as text"}
+      },
+      {"ts":[2026,11,11,8,10,0],"time_local":"08:10","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,9,0],"time_local":"08:09","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,8,0],"time_local":"08:08","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,7,0],"time_local":"08:07","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {
+       "ts":[2026,11,11,8,0,0],
+       "time_local":"08:00",
+       "type":"reminder_due",
+       "dose_id":"d1",
+       "run_id":null,
+       "detail":{"time":"08:00"}
+      },
+      {"ts":[2026,11,11,7,2,0],"time_local":"07:02","type":"run_started","dose_id":"d3","run_id":"r1","detail":{}},
+      {
+       "ts":[2026,11,11,7,1,0],
+       "time_local":"07:01",
+       "type":"arrived_at_station",
+       "dose_id":"d3",
+       "run_id":null,
+       "detail":{}
+      },
+      {
+       "ts":[2026,11,11,7,0,0],
+       "time_local":"07:00",
+       "type":"pickup_acknowledged",
+       "dose_id":"d3",
+       "run_id":null,
+       "detail":{"self_reported":true}
+      }
+     ]
+    },
+    {
+     "op":"add_event",
+     "type":"hover_test",
+     "at":[2026,11,11,8,21,0],
+     "out":{"ts":[2026,11,11,8,21,0],"time_local":"08:21","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"reminder_due","dose_id":"d1","run_id":null,"detail":{"time":"08:00"}},
+        {"$raw":"garbage"},
+        {"$raw":""},
+        {"$raw":"   "},
+        [1,2],
+        null,
+        5,
+        {"ts":[2026,11,11,8,5,0],"type":"hover_test","detail":"x"},
+        {"ts":[2026,11,11,8,6,0],"type":"hover_test","detail":[1]},
+        {"ts":[2026,11,11,8,7,0],"type":"hover_test","detail":[]},
+        {"ts":[2026,11,11,8,8,0],"type":"hover_test","detail":0},
+        {"ts":[2026,11,11,8,9,0],"type":"hover_test","detail":null},
+        {"ts":[2026,11,11,8,10,0],"type":"hover_test"},
+        {"type":"hover_test","detail":{}},
+        {"ts":[2026,11,11,8,11,0],"detail":{}},
+        {"ts":null,"type":"hover_test"},
+        {"ts":"soon","type":"hover_test"},
+        {"ts":{"$ts_text":[2026,11,11,8,12,0]},"type":"hover_test","detail":{"ts":"as text"}},
+        {"ts":[2026,11,11,8,13,0],"type":5,"dose_id":"d2"},
+        {"ts":[2026,11,11,8,14,0],"type":null,"run_id":"r3"},
+        {"ts":[2026,11,11,7,0,0],"type":"pickup_acknowledged","dose_id":"d3","detail":{"self_reported":true}},
+        {
+         "$raw":"\u0085{\"ts\": {{2026,11,11,7,1,0}}, \"type\": \"arrived_at_station\", \"dose_id\": \"d3\"}\u001f\r{\"ts\": {{2026,11,11,7,2,0}}, \"type\": \"run_started\", \"dose_id\": \"d3\", \"run_id\": \"r1\"}"
+        },
+        {"$raw":"{\"ts\": {{2026,11,11,7,3,0}}, \"type\": \"run_sta"},
+        {"ts":[2026,11,11,8,20,0],"type":"pickup_acknowledged","dose_id":"d1","run_id":null,"detail":{}},
+        {"ts":[2026,11,11,8,21,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name":"event_log_endings",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"write_raw",
+     "name":"events",
+     "text":"",
+     "out":null,
+     "files":{"events":{"lines":[{"$raw":""}],"trailing_newline":false}}
+    },
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "events":{"lines":[{"$raw":""}],"trailing_newline":false},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"hover_test",
+     "at":[2026,11,11,8,0,0],
+     "out":{"ts":[2026,11,11,8,0,0],"time_local":"08:00","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+     "files":{
+      "events":{
+       "lines":[{"ts":[2026,11,11,8,0,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}}],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"append_raw",
+     "name":"events",
+     "text":"{\"ts\": {{2026,11,11,8,1,0}}, \"type\": \"hover_test\"}",
+     "out":null,
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+        {"ts":[2026,11,11,8,1,0],"type":"hover_test"}
+       ],
+       "trailing_newline":false
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"hover_test",
+     "at":[2026,11,11,8,2,0],
+     "out":{"ts":[2026,11,11,8,2,0],"time_local":"08:02","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+        {"ts":[2026,11,11,8,1,0],"type":"hover_test"},
+        {"ts":[2026,11,11,8,2,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"append_raw",
+     "name":"events",
+     "text":"tail\r",
+     "out":null,
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+        {"ts":[2026,11,11,8,1,0],"type":"hover_test"},
+        {"ts":[2026,11,11,8,2,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+        {"$raw":"tail\r"}
+       ],
+       "trailing_newline":false
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"hover_test",
+     "at":[2026,11,11,8,3,0],
+     "out":{"ts":[2026,11,11,8,3,0],"time_local":"08:03","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+     "files":{
+      "events":{
+       "lines":[
+        {"ts":[2026,11,11,8,0,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+        {"ts":[2026,11,11,8,1,0],"type":"hover_test"},
+        {"ts":[2026,11,11,8,2,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+        {"$raw":"tail\r"},
+        {"ts":[2026,11,11,8,3,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+       ],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"events",
+     "out":[
+      {"ts":[2026,11,11,8,3,0],"time_local":"08:03","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,2,0],"time_local":"08:02","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,1,0],"time_local":"08:01","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,0,0],"time_local":"08:00","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     ]
+    },
+    {
+     "op":"delete_raw",
+     "name":"events",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"add_event",
+     "type":"hover_test",
+     "at":[2026,11,11,8,4,0],
+     "out":{"ts":[2026,11,11,8,4,0],"time_local":"08:04","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+     "files":{
+      "events":{
+       "lines":[{"ts":[2026,11,11,8,4,0],"type":"hover_test","dose_id":null,"run_id":null,"detail":{}}],
+       "trailing_newline":true
+      },
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"events",
+     "out":[
+      {"ts":[2026,11,11,8,4,0],"time_local":"08:04","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,3,0],"time_local":"08:03","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,2,0],"time_local":"08:02","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,1,0],"time_local":"08:01","type":"hover_test","dose_id":null,"run_id":null,"detail":{}},
+      {"ts":[2026,11,11,8,0,0],"time_local":"08:00","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}
+     ]
+    },
+    {"op":"reopen","out":null},
+    {
+     "op":"events",
+     "out":[{"ts":[2026,11,11,8,4,0],"time_local":"08:04","type":"hover_test","dose_id":null,"run_id":null,"detail":{}}]
+    }
+   ]
+  },
+  {
+   "name":"mission_settings",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"load_drift_assist","out":false},
+    {"op":"load_land_on_arrival","out":false},
+    {"op":"load_auto_fly","out":false},
+    {"op":"load_avoid","out":null},
+    {
+     "op":"save_drift_assist",
+     "args":[true],
+     "out":null,
+     "files":{
+      "mission":{"drift_assist":true},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"load_drift_assist","out":true},
+    {
+     "op":"save_land_on_arrival",
+     "args":[true],
+     "out":null,
+     "files":{
+      "mission":{"drift_assist":true,"land_on_arrival":true},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"save_auto_fly",
+     "args":[true],
+     "out":null,
+     "files":{
+      "mission":{"drift_assist":true,"land_on_arrival":true,"auto_fly":true},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"save_avoid",
+     "args":["hold"],
+     "out":null,
+     "files":{
+      "mission":{"drift_assist":true,"land_on_arrival":true,"auto_fly":true,"avoid":"hold"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"load_avoid","out":"hold"},
+    {
+     "op":"save_avoid",
+     "args":["off"],
+     "out":null,
+     "files":{
+      "mission":{"drift_assist":true,"land_on_arrival":true,"auto_fly":true,"avoid":"off"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"load_avoid","out":"off"},
+    {
+     "op":"save_avoid",
+     "args":["sideways"],
+     "out":{"error":"ValueError","message":"avoid must be one of ('off', 'hold')"}
+    },
+    {"op":"save_avoid","args":[null],"out":{"error":"ValueError","message":"avoid must be one of ('off', 'hold')"}},
+    {"op":"save_avoid","args":["HOLD"],"out":{"error":"ValueError","message":"avoid must be one of ('off', 'hold')"}},
+    {"op":"save_avoid","args":[5],"out":{"error":"ValueError","message":"avoid must be one of ('off', 'hold')"}},
+    {"op":"load_avoid","out":"off"},
+    {
+     "op":"save_drift_assist",
+     "args":[false],
+     "out":null,
+     "files":{
+      "mission":{"drift_assist":false,"land_on_arrival":true,"auto_fly":true,"avoid":"off"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"reopen","out":null},
+    {"op":"load_drift_assist","out":false},
+    {"op":"load_land_on_arrival","out":true},
+    {"op":"load_auto_fly","out":true},
+    {"op":"load_avoid","out":"off"},
+    {
+     "op":"save_land_on_arrival",
+     "args":[0],
+     "out":null,
+     "files":{
+      "mission":{"drift_assist":false,"land_on_arrival":false,"auto_fly":true,"avoid":"off"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"save_auto_fly","args":[1],"out":null},
+    {
+     "op":"save_drift_assist",
+     "args":["yes"],
+     "out":null,
+     "files":{
+      "mission":{"drift_assist":true,"land_on_arrival":false,"auto_fly":true,"avoid":"off"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"write_raw",
+     "name":"mission",
+     "text":"{\"drift_assist\": \"yes\", \"land_on_arrival\": 1, \"extra\": 5, \"avoid\": \"sideways\"}",
+     "out":null,
+     "files":{
+      "mission":{"drift_assist":"yes","land_on_arrival":1,"extra":5,"avoid":"sideways"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"load_drift_assist","out":false},
+    {"op":"load_land_on_arrival","out":false},
+    {"op":"load_auto_fly","out":false},
+    {"op":"load_avoid","out":null},
+    {
+     "op":"save_auto_fly",
+     "args":[true],
+     "out":null,
+     "files":{
+      "mission":{"drift_assist":false,"land_on_arrival":false,"auto_fly":true},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"write_raw",
+     "name":"mission",
+     "text":"{\"avoid\": \"hold\", \"auto_fly\": true, \"drift_assist\": null}",
+     "out":null,
+     "files":{
+      "mission":{"avoid":"hold","auto_fly":true,"drift_assist":null},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"load_avoid","out":"hold"},
+    {"op":"load_auto_fly","out":true},
+    {
+     "op":"save_land_on_arrival",
+     "args":[true],
+     "out":null,
+     "files":{
+      "mission":{"drift_assist":false,"auto_fly":true,"avoid":"hold","land_on_arrival":true},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"write_raw",
+     "name":"mission",
+     "text":"{not json",
+     "out":null,
+     "files":{
+      "mission":{"$raw":"{not json"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"load_auto_fly",
+     "out":false,
+     "files":{
+      "mission.corrupt@2026-11-11T09:00:00":{"$raw":"{not json"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"load_avoid","out":null},
+    {"op":"clock","at":[2026,11,11,9,0,2],"out":null},
+    {
+     "op":"write_raw",
+     "name":"mission",
+     "text":"{still not json",
+     "out":null,
+     "files":{
+      "mission":{"$raw":"{still not json"},
+      "mission.corrupt@2026-11-11T09:00:00":{"$raw":"{not json"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"save_land_on_arrival",
+     "args":[true],
+     "out":null,
+     "files":{
+      "mission":{"land_on_arrival":true},
+      "mission.corrupt@2026-11-11T09:00:00":{"$raw":"{not json"},
+      "mission.corrupt@2026-11-11T09:00:02":{"$raw":"{still not json"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"write_raw",
+     "name":"mission",
+     "text":"[]",
+     "out":null,
+     "files":{
+      "mission":[],
+      "mission.corrupt@2026-11-11T09:00:00":{"$raw":"{not json"},
+      "mission.corrupt@2026-11-11T09:00:02":{"$raw":"{still not json"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"load_drift_assist","out":false},
+    {
+     "op":"save_avoid",
+     "args":["off"],
+     "out":null,
+     "files":{
+      "mission":{"avoid":"off"},
+      "mission.corrupt@2026-11-11T09:00:00":{"$raw":"{not json"},
+      "mission.corrupt@2026-11-11T09:00:02":{"$raw":"{still not json"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"write_raw",
+     "name":"mission",
+     "text":"\"true\"",
+     "out":null,
+     "files":{
+      "mission":"true",
+      "mission.corrupt@2026-11-11T09:00:00":{"$raw":"{not json"},
+      "mission.corrupt@2026-11-11T09:00:02":{"$raw":"{still not json"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"load_drift_assist","out":false},
+    {
+     "op":"write_raw",
+     "name":"mission",
+     "text":"null",
+     "out":null,
+     "files":{
+      "mission":null,
+      "mission.corrupt@2026-11-11T09:00:00":{"$raw":"{not json"},
+      "mission.corrupt@2026-11-11T09:00:02":{"$raw":"{still not json"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"load_avoid","out":null}
+   ]
+  },
+  {
+   "name":"trim_and_calibration",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {"op":"load_trim","out":[0.0,0.0]},
+    {
+     "op":"save_trim",
+     "args":[0.02,-0.01],
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"roll":0.02,"pitch":-0.01}
+     }
+    },
+    {"op":"load_trim","out":[0.02,-0.01]},
+    {"op":"reopen","out":null},
+    {"op":"load_trim","out":[0.02,-0.01]},
+    {
+     "op":"save_trim",
+     "args":[0,1],
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"roll":0.0,"pitch":1.0}
+     }
+    },
+    {"op":"load_trim","out":[0.0,1.0]},
+    {
+     "op":"write_raw",
+     "name":"trim",
+     "text":"{\"roll\": \"0.5\", \"pitch\": \" -1_0e-2 \"}",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"roll":"0.5","pitch":" -1_0e-2 "}
+     }
+    },
+    {"op":"load_trim","out":[0.5,-0.1]},
+    {
+     "op":"write_raw",
+     "name":"trim",
+     "text":"{\"roll\": true, \"pitch\": false}",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"roll":true,"pitch":false}
+     }
+    },
+    {"op":"load_trim","out":[1.0,0.0]},
+    {
+     "op":"write_raw",
+     "name":"trim",
+     "text":"{\"roll\": 0.1}",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"roll":0.1}
+     }
+    },
+    {"op":"load_trim","out":[0.0,0.0]},
+    {
+     "op":"write_raw",
+     "name":"trim",
+     "text":"[0.1, 0.2]",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":[0.1,0.2]
+     }
+    },
+    {"op":"load_trim","out":[0.0,0.0]},
+    {
+     "op":"write_raw",
+     "name":"trim",
+     "text":"{\"roll\": null, \"pitch\": 0}",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"roll":null,"pitch":0}
+     }
+    },
+    {"op":"load_trim","out":[0.0,0.0]},
+    {
+     "op":"write_raw",
+     "name":"trim",
+     "text":"{\"roll\": \"x\", \"pitch\": 0}",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"roll":"x","pitch":0}
+     }
+    },
+    {"op":"load_trim","out":[0.0,0.0]},
+    {
+     "op":"write_raw",
+     "name":"trim",
+     "text":"{\"roll\": \"inf\", \"pitch\": \"-Infinity\"}",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"roll":"inf","pitch":"-Infinity"}
+     }
+    },
+    {"op":"load_trim","out":[{"$float":"inf"},{"$float":"-inf"}]},
+    {
+     "op":"write_raw",
+     "name":"trim",
+     "text":"{\"roll\": \"nan\", \"pitch\": \".5\"}",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"roll":"nan","pitch":".5"}
+     }
+    },
+    {"op":"load_trim","out":[{"$float":"nan"},0.5]},
+    {
+     "op":"write_raw",
+     "name":"trim",
+     "text":"{\"roll\": \"1_0\", \"pitch\": \"\u0661.\u0665\"}",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"roll":"1_0","pitch":"\u0661.\u0665"}
+     }
+    },
+    {"op":"load_trim","out":[10.0,1.5]},
+    {
+     "op":"write_raw",
+     "name":"trim",
+     "text":"{\"roll\": 3, \"pitch\": 4, \"yaw\": 5}",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"roll":3,"pitch":4,"yaw":5}
+     }
+    },
+    {"op":"load_trim","out":[3.0,4.0]},
+    {
+     "op":"write_raw",
+     "name":"trim",
+     "text":"{bad",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim":{"$raw":"{bad"}
+     }
+    },
+    {
+     "op":"load_trim",
+     "out":[0.0,0.0],
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":null},
+    {
+     "op":"save_arrive_width",
+     "args":[0.21],
+     "out":null,
+     "files":{
+      "calibration":{"arrive_width":0.21},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":0.21},
+    {
+     "op":"save_arrive_width",
+     "args":[5.0],
+     "out":null,
+     "files":{
+      "calibration":{"arrive_width":5.0},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":null},
+    {
+     "op":"save_arrive_width",
+     "args":[0.03],
+     "out":null,
+     "files":{
+      "calibration":{"arrive_width":0.03},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":0.03},
+    {
+     "op":"save_arrive_width",
+     "args":[0.8],
+     "out":null,
+     "files":{
+      "calibration":{"arrive_width":0.8},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":0.8},
+    {
+     "op":"save_arrive_width",
+     "args":[0.0299],
+     "out":null,
+     "files":{
+      "calibration":{"arrive_width":0.0299},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":null},
+    {
+     "op":"save_arrive_width",
+     "args":[0.8001],
+     "out":null,
+     "files":{
+      "calibration":{"arrive_width":0.8001},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":null},
+    {
+     "op":"write_raw",
+     "name":"calibration",
+     "text":"{\"arrive_width\": \"0.5\"}",
+     "out":null,
+     "files":{
+      "calibration":{"arrive_width":"0.5"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":0.5},
+    {
+     "op":"write_raw",
+     "name":"calibration",
+     "text":"{\"arrive_width\": \"nan\"}",
+     "out":null,
+     "files":{
+      "calibration":{"arrive_width":"nan"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":null},
+    {
+     "op":"write_raw",
+     "name":"calibration",
+     "text":"{\"arrive_width\": true}",
+     "out":null,
+     "files":{
+      "calibration":{"arrive_width":true},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":null},
+    {
+     "op":"write_raw",
+     "name":"calibration",
+     "text":"{\"arrive_width\": null}",
+     "out":null,
+     "files":{
+      "calibration":{"arrive_width":null},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":null},
+    {
+     "op":"write_raw",
+     "name":"calibration",
+     "text":"{\"width\": 0.2}",
+     "out":null,
+     "files":{
+      "calibration":{"width":0.2},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":null},
+    {
+     "op":"write_raw",
+     "name":"calibration",
+     "text":"{\"arrive_width\": [0.2]}",
+     "out":null,
+     "files":{
+      "calibration":{"arrive_width":[0.2]},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":null},
+    {
+     "op":"write_raw",
+     "name":"calibration",
+     "text":"0.2",
+     "out":null,
+     "files":{
+      "calibration":0.2,
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {"op":"load_arrive_width","out":null},
+    {
+     "op":"write_raw",
+     "name":"calibration",
+     "text":"{oops",
+     "out":null,
+     "files":{
+      "calibration":{"$raw":"{oops"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    },
+    {
+     "op":"load_arrive_width",
+     "out":null,
+     "files":{
+      "calibration.corrupt@2026-11-11T09:00:00":{"$raw":"{oops"},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      },
+      "trim.corrupt@2026-11-11T09:00:00":{"$raw":"{bad"}
+     }
+    }
+   ]
+  },
+  {
+   "name":"run_traces",
+   "clock":[2026,11,11,9,0,0],
+   "summarize_events":false,
+   "steps":[
+    {
+     "op":"open",
+     "out":null,
+     "files":{
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"write_run_trace",
+     "run_id":"run-x",
+     "trace":{"run_id":"run-x","samples":[],"ok":true},
+     "out":"runs/run-x",
+     "files":{
+      "runs/run-x":{"run_id":"run-x","samples":[],"ok":true},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"write_run_trace",
+     "run_id":"run-y",
+     "trace":{"run_id":"run-y","samples":[{"t":0.05,"state":"searching"}]},
+     "out":"runs/run-y",
+     "files":{
+      "runs/run-x":{"run_id":"run-x","samples":[],"ok":true},
+      "runs/run-y":{"run_id":"run-y","samples":[{"t":0.05,"state":"searching"}]},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    },
+    {
+     "op":"write_run_trace",
+     "run_id":"run-x",
+     "trace":{"run_id":"run-x","samples":[1,2],"note":"again"},
+     "out":"runs/run-x",
+     "files":{
+      "runs/run-x":{"run_id":"run-x","samples":[1,2],"note":"again"},
+      "runs/run-y":{"run_id":"run-y","samples":[{"t":0.05,"state":"searching"}]},
+      "schedule":{
+       "doses":[
+        {"id":"d1","time":"08:00","label":"Morning dose (demo)","notes":""},
+        {"id":"d2","time":"13:00","label":"Midday dose (demo)","notes":""},
+        {"id":"d3","time":"20:00","label":"Evening dose (demo)","notes":""}
+       ],
+       "next_id":4
+      }
+     }
+    }
+   ]
+  }
+ ]
+}
