@@ -15,6 +15,10 @@ class Frame:
     jpeg: bytes
     timestamp: float  # time.monotonic() domain of the link's clock
     seq: int
+    # Simulator only: ((kind, (x1, y1, x2, y2)), ...) for each simulated actor in view, boxes as
+    # fractions of the frame, projected through the same camera that rendered this frame. Empty on
+    # the real drone.
+    obstacles: tuple = ()
 
 
 @dataclass(frozen=True)

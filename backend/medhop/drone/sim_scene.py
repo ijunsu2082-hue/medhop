@@ -23,6 +23,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
 
+from medhop.drone.sim_actors import draw_actors
 from medhop.vision.marker import A4_HEIGHT_M, A4_WIDTH_M, SIGN_TOP_MARGIN_M
 
 ROOM_H = 2.7
@@ -775,6 +776,10 @@ class RoomRenderer:
             _draw_columns(canvas, c0, _lod(levels, wanted), levels, plane(origin, eu, (0, -1, 0)), top, bottom)
             if name == "front" and not snap["marker_hidden"]:
                 self._draw_sign(canvas, kr, cam, rot, (c0, c1))
+
+        # ---- simulated people and objects: plain dark silhouettes in front of the walls ----
+        if snap.get("actors"):
+            draw_actors(canvas, snap["actors"], cam, rot, self._RK)
 
         # ---- lens and sensor ----
         if self._ss > 1:

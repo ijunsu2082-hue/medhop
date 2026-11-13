@@ -15,7 +15,7 @@ import threading
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional
 
 from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,7 +26,8 @@ from medhop.care.status import CareMonitor, care_snapshot, dose_time_today
 from medhop.care.store import CareStore, time_local
 from medhop.config import FRONTEND_ORIGINS, Settings
 from medhop.drone.base import DroneLink
-from medhop.mission.runner import MissionRunner
+from medhop.drone.sim_actors import SCENARIO_NAMES
+from medhop.mission.runner import HOVER_TEST, RUN_STATES, MissionRunner
 from medhop.mixer import ControlMixer
 from medhop.vision.marker import MarkerDetector
 from medhop.vision.person import PersonChecker
@@ -39,6 +40,7 @@ STATUS_PUSH_S = 0.2            # /ws/status pushes 5 times a second
 PILOT_BUSY_CLOSE_CODE = 4001
 PERSON_FRESH_S = 2.0
 BAD_REQUEST = "bad_request"    # error code for a malformed control message
+NOT_SIMULATOR = "not_simulator"    # blocker: a simulator-only request on the real drone
 MJPEG_BOUNDARY = "frame"
 
 
@@ -331,11 +333,32 @@ class MedHopCore:
                 },
                 "brightness": _round(vision.brightness, 1),
                 "dark": vision.dark,
+                # Obstacles in the newest frame with their estimated distance (null: base out of the
+                # picture, counted as very close) and sideways position. Simulator: simulated actors;
+                # real drone: people from the optional person check only.
+                "obstacles": self.runner.obstacles_snapshot(now),
             },
             "mission": self.runner.snapshot(now),
             "hover_test": self.runner.hover_snapshot(now),
             "care": care_snapshot(self.store, self.now_local(), self.settings.grace_min),
+            "sim": self.sim_snapshot(),
         }
+
+    def sim_snapshot(self) -> Optional[Dict[str, Any]]:
+        """Simulator only: the scenario and where its simulated actors are now (simulator truth).
+        None on the real drone."""
+        if self.link.mode != "sim" or not hasattr(self.link, "actors_now"):
+            return None
+        return {"scenario": self.link.scenario, "actors": [a.as_status() for a in self.link.actors_now()]}
+
+    def set_scenario(self, name: str) -> Optional[List[str]]:
+        """Simulator only: put a named scenario's actors in the corridor. Returns blockers, or None."""
+        if self.link.mode != "sim" or not hasattr(self.link, "set_scenario"):
+            return [NOT_SIMULATOR]
+        if self.runner.state in RUN_STATES or self.runner.state == HOVER_TEST:
+            return ["already_running"]
+        self.link.set_scenario(name)
+        return None
 
 
 # ---------------------------------------------------------------------- #
@@ -356,6 +379,11 @@ class MissionSettingsBody(BaseModel):
     land_on_arrival: Optional[bool] = None
     drift_assist: Optional[bool] = None
     auto_fly: Optional[bool] = None
+    avoid: Optional[Literal["off", "hold", "pass"]] = None   # obstacle avoidance (experimental)
+
+
+class ScenarioBody(BaseModel):
+    name: str
 
 
 class DoseBody(BaseModel):
@@ -518,8 +546,11 @@ def create_app(settings: Optional[Settings] = None, core: Optional[MedHopCore] =
 
     @app.put("/api/mission/settings")
     def mission_settings(body: MissionSettingsBody):
-        if body.land_on_arrival is None and body.drift_assist is None and body.auto_fly is None:
-            return _error(422, "give land_on_arrival, drift_assist or auto_fly")
+        if (body.land_on_arrival is None and body.drift_assist is None and body.auto_fly is None
+                and body.avoid is None):
+            return _error(422, "give land_on_arrival, drift_assist, auto_fly or avoid")
+        if body.avoid is not None:
+            core.runner.set_avoid(body.avoid)
         if body.auto_fly is not None:
             core.runner.set_auto_fly(body.auto_fly)
         if body.land_on_arrival is not None:
@@ -527,6 +558,17 @@ def create_app(settings: Optional[Settings] = None, core: Optional[MedHopCore] =
         if body.drift_assist is not None:
             core.runner.set_drift_assist(body.drift_assist)
         return core.runner.settings()
+
+    @app.post("/api/sim/scenario")
+    def sim_scenario(body: ScenarioBody):
+        """Simulator only: choose who and what is in the corridor (empty, crossing, standing, cart,
+        blocked). Refused on the real drone and while a run or hover test is active."""
+        if body.name not in SCENARIO_NAMES:
+            return _error(422, f"unknown scenario {body.name!r}; one of {', '.join(SCENARIO_NAMES)}")
+        blockers = core.set_scenario(body.name)
+        if blockers:
+            return JSONResponse(status_code=409, content={"blockers": blockers})
+        return {"ok": True, **core.sim_snapshot()}
 
     @app.post("/api/mission/ready")
     def mission_ready():

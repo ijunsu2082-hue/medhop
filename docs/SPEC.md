@@ -474,3 +474,199 @@ Orchestrator decisions (added after the Revision 3 fix pass; these win over earl
   blanket "same for every event" claim, and states per event what is confirmed.
 - README, SAFETY and HOW_IT_WORKS match the behaviour above (pilot-link-lost aborts; e-stop is available
   only while the links are up; no real flight has been done yet).
+
+## 11. Revision 4 (2026-11-12): obstacle avoidance (experimental)
+
+Honest scope, in addition to section 1. Obstacle avoidance is EXPERIMENTAL and SIMULATOR-TESTED ONLY.
+It has never been flown near people, and the drone leg is still never flown near people. It is not a
+safety system and not an interlock: a human pilot keeps manual control and the emergency stop
+throughout. On the real drone the only things it can know about are people, and only when the
+optional person check (pretrained YOLO, section 1) is enabled; that check can miss people, and walls,
+furniture and other objects are never detected at all. In the simulator every simulated person and
+object is reported exactly (simulator truth through the camera model): a perfect detector, which no
+real detector is. Detection of the station sign is unchanged: ArUco, classical computer vision, not AI.
+Where this section disagrees with an earlier one, this section wins.
+
+### 11.1 What is seen
+- `vision/marker.py`: frozen dataclass `Obstacle(kind: "person" | "object", box: (x1, y1, x2, y2)
+  as fractions of the frame, ts: float)`. `Observation` gains `obstacles: Tuple[Obstacle, ...] = ()`.
+- `drone/base.py`: `Frame` gains `obstacles: tuple = ()`, `((kind, (x1, y1, x2, y2)), ...)`, always
+  empty on the real drone. The vision worker and `tests/harness.py` copy them into
+  `Observation.obstacles` (`vision.worker.obstacles_of`); the annotated stream draws them labelled
+  "(simulated)".
+- Simulator (`drone/sim_actors.py`): `SimConfig.actors: Tuple[Actor, ...] = ()`. `Actor(kind, x_m
+  (footprint centre along the wall), distance_m (footprint centre from the wall), width_m, depth_m,
+  height_m, vx_m_s, vd_m_s, move_from_s, move_until_s)`: an upright box on the floor that moves at a
+  constant velocity between two times measured from the takeoff toggle taking effect (from the first
+  simulator step when it starts in the air). Each captured frame carries every actor's box: its 8
+  corners through the same pinhole camera the renderer uses, clipped to the near plane (0.05 m) and to
+  the frame; none when wholly outside or behind the camera. Both render paths draw each actor as a
+  plain dark silhouette (the convex outline of the projected box, farthest first) over the wall and the
+  sign, so an actor between the camera and the sign hides the marker from the detector. Actors do not
+  hide each other's boxes.
+- Real drone: a person-check result younger than `RunnerConfig.obstacle_fresh_s` (1.0 s) becomes one
+  `Obstacle("person", box, ts=check time)` per box. Nothing else is ever detected on the real drone.
+- Named scenarios (`sim_actors.SCENARIOS`), each with its start distance (4.2 m; `empty` restores the
+  simulator's own). Times are after the takeoff toggle. People step in from outside the camera's view
+  a few seconds after an automatic run has started approaching, so the sign has already grown (the
+  runner's evidence of flight) and the rule "never take off with a person in view" does not block the
+  start:
+  - `empty`: nobody.
+  - `crossing`: a person (0.45 x 0.30 x 1.70 m) walks across 1.6 m from the wall at 1.2 m/s, from
+    x = -3.6 m to +3.6 m, between 7 and 13 s.
+  - `standing`: a person walks in 1.4 m from the wall at 1.0 m/s from x = -3.0 m and stops in the lane
+    (x = 0) at 9 s.
+  - `cart`: an object 0.60 x 0.40 x 0.90 m, 1.5 m from the wall, 0.15 m right of the centre line, there
+    from the start (it does not hide the sign: the camera at 1.04 m sees over it).
+  - `blocked`: three people stop across the corridor (x = -1.0 and +1.0 at 1.75 m from the wall, x = 0
+    at 1.45 m) between 9 and 10.5 s: the lane and both sides are blocked.
+
+### 11.2 Where a seen thing is (`mission/avoid.py`, pure, time passed in)
+- Level camera at `camera_height_m` (1.0, the hover height; the simulator's camera sits 4 cm higher,
+  which makes the estimates about 4 % short), horizontal field of view `Settings.camera_hfov_deg`,
+  16:9 frame. Focal length in frame widths `f = 0.5 / tan(hfov / 2)`, in frame heights `f_h = f * 16/9`.
+- Distance (along the camera axis), from the box alone: when the bottom edge is inside the frame (below
+  1 - 0.004) and at least 0.01 below the horizon, `camera_height * f_h / (y2 - 0.5)`; for a person whose
+  top edge is inside the frame too, also `1.7 * f_h / (y2 - y1)`; the smaller wins. A box cut off at the
+  bottom of the frame (or with its bottom edge at or above the horizon) is VERY CLOSE: `distance_m`
+  null, sideways position unknown, and it counts as in the lane wherever it is in the picture. With
+  the 70 degree, 16:9 camera at 1 m the floor leaves the picture at 2.54 m, so anything closer than that
+  reads as very close: the hold (1.8 m) and back-off (0.9 m) distances are only ever reached that way.
+- Sideways: `lateral_m = (cx - 0.5) * distance / f`, half-width `(x2 - x1) / 2 * distance / f`, + = right
+  of the line of flight (the camera axis). In the lane: its nearer edge within `lane_half_m` (0.55 m) of
+  the line of flight (0 when the box straddles it).
+
+### 11.3 What the drone does (`Avoider`, once per frame while searching, approaching or lining up)
+- `clear`: nothing in the lane closer than `slow_distance_m` (3.0).
+- `slow`: something in the lane closer than 3.0 m: forward stick at most `slow_pitch` (0.10).
+- `hold`: in the lane closer than `hold_distance_m` (1.8), or very close: no forward stick (no yaw
+  while the sign is hidden; while it is in view the approach keeps turning to it); closer than
+  `back_distance_m` (0.9), or very close: pitch `back_pitch` (-0.08). Roll holds the drone where it was
+  relative to the obstacle's box while its distance can be told (PI, 0.3 per m and 0.1 per m-s, within
+  +-0.15; the integral learns the roll that cancels a steady drift and starts from the drift assist's
+  estimate). Back to moving only after the lane has had nothing closer than 3.0 m for
+  `clear_confirm_s` (1.0) on current evidence (on the real drone a stale person check is no evidence).
+- `sidestep` (mode `pass`, while approaching only), after `hold_patience_s` (4.0) of hold, once the
+  blocker's base is in view (until then the hold keeps backing away): toward the side needing the
+  shorter move to put `pass_clear_m` (0.9) between the line of flight and the blocker's near edge,
+  provided the drone stays within `max_sidestep_m` (1.2) and nothing else (or anything very close)
+  lies in the swept region; equal within 0.1 m: the side the drift will bring back toward the sign.
+  Yaw frozen (no yaw stick); roll 0.12 feed-forward plus the same box-tracking loop, its reference
+  moving at 0.12 m/s. Ends when the box shows a 0.9 m gap (to `passing`), when the blocker is out of
+  view for 0.5 s (back to `hold`), when something else enters the lane (back to `hold`), or `blocked`
+  ("no_way_round") when the drone is more than 1.2 m from the line of sight to the sign (see 11.7) or
+  after 1.2 m / 0.12 m/s = 10 s.
+- `passing`: yaw frozen, pitch `pass_pitch` (0.15). Roll: a PI loop on the blocker's sideways gap
+  (0.4 per m, 0.1 per m-s) while its distance can be told (its floor estimate, then its top edge scaled
+  by that estimate), else the learned drift-cancelling roll. Forward stick stops (0) while that gap is
+  under 0.65 m, while a blocker whose distance cannot be told reaches into the band the lane covers at
+  2.54 m, or while anything else is in the lane (backing off if that is very close). Distance flown:
+  from the blocker's distance while measurable, else from the sign's distance, else dead-reckoned at an
+  assumed 1.0 m/s per full stick (the simulator's figure; unmeasured on the real drone). Hands back
+  (`clear`) once it has flown the blocker's distance plus 0.15 m and the blocker has been out of the
+  picture for 1.0 s; the approach (or a new search, 11.4) and the final line-up are meant to bring it
+  back onto the sign's centre line. A pass not finished after 45 s is `blocked` ("pass_timeout").
+- `blocked`: `blocked_timeout_s` (25) of hold, sidestep and stopped passing in total, no way round on 3
+  consecutive plans, or the pass timeout. The runner ends the run with reason `path_blocked`.
+
+### 11.4 Runner (`mission/runner.py`)
+- Mode `off`: exactly the behaviour of sections 6 and 10, step for step (tested: with no actors, mode
+  `pass` also sends the same commands as `off`, step for step). In `off`, a simulated person in the frame
+  also counts as a person in view (abort `person_in_view`), as the person check does.
+- Never takes off with a person in view, in every mode: the `person_in_view` start blocker also counts
+  simulated people, and an automatic run still stops with `person_in_view` during the countdown. In
+  `hold` and `pass`, a person in view in the air no longer aborts the run: it is avoided instead.
+- A run keeps the mode it started with; a new mode applies from the next run.
+- Hidden, not lost: while avoidance is not `clear`, or while a current obstacle box overlaps where the
+  sign was last seen (within 0.02 of the frame), a missing marker is hidden: no yaw, no forward stick,
+  no marker-lost timers (approach or line-up) and no `marker_lost` abort; the arrival counts start
+  again. When the way is clear again and the sign is still not in view after `lost_coast_s`, the run
+  searches again, turning toward the side it was last seen (`searching`, the usual 12 s rule), at most
+  `research_max` (2) times per run; a third time ends the run with `marker_not_found`. The settle before
+  landing is unchanged (a marker missing there is still `marker_lost`).
+- Time in `hold`, `sidestep` and `passing` moves the run-timeout origin forward (and the search limit,
+  the line-up limit and the stall timer); `blocked_timeout_s` bounds it instead.
+- New abort reason `path_blocked`, in `SAFE_LANDING_REASONS`: an automatic run lands where it is on the
+  usual current evidence (flight confirmed, marker in view now and not rising) OR, for `path_blocked`
+  only, the same kind of evidence from the obstacles: flight confirmed, obstacle boxes seen in the last
+  0.5 s, and for every box wholly inside the picture sideways: its base either below the picture or at
+  a floor distance of at most 8 m (a camera sitting on the floor sees a base just under the horizon,
+  which reads as very far), and none of its edges inside the picture risen by more than
+  `settle_descent_frac` (0.08) of the frame height against the median, 2.0 to 0.5 s earlier, of the
+  nearest box (within 0.1 of the frame width); at least one edge must have been checked. Without that
+  evidence: no toggle, `needs_pilot`. A manual run never toggles on an abort.
+
+### 11.5 Settings and defaults
+- Mission setting `avoid`: `"off"`, `"hold"` or `"pass"`, stored in `mission.json` with the other
+  mission settings (`{"drift_assist", "land_on_arrival", "auto_fly", "avoid"}`), set with
+  `PUT /api/mission/settings {"avoid": "hold"}` (422 for any other value). The response is the full
+  settings object: `{"land_on_arrival": false, "drift_assist": false, "auto_fly": false, "avoid": "hold"}`.
+- Defaults: `Settings.avoid` and `RunnerConfig.avoid` are `"off"`. `Settings.from_env` reads
+  `MEDHOP_AVOID` (`off`, `hold`, `pass`); unset, it is `"hold"` in simulator mode and `"off"` on the
+  real drone (`"hold"`, not `"pass"`: see 11.7). A stored mission setting wins; without one,
+  `Settings.avoid` when it is not `"off"`, else `RunnerConfig.avoid`.
+
+### 11.6 API
+- Status `mission.avoid`: `{"mode", "state", "kind", "distance_m", "side", "held_s"}`. `mode` is the
+  setting; `state` one of `clear`, `slow`, `hold`, `sidestep`, `passing`, `blocked` for the current or
+  last run that had it on (null before any such run); `kind` and `distance_m` of what it is reacting
+  to (`distance_m` null when very close); `side` `"left"` or `"right"` while side-stepping or passing,
+  else null; `held_s` the time without progress in that run.
+- Status `vision.obstacles`: `[{"kind", "box": [x1, y1, x2, y2], "distance_m", "lateral_m", "in_lane"}]`
+  for the newest frame (empty when that is older than 1 s); `distance_m` and `lateral_m` null when very
+  close. On the real drone, people from the person check only.
+- Status `sim`: `{"scenario", "actors": [{"kind", "x_m", "distance_m", "width_m", "depth_m",
+  "height_m"}]}` in simulator mode (where the actors are now: simulator truth), null on the real drone.
+- `POST /api/sim/scenario {"name": "empty" | "crossing" | "standing" | "cart" | "blocked"}`: simulator
+  only. 200 `{"ok": true, "scenario", "actors": [...]}`; 422 for an unknown name; 409
+  `{"blockers": ["not_simulator"]}` on the real drone; 409 `{"blockers": ["already_running"]}` while a
+  run or hover test is active. It sets the start distance for the next takeoff (and carries a drone on
+  the ground there); the actors' clock restarts at the next takeoff, or at once when already flying.
+- Events: no new event type. `run_started` gains `"avoid": mode`, and the closing `arrived_at_station`
+  or `run_aborted` gains `"avoid": {"mode", "holds", "passes", "held_s"}`, both only when the run had it
+  on. A `path_blocked` abort adds `"blocked_by"` (`"timeout"`, `"no_way_round"` or `"pass_timeout"`),
+  `"obstacle_kind"` and `"obstacle_distance_m"`. The run trace gains `"avoid": {"mode", "holds",
+  "passes", "held_s", "blocked_reason", "searched_again", "events": [{"t", "state", "kind",
+  "distance_m", ...}]}` and, per sample, `"avoid_state"` and `"obstacles"` (a count), only with it on.
+- Abort reasons add `path_blocked`.
+
+### 11.7 Measured in the simulator, and known limits
+Automatic runs from the ground in the drone-like camera profile, sideways drift +-0.08 m/s and a 5
+degree heading error alternating with the seed, `tests/test_avoid_sim.py`. Clearance is the smallest
+horizontal distance from the drone to any actor's footprint while flying (simulator truth).
+
+| Scenario, mode | Seeds | How the runs ended | Smallest clearance | Run time, s (min / mean / max) |
+|---|---|---|---|---|
+| none (baseline, `off`, start 4.2 m) | 10 | 10 done | - | - |
+| `crossing`, `hold` | 10 | 9 done (landed 0.37 to 0.50 m from the wall, at most 0.05 m off the centre line); 1 `not_lined_up` (seed 3: after the hold the approach overshot to 0.37 m, the line-up stopped as too close; it landed where it was) | 1.32 m | 34.5 / 43.9 / 47.5 |
+| `crossing`, `pass` | 10 | the same as `hold` (it never needed to go round) | 1.32 m | 34.5 / 43.9 / 47.5 |
+| `standing`, `hold` | 10 | 10 `path_blocked` after 25 s held, all landed where they were (obstacle evidence: the person hides the sign) | 1.92 m | 37.5 / 38.2 / 43.1 |
+| `standing`, `pass` | 20 | 1 done; 11 `off_axis`, 7 `path_blocked`, 1 `marker_not_found`; 16 landed, 4 left `needs_pilot` | 0.49 m (the one done run) | 23.5 / 44.4 / 72.5 |
+| `cart`, `pass` | 20 | 0 done; 10 `path_blocked`, 10 `off_axis`; 7 landed, 13 left `needs_pilot` (flight never confirmed) | 0.50 m | 17.0 / 31.7 / 49.3 |
+| `blocked`, `hold` | 10 | 10 `path_blocked`, all landed where they were | 1.27 m | 38.9 / 40.4 / 47.3 |
+| `blocked`, `pass` | 10 | 10 `path_blocked` (no way round, or 25 s), all landed where they were | 1.27 m | 30.1 / 34.8 / 38.8 |
+
+Run time counts from the start of the automatic run, including its 5 s countdown and 4 s takeoff wait.
+With nothing in the corridor, mode `pass` sent the same commands as mode `off`, step for step
+(automatic and manual runs, 2 seeds each).
+
+Known limits, stated rather than fixed:
+- Going round (`pass`) is not reliable, which is why the simulator default is `hold`. With a person
+  standing 1.4 m from the wall, passing at 0.9 m beside them leaves the drone about 40 to 50 degrees off
+  the sign's normal when it is beside them, and the approach then often stops with `off_axis`; drift
+  during the long hold and the pass adds to that. With the cart there from the start, the hold begins
+  before the sign has grown, so the flight is never confirmed and a `path_blocked` ending cannot land
+  (`needs_pilot`).
+- The sidestep limit uses the line of sight to the sign along the frozen heading (sign bearing and
+  distance), not the sign's own centre line: at 3 to 4.5 m the pose fit's sideways figure rests on a
+  fraction of a pixel and is not usable. A drone already off the centre line when it starts holding can
+  therefore end up more than 1.2 m from the centre line.
+- Anything whose base is out of the picture (closer than about 2.54 m) counts as in the lane, wherever
+  it is: something standing beside the corridor within that distance makes the drone hold and back off.
+- During a pass the camera looks ahead only: once the obstacle is beside the drone it is out of view,
+  and the last part of the pass and the turn back toward the sign rely on the distance flown, partly
+  dead-reckoned.
+- The obstacle-based landing evidence for `path_blocked` (11.4) is new and unproven: like the marker
+  rule, it cannot tell a drone that landed by itself more than 2 s earlier from one hovering.
+- Real drone: only people, only with the optional person check, at its rate (a few per second) and with
+  its misses; none of this has been tried on a real drone.

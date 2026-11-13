@@ -685,7 +685,8 @@ class AbortTests(RunnerTestCase):
     def test_every_abort_reason_is_covered_here(self):
         covered = {"marker_not_found", "marker_lost", "video_stale", "timeout", "pilot_took_over",
                    "person_in_view", "battery_low", "estop", "off_axis", "pilot_link_lost",
-                   "unexpected_descent", "takeoff_refused", "not_lined_up", "already_at_station"}
+                   "unexpected_descent", "takeoff_refused", "not_lined_up", "already_at_station",
+                   "path_blocked"}   # path_blocked: tests/test_avoid_runner.py
         self.assertEqual(set(ABORT_REASONS), covered)
 
     def test_pilot_input_during_landing_just_ends_the_run(self):
@@ -1085,7 +1086,7 @@ class DriftAssistRunnerTests(RunnerTestCase):
                                   "suggested_trim_roll": None})
         self.assertEqual(set(assist), ASSIST_KEYS)
         self.assertEqual(self.runner.settings(), {"land_on_arrival": False, "drift_assist": False,
-                                                  "auto_fly": False})
+                                                  "auto_fly": False, "avoid": "off"})
 
     def test_switch_is_persisted_in_the_data_directory(self):
         self.assertIs(self.runner.set_drift_assist(True), True)

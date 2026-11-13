@@ -5,7 +5,7 @@ Files (all local, demo data only):
   events.jsonl       one JSON object per line: {"ts", "type", "dose_id", "run_id", "detail"}
   trim.json          {"roll", "pitch"}
   calibration.json   {"arrive_width"}
-  mission.json       {"drift_assist", "land_on_arrival", "auto_fly"}
+  mission.json       {"drift_assist", "land_on_arrival", "auto_fly", "avoid"}
   runs/<run_id>.json per-run trace written by the mission runner
 """
 from __future__ import annotations
@@ -19,6 +19,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from medhop.config import AVOID_MODES
 
 logger = logging.getLogger("medhop.care.store")
 
@@ -363,12 +365,28 @@ class CareStore:
     def save_auto_fly(self, enabled: bool) -> None:
         self._save_mission_setting("auto_fly", bool(enabled))
 
-    def _save_mission_setting(self, key: str, value: bool) -> None:
-        """Read-modify-write of mission.json, so saving one switch keeps the other."""
+    def load_avoid(self) -> Optional[str]:
+        """The stored obstacle-avoidance mode ("off", "hold" or "pass"), or None when none is stored
+        (or the stored value is not one of those): the settings' default applies then."""
         with self._lock:
             raw = self._read_json(self._mission_path)
-            settings = {name: raw.get(name) is True for name in ("drift_assist", "land_on_arrival", "auto_fly")
-                        if isinstance(raw, dict) and name in raw}
+        value = raw.get("avoid") if isinstance(raw, dict) else None
+        return value if value in AVOID_MODES else None
+
+    def save_avoid(self, mode: str) -> None:
+        if mode not in AVOID_MODES:
+            raise ValueError(f"avoid must be one of {AVOID_MODES}")
+        self._save_mission_setting("avoid", mode)
+
+    def _save_mission_setting(self, key: str, value: Any) -> None:
+        """Read-modify-write of mission.json, so saving one setting keeps the others."""
+        with self._lock:
+            raw = self._read_json(self._mission_path)
+            settings: Dict[str, Any] = {name: raw.get(name) is True
+                                        for name in ("drift_assist", "land_on_arrival", "auto_fly")
+                                        if isinstance(raw, dict) and name in raw}
+            if isinstance(raw, dict) and raw.get("avoid") in AVOID_MODES:
+                settings["avoid"] = raw["avoid"]
             settings[key] = value
             self._write_json(self._mission_path, settings)
 

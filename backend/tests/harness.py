@@ -23,6 +23,7 @@ from medhop.mission.steering import DriftAssistConfig, SteeringConfig
 from medhop.mixer import ControlMixer
 from medhop.vision.marker import MarkerDetector, Observation
 from medhop.vision.person import PersonStatus
+from medhop.vision.worker import obstacles_of
 
 WALL_EPOCH = 1_794_000_000.0   # an arbitrary wall-clock origin for simulated runs
 
@@ -167,7 +168,8 @@ class SimHarness:
             if self.marker_dropout > 0 and self._dropout_rng.random() < self.marker_dropout:
                 marker = None
             obs = Observation(ts=frame.timestamp, seq=frame.seq, marker=marker,
-                              brightness=float(image.mean()))
+                              brightness=float(image.mean()),
+                              obstacles=obstacles_of(frame))
             self.observations.append(obs)
             self.runner.step(obs, now)
             self._last_runner_step = now

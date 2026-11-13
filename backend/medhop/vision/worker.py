@@ -20,13 +20,13 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Callable, Deque, List, Optional
+from typing import Callable, Deque, List, Optional, Sequence, Tuple
 
 import cv2
 import numpy as np
 
 from medhop.drone.base import DroneLink
-from medhop.vision.marker import MarkerDetector, MarkerObs, Observation
+from medhop.vision.marker import MarkerDetector, MarkerObs, Observation, Obstacle
 from medhop.vision.person import PersonChecker, PersonStatus
 
 logger = logging.getLogger("medhop.vision")
@@ -99,8 +99,18 @@ def _label(out: np.ndarray, text: str, anchor: tuple, scale: float, k: int) -> N
     cv2.putText(out, text, (x0 + pad, y1 - pad - base), _FONT, scale, LABEL_BGR, thickness, cv2.LINE_AA)
 
 
-def annotate(image: np.ndarray, marker: Optional[MarkerObs], person: PersonStatus, banner: str) -> np.ndarray:
-    """Draw the marker outline, person boxes and a small state banner on a copy of the frame.
+def obstacles_of(frame) -> Tuple[Obstacle, ...]:
+    """The simulator's actor boxes carried by a frame, as Obstacles stamped with the frame's time.
+    Empty for a frame without them (always on the real drone)."""
+    found = getattr(frame, "obstacles", ()) or ()
+    return tuple(Obstacle(kind=str(kind), box=tuple(float(v) for v in box), ts=frame.timestamp)
+                 for kind, box in found)
+
+
+def annotate(image: np.ndarray, marker: Optional[MarkerObs], person: PersonStatus, banner: str,
+             obstacles: Sequence[Obstacle] = ()) -> np.ndarray:
+    """Draw the marker outline, person boxes, the simulator's actor boxes and a small state banner on
+    a copy of the frame.
 
     Every pixel size is scaled by k = max(1, width / 640), so the overlay reads the same on a 640 px
     drone frame and on the simulator's 1280 px display picture."""
@@ -111,6 +121,11 @@ def annotate(image: np.ndarray, marker: Optional[MarkerObs], person: PersonStatu
     def px(value: float) -> int:
         return max(1, int(round(value * k)))
 
+    for obstacle in obstacles:
+        x1, y1, x2, y2 = obstacle.box
+        cv2.rectangle(out, (int(x1 * width), int(y1 * height)), (int(x2 * width) - 1, int(y2 * height) - 1),
+                      PERSON_BGR, px(2))
+        _label(out, f"{obstacle.kind} (simulated)", (int(x1 * width), int(y1 * height) - px(2)), 0.45 * k, k)
     if person.enabled:
         for x1, y1, x2, y2 in person.boxes:
             cv2.rectangle(out, (int(x1 * width), int(y1 * height)), (int(x2 * width), int(y2 * height)),
@@ -222,7 +237,9 @@ class VisionWorker:
         marker = self._detector.detect(gray, ts=frame.timestamp)
         detect_ms = (time.perf_counter() - detect_start) * 1000.0
         brightness = float(gray.mean())
-        obs = Observation(ts=frame.timestamp, seq=frame.seq, marker=marker, brightness=brightness)
+        obstacles = obstacles_of(frame)
+        obs = Observation(ts=frame.timestamp, seq=frame.seq, marker=marker, brightness=brightness,
+                          obstacles=obstacles)
 
         if self._person is not None:
             self._person.submit(image)
@@ -242,7 +259,7 @@ class VisionWorker:
 
         if watched:
             person = self._person.status() if self._person is not None else PersonStatus()
-            jpeg = encode_jpeg(annotate(image, marker, person, self._banner()))
+            jpeg = encode_jpeg(annotate(image, marker, person, self._banner(), obstacles))
             with self._lock:
                 self._annotated = jpeg
                 self._annotated_seq += 1

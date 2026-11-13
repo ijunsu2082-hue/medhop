@@ -15,6 +15,7 @@ PERSON_CHECK_MODES = ("auto", "on", "off")
 # Simulator camera profile: "high" is the display profile (a rendered room at 1280x720), "drone" the
 # drone-like profile (640x360, blur, noise, JPEG quality 50) that the automated tests use.
 SIM_CAMERA_MODES = ("high", "drone")
+AVOID_MODES = ("off", "hold", "pass")    # obstacle avoidance (experimental), SPEC section 11
 
 BACKEND_PORT = 8010
 FRONTEND_ORIGINS = ("http://localhost:5180", "http://127.0.0.1:5180")
@@ -50,11 +51,18 @@ class Settings:
     port: int = BACKEND_PORT
     # Simulator only: which camera profile the interactive simulator renders (SIM_CAMERA_MODES).
     sim_camera: str = "high"
+    # Obstacle avoidance (experimental, simulator-tested only; SPEC section 11): "off", "hold" or "pass".
+    # "off" here; from_env defaults it to "hold" in simulator mode and "off" on the real drone. A mode
+    # stored with the mission settings (PUT /api/mission/settings) wins over this.
+    avoid: str = "off"
 
     def __post_init__(self) -> None:
         self.drone = str(self.drone).strip().lower()
         self.person_check = str(self.person_check).strip().lower()
         self.sim_camera = str(self.sim_camera).strip().lower()
+        self.avoid = str(self.avoid).strip().lower()
+        if self.avoid not in AVOID_MODES:
+            raise ValueError(f"MEDHOP_AVOID must be one of {AVOID_MODES}, got {self.avoid!r}")
         self.data_dir = Path(self.data_dir)
         if self.drone not in DRONE_MODES:
             raise ValueError(f"MEDHOP_DRONE must be one of {DRONE_MODES}, got {self.drone!r}")
@@ -126,6 +134,7 @@ class Settings:
             ("MEDHOP_CAMERA_HFOV_DEG", "camera_hfov_deg", float),
             ("MEDHOP_HOST", "host", str),
             ("MEDHOP_SIM_CAMERA", "sim_camera", str),
+            ("MEDHOP_AVOID", "avoid", str),
         ):
             raw = get(name)
             if raw is None:
@@ -134,4 +143,9 @@ class Settings:
                 kwargs[key] = cast(raw)
             except ValueError as exc:
                 raise ValueError(f"{name}={raw!r} is not a valid {cast.__name__}") from exc
+        if "avoid" not in kwargs:
+            # Unset: on in the simulator, off on the real drone (where only people can be seen, and only
+            # with the optional person check). "hold", not "pass": going round ended done on 1 of 20
+            # simulator runs with a person and 0 of 20 with a cart (SPEC section 11.7).
+            kwargs["avoid"] = "hold" if str(kwargs.get("drone", "sim")).strip().lower() == "sim" else "off"
         return cls(**kwargs)

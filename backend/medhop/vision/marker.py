@@ -49,6 +49,22 @@ class MarkerObs:
         return max(self.width, self.height)
 
 
+OBSTACLE_KINDS = ("person", "object")
+
+
+@dataclass(frozen=True)
+class Obstacle:
+    """Something seen in the way (experimental obstacle avoidance, SPEC section 11).
+
+    In the simulator every frame carries the simulated actors' boxes (perfect detection). On the real
+    drone only people are ever reported, and only by the optional person check (vision/person.py).
+    """
+
+    kind: str                                   # "person" or "object"
+    box: Tuple[float, float, float, float]      # x1, y1, x2, y2 as fractions of the frame
+    ts: float = 0.0                             # when the frame it was seen in arrived
+
+
 @dataclass(frozen=True)
 class Observation:
     """What the vision thread saw in one frame."""
@@ -57,6 +73,7 @@ class Observation:
     seq: int
     marker: Optional[MarkerObs]
     brightness: float = 0.0         # mean grey level, 0..255
+    obstacles: Tuple[Obstacle, ...] = ()   # simulator only: the actors' boxes in this frame
 
 
 def _dictionary():

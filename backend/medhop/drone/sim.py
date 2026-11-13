@@ -22,13 +22,14 @@ import math
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Callable, Deque, List, Optional, Tuple
 
 import cv2
 import numpy as np
 
 from medhop.drone.base import Frame, Telemetry, clamp
+from medhop.drone.sim_actors import SCENARIOS, Actor, actor_boxes, draw_actors, footprint_distance
 from medhop.vision.marker import A4_WIDTH_M, SIGN_TOP_MARGIN_M, station_sign
 
 logger = logging.getLogger("medhop.drone.sim")
@@ -86,6 +87,8 @@ class SimConfig:
     # the takeoff spot. The interactive simulator turns this on so repeated demo runs start the same way.
     reset_pose_on_takeoff: bool = False
     seed: Optional[int] = None
+    # Simulated people and objects (sim_actors.py). Empty by default: nothing else in the corridor.
+    actors: Tuple[Actor, ...] = field(default_factory=tuple)
 
     @classmethod
     def high_quality(cls, **overrides) -> "SimConfig":
@@ -150,6 +153,11 @@ class SimLink:
         self._marker_hidden = False
         self._land_rate: Optional[float] = None   # m/s for a forced landing; None uses cfg.land_s
         self._telemetry: Optional[Telemetry] = None
+        # actors: their own clock starts at the takeoff (or at the first step when starting airborne)
+        self._actors: Tuple[Actor, ...] = tuple(c.actors)
+        self._scenario = "custom" if self._actors else "empty"
+        self._default_start_distance = c.start_distance_m
+        self._actor_origin: Optional[float] = None
 
         # counters for tests
         self.toggle_count = 0
@@ -297,6 +305,8 @@ class SimLink:
                 self._t = now
                 self._next_frame_t = now
                 self._next_telemetry_t = now
+                if self._phase == AIRBORNE:
+                    self._actor_origin = now      # started in the air: the actors' clock starts now
             if now - self._t > 0.5 and self._realtime:
                 self._t = now - 0.5  # the process was paused; do not replay the gap
                 self._next_frame_t = max(self._next_frame_t, self._t)
@@ -318,15 +328,16 @@ class SimLink:
             # Running late (a busy machine, a slow frame): render only the newest capture. The frame
             # rate drops for a moment instead of a burst of stale frames being released.
             captures = captures[-1:]
-        rendered = [(t + self.cfg.video_delay_s, self._render_jpeg(snap)) for t, snap in captures]
+        rendered = [(t + self.cfg.video_delay_s, self._render_jpeg(snap), self._boxes(snap))
+                    for t, snap in captures]
         with self._lock:
             self._pending.extend(rendered)
             while self._pending and self._pending[0][0] <= now + 1e-9:
-                release_t, jpeg = self._pending.popleft()
+                release_t, jpeg, boxes = self._pending.popleft()
                 if self._video_frozen:
                     continue
                 self._seq += 1
-                self._frame = Frame(jpeg=jpeg, timestamp=release_t, seq=self._seq)
+                self._frame = Frame(jpeg=jpeg, timestamp=release_t, seq=self._seq, obstacles=boxes)
 
     def _physics(self, dt: float) -> None:
         c = self.cfg
@@ -341,6 +352,8 @@ class SimLink:
                         self._x = c.start_x_m
                         self._z = -abs(c.start_distance_m)
                         self._heading = math.radians(c.start_heading_deg)
+                    if self._phase == GROUND:
+                        self._actor_origin = self._t     # the actors' clock starts at the takeoff
                     self._phase = TAKING_OFF
                 else:
                     self._phase = LANDING
@@ -404,7 +417,80 @@ class SimLink:
             "heading": self._heading,
             "cam_y": self._alt + 0.04 + bob,
             "marker_hidden": self._marker_hidden,
+            "actors": self._actors_at_locked(self._t),
         }
+
+    def _actors_at_locked(self, t: Optional[float]) -> Tuple[Actor, ...]:
+        if not self._actors:
+            return ()
+        since = None if (self._actor_origin is None or t is None) else t - self._actor_origin
+        return tuple(actor.at(since) for actor in self._actors)
+
+    # ------------------------------------------------------------------ #
+    # actors (scenarios)
+    # ------------------------------------------------------------------ #
+    @property
+    def scenario(self) -> str:
+        with self._lock:
+            return self._scenario
+
+    def set_scenario(self, name: str) -> None:
+        """Put a named scenario's actors (sim_actors.SCENARIOS) in the corridor, with its start distance
+        (the next takeoff from the ground starts there when reset_pose_on_takeoff is on; a drone on the
+        ground is carried there now). The actors' clock starts again at the next takeoff, or now when
+        the drone is already in the air. Raises KeyError for an unknown name."""
+        scenario = SCENARIOS[name]
+        with self._lock:
+            self._actors = tuple(scenario.actors)
+            self._scenario = scenario.name
+            start = self._default_start_distance if scenario.start_distance_m is None else scenario.start_distance_m
+            self.cfg.start_distance_m = float(start)
+            if self._phase == GROUND:
+                self._actor_origin = None
+                self._x = self.cfg.start_x_m
+                self._z = -abs(self.cfg.start_distance_m)
+                self._heading = math.radians(self.cfg.start_heading_deg)
+            else:
+                self._actor_origin = self._t
+        logger.info("simulator scenario: %s (%d actors)", scenario.name, len(scenario.actors))
+
+    def set_actors(self, actors, origin_now: bool = True) -> None:
+        """Test hook: put these actors in the corridor (their clock starts now when origin_now)."""
+        with self._lock:
+            self._actors = tuple(actors)
+            self._scenario = "custom" if self._actors else "empty"
+            if origin_now:
+                self._actor_origin = self._t
+
+    def actors_now(self) -> List[Actor]:
+        """The actors where they are now (simulator truth)."""
+        with self._lock:
+            return list(self._actors_at_locked(self._t))
+
+    def clearance_m(self) -> Optional[float]:
+        """Simulator truth: horizontal distance from the drone to the nearest actor's footprint; None
+        without actors."""
+        with self._lock:
+            actors = self._actors_at_locked(self._t)
+            if not actors:
+                return None
+            return min(footprint_distance(a, self._x, -self._z) for a in actors)
+
+    @staticmethod
+    def _camera(snap: dict) -> Tuple[np.ndarray, np.ndarray]:
+        heading = snap["heading"]
+        sin_h, cos_h = math.sin(heading), math.cos(heading)
+        cam = np.array([snap["x"], snap["cam_y"], snap["z"]])
+        rot = np.array([[cos_h, 0.0, -sin_h], [0.0, -1.0, 0.0], [sin_h, 0.0, cos_h]])
+        return cam, rot
+
+    def _boxes(self, snap: dict) -> tuple:
+        """The actors' bounding boxes in this frame, through the output camera (self._K)."""
+        actors = snap.get("actors") or ()
+        if not actors:
+            return ()
+        cam, rot = self._camera(snap)
+        return actor_boxes(actors, cam, rot, self._K, self.cfg.width, self.cfg.height)
 
     # ------------------------------------------------------------------ #
     # scene and camera
@@ -547,6 +633,9 @@ class SimLink:
             columns = np.flatnonzero(toward_wall)
             canvas[:, columns[0]:columns[-1] + 1] = layer[:, columns[0]:columns[-1] + 1]
 
+        if snap.get("actors"):
+            draw_actors(canvas, snap["actors"], cam, rot, self._K)
+
         if c.blur_sigma > 0:
             canvas = cv2.GaussianBlur(canvas, (0, 0), c.blur_sigma)
         work = canvas.astype(np.int16)
@@ -567,10 +656,13 @@ class SimLink:
 
     def render_test_frame(self, distance_m: float, x_m: float = 0.0, heading_deg: float = 0.0) -> bytes:
         """Render one camera JPEG from an arbitrary hovering pose (for detection tests)."""
+        with self._lock:
+            actors = self._actors_at_locked(self._t)
         return self._render_jpeg({
             "x": float(x_m),
             "z": -abs(float(distance_m)),
             "heading": math.radians(float(heading_deg)),
             "cam_y": self.cfg.hover_height_m + 0.04,
             "marker_hidden": False,
+            "actors": actors,
         })

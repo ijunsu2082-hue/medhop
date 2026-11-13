@@ -12,20 +12,21 @@ from medhop.drone.sim import SimConfig, SimLink
 from medhop.server import MedHopCore, create_app
 from tests.harness import make_temp_dir
 
-TOP_KEYS = {"server_time", "mode", "link", "telemetry", "trim", "pilot", "vision", "mission", "hover_test", "care"}
+TOP_KEYS = {"server_time", "mode", "link", "telemetry", "trim", "pilot", "vision", "mission", "hover_test", "care",
+            "sim"}
 LINK_KEYS = {"video_live", "frame_age_s", "fps", "control_up", "drone_seen", "sticks_blocked"}
 TELEMETRY_KEYS = {"simulated", "age_s", "fly_state_raw", "battery_raw", "flags_raw", "battery_low",
                   "battery_check_enabled"}
 TRIM_KEYS = {"roll", "pitch"}
 PILOT_KEYS = {"manual_active", "max_stick", "estop_active", "estop_delivered"}
-VISION_KEYS = {"marker", "person", "brightness", "dark"}
+VISION_KEYS = {"marker", "person", "brightness", "dark", "obstacles"}
 MARKER_KEYS = {"id", "cx", "cy", "width", "age_s"}
 PERSON_KEYS = {"enabled", "detected", "count", "age_s"}
 MISSION_KEYS = {"state", "reason", "run_id", "dose_id", "elapsed_s", "command", "arrive_width",
                 "land_on_arrival", "drift_assist", "can_start", "blockers", "last_landing",
                 "automatic", "auto_fly", "auto_blockers", "can_start_auto", "countdown_remaining_s",
                 "distance_m", "arrive_distance_m", "flight_confirmed", "needs_pilot", "ready_for_dose",
-                "alignment", "last_arrival"}
+                "alignment", "last_arrival", "avoid"}
 COMMAND_KEYS = {"yaw", "pitch"}
 DRIFT_ASSIST_KEYS = {"enabled", "active", "roll", "disabled_reason", "suggested_trim_roll"}
 HH_MM = r"^([01]\d|2[0-3]):[0-5]\d$"
@@ -315,17 +316,17 @@ class MissionApiTests(ApiTestCase):
         # land_on_arrival alone
         response = put({"land_on_arrival": False})
         self.assertEqual((response.status_code, response.json()),
-                         (200, {"land_on_arrival": False, "drift_assist": False, "auto_fly": False}))
+                         (200, {"land_on_arrival": False, "drift_assist": False, "auto_fly": False, "avoid": "off"}))
         self.assertIs(self.status()["mission"]["land_on_arrival"], False)
         # drift_assist alone: the other setting is left as it was
         response = put({"drift_assist": True})
         self.assertEqual((response.status_code, response.json()),
-                         (200, {"land_on_arrival": False, "drift_assist": True, "auto_fly": False}))
+                         (200, {"land_on_arrival": False, "drift_assist": True, "auto_fly": False, "avoid": "off"}))
         self.assertIs(self.status()["mission"]["drift_assist"]["enabled"], True)
         # both together
         response = put({"land_on_arrival": True, "drift_assist": False, "auto_fly": False})
         self.assertEqual((response.status_code, response.json()),
-                         (200, {"land_on_arrival": True, "drift_assist": False, "auto_fly": False}))
+                         (200, {"land_on_arrival": True, "drift_assist": False, "auto_fly": False, "avoid": "off"}))
         self.assertIs(self.status()["mission"]["land_on_arrival"], True)
         self.assertIs(self.status()["mission"]["drift_assist"]["enabled"], False)
         self.assertEqual(put({}).status_code, 422)
