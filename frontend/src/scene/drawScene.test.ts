@@ -59,9 +59,9 @@ describe("obstacle labels", () => {
     expect(obstacleLabel({ kind: "object", distance_m: 0.94 })).toBe("object 0.9 m");
   });
 
-  it('say "very close" when the distance is not known', () => {
-    expect(obstacleLabel({ kind: "person", distance_m: null })).toBe("person, very close");
-    expect(obstacleLabel({ kind: "object", distance_m: null })).toBe("object, very close");
+  it('say "under 2.5 m" when the base is below the picture', () => {
+    expect(obstacleLabel({ kind: "person", distance_m: null })).toBe("person, under 2.5 m");
+    expect(obstacleLabel({ kind: "object", distance_m: null })).toBe("object, under 2.5 m");
   });
 
   it("are what the frame's labels say, one per obstacle, in order", () => {
@@ -70,7 +70,7 @@ describe("obstacle labels", () => {
       { kind: "object", box: [0.6, 0.5, 0.8, 1.0], distance_m: null, in_lane: true },
     ];
     const labels = texts(buildScene(frame(view(3.5), { obstacles })), "label");
-    expect(labels.map((t) => t.text)).toEqual(["person 2.6 m", "object, very close"]);
+    expect(labels.map((t) => t.text)).toEqual(["person 2.6 m", "object, under 2.5 m"]);
     expect(labels.map((t) => t.index)).toEqual([0, 1]);
   });
 });

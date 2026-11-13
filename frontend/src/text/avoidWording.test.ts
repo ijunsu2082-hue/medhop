@@ -46,14 +46,14 @@ describe("avoidLine", () => {
     expect(avoidLine(avoid({ state: "hold", kind: "object", distance_m: 1.5 }))?.text).toBe("Waiting: object 1.5 m ahead");
     expect(avoidLine(avoid({ state: "blocked", kind: "person", distance_m: null }))).toEqual({ tone: "warn", text: "Path blocked" });
   });
-  it("says very close when the distance is null", () => {
-    expect(avoidLine(avoid({ state: "hold", kind: "person", distance_m: null }))?.text).toBe("Waiting: person very close");
-    expect(avoidLine(avoid({ state: "hold", kind: "object", distance_m: null }))?.text).toBe("Waiting: object very close");
-    expect(avoidLine(avoid({ state: "slow", kind: "object", distance_m: null }))?.text).toBe("Slowing: object very close");
+  it("says closer than about 2.5 m when the distance is null", () => {
+    expect(avoidLine(avoid({ state: "hold", kind: "person", distance_m: null }))?.text).toBe("Waiting: person closer than about 2.5 m");
+    expect(avoidLine(avoid({ state: "hold", kind: "object", distance_m: null }))?.text).toBe("Waiting: object closer than about 2.5 m");
+    expect(avoidLine(avoid({ state: "slow", kind: "object", distance_m: null }))?.text).toBe("Slowing: object closer than about 2.5 m");
   });
   it("an unknown kind is 'something'", () => {
     expect(avoidLine(avoid({ state: "hold", kind: null, distance_m: 2 }))?.text).toBe("Waiting: something 2.0 m ahead");
-    expect(avoidLine(avoid({ state: "hold", kind: "dog", distance_m: null }))?.text).toBe("Waiting: something very close");
+    expect(avoidLine(avoid({ state: "hold", kind: "dog", distance_m: null }))?.text).toBe("Waiting: something closer than about 2.5 m");
   });
   it("is never red: waiting and blocked are not faults", () => {
     for (const state of ["clear", "slow", "hold", "blocked", "brand_new"]) {
@@ -74,7 +74,7 @@ describe("avoidLine", () => {
     expect(obstacleNoun("object")).toBe("object");
     expect(obstacleNoun(undefined)).toBe("something");
     expect(obstaclePhrase("person", 2.649)).toBe("person 2.6 m ahead");
-    expect(obstaclePhrase("object", Number.NaN)).toBe("object very close");
+    expect(obstaclePhrase("object", Number.NaN)).toBe("object closer than about 2.5 m");
   });
 });
 

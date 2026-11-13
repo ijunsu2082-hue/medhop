@@ -125,8 +125,10 @@ describe("deciding the backend", () => {
   const READS_SWITCH = /\bVITE_BACKEND\b/;
   const DECIDERS = SOURCES.filter((file) => file !== "vite-env.d.ts" && READS_SWITCH.test(withoutComments(read(file))));
 
-  it("happens only in the transport, its build constant and the camera feed's build-time import", () => {
-    expect(DECIDERS.sort()).toEqual(["components/VideoFeed.tsx", "transport/index.ts", "transport/kind.ts"]);
+  // Two places load code only a browser build has, with the same build-time check: the camera feed drawn on a
+  // canvas, and the landing page's live demo.
+  it("happens only in the transport, its build constant and the two build-time imports", () => {
+    expect(DECIDERS.sort()).toEqual(["components/VideoFeed.tsx", "pages/LandingPage.tsx", "transport/index.ts", "transport/kind.ts"]);
   });
 
   it("never reads storage or the URL", () => {

@@ -3,10 +3,15 @@
 // what the camera sees.
 
 import { useId } from "react";
-import type { ActorStatus } from "../engine/drone/simActors";
 
-/** An actor as the status reports it (simulator truth): its footprint on the floor. */
-export type PlanActor = Pick<ActorStatus, "kind" | "x_m" | "distance_m" | "width_m" | "depth_m">;
+/** An actor as the status reports it (simulator truth): its footprint on the floor. A "person" is drawn round. */
+export interface PlanActor {
+  kind: string;
+  x_m: number;
+  distance_m: number;
+  width_m: number;
+  depth_m: number;
+}
 
 interface Props {
   /** metres along the wall; 0 is the sign's centre line */

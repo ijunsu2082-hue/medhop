@@ -17,10 +17,13 @@ export function obstacleNoun(kind: unknown): string {
   return kind === "person" || kind === "object" ? kind : "something";
 }
 
-/** "person 2.6 m ahead", or "person very close" when the distance is null (nearer than the camera can measure). */
+/**
+ * "person 2.6 m ahead". When the distance is null the thing's base is below the picture, which at the hover
+ * height means nearer than about 2.5 m: "person closer than about 2.5 m".
+ */
 export function obstaclePhrase(kind: unknown, distance: unknown): string {
   const d = metres1(distance);
-  return d !== null ? `${obstacleNoun(kind)} ${d} m ahead` : `${obstacleNoun(kind)} very close`;
+  return d !== null ? `${obstacleNoun(kind)} ${d} m ahead` : `${obstacleNoun(kind)} closer than about 2.5 m`;
 }
 
 // ---------------------------------------------------------------- the live line during a run

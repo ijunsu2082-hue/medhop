@@ -585,7 +585,7 @@ describe("preflightChecklist: Path ahead (SPEC 11.6)", () => {
     expect(pathAheadLine(withObstacles([obstacle({})]))).toEqual({ verdict: "warn", text: "In the way: person about 2.6 m ahead" });
     expect(pathAheadLine(withObstacles([obstacle({ kind: "object", distance_m: null, lateral_m: null })]))).toEqual({
       verdict: "warn",
-      text: "In the way: object very close",
+      text: "In the way: object closer than about 2.5 m",
     });
     // Nearest first, and how many more.
     expect(
@@ -594,7 +594,7 @@ describe("preflightChecklist: Path ahead (SPEC 11.6)", () => {
       ).text,
     ).toBe("In the way: object about 2.4 m ahead, and 1 more");
     expect(pathAheadLine(withObstacles([obstacle({ distance_m: 2.9 }), obstacle({ distance_m: null })])).text).toBe(
-      "In the way: person very close, and 1 more",
+      "In the way: person closer than about 2.5 m, and 1 more",
     );
   });
   it("gives no distance a camera on the floor would misread as very far", () => {

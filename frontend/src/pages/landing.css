@@ -1,19 +1,26 @@
 /* The landing page. Everything here is scoped under .landing. */
 
+/* The statement is kept short and low so the simulator below it is on the first screen. */
 .landing .hero {
-  padding-block: var(--s-8) var(--s-7);
+  padding-block: var(--s-7);
 }
 
 .landing .hero-title {
-  max-width: 21ch;
-  margin: 0 0 var(--s-4);
+  max-width: 30ch;
+  margin: 0 0 var(--s-3);
   font: var(--t-display);
   letter-spacing: -0.02em;
 }
 
+@media (min-width: 960px) {
+  .landing .hero-title {
+    font: 600 44px/48px var(--font);
+  }
+}
+
 .landing .hero-lead {
-  max-width: 56ch;
-  margin: 0 0 var(--s-6);
+  max-width: 68ch;
+  margin: 0 0 var(--s-5);
   font: var(--t-lead);
   color: var(--mid);
 }
@@ -33,6 +40,49 @@
 .landing .demo-actions {
   gap: var(--s-5);
   margin-bottom: var(--s-5);
+}
+
+/* Holds the page still while the demo's code arrives. */
+.landing .demo-loading {
+  min-height: 60vh;
+}
+
+/* Run, what is in the corridor, the speed, and the way to the full app: one row, bottoms aligned. */
+.landing .demo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s-3) var(--s-5);
+  margin-bottom: var(--s-3);
+}
+
+.landing .demo-go {
+  min-width: 152px;
+}
+
+.landing .demo-bar .field {
+  min-width: 240px;
+  margin-bottom: 0;
+}
+
+.landing .demo-bar .check-field {
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+}
+
+.landing .demo-fly {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-left: auto;
+}
+
+/* One sentence about what is happening. It keeps its height when it is empty, so nothing below it moves. */
+.landing .demo-line {
+  display: flex;
+  min-height: 24px;
+  margin: 0 0 var(--s-4);
 }
 
 .landing .demo-grid {
@@ -99,6 +149,44 @@
 
 .landing .demo-steps li[data-state="now"] {
   font-weight: 600;
+}
+
+.landing .demo-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-5);
+  margin-top: var(--s-5);
+}
+
+.landing .demo-panel {
+  min-height: 176px;
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.landing .demo-panel h3 {
+  margin: 0 0 var(--s-3);
+  font: var(--t-label);
+  color: var(--mid);
+}
+
+.landing .demo-panel p {
+  margin: 0 0 var(--s-2);
+}
+
+.landing .demo-panel .btn {
+  margin-top: var(--s-3);
+}
+
+.landing .demo-care-dose {
+  font: var(--t-heading);
+  font-weight: 400;
+}
+
+.landing .demo-dose-row {
+  display: flex;
+  gap: var(--s-3);
 }
 
 .landing .demo-honest {
@@ -197,6 +285,45 @@
   color: var(--mid);
 }
 
+.landing .figures.figures-three {
+  margin-bottom: var(--s-7);
+}
+
+.landing .figures-note {
+  margin: 0 0 var(--s-3);
+  font: var(--t-small);
+  color: var(--mid);
+}
+
+.landing .band-lead {
+  max-width: 62ch;
+  margin: 0 0 var(--s-6);
+  font: var(--t-lead);
+}
+
+.landing .points {
+  display: grid;
+  gap: var(--s-5) var(--s-6);
+  margin: 0 0 var(--s-7);
+  padding: 0;
+  list-style: none;
+}
+
+.landing .points h3 {
+  margin: 0 0 var(--s-2);
+  font: var(--t-heading);
+}
+
+.landing .points p {
+  margin: 0;
+  color: var(--mid);
+}
+
+.landing .cannot-title {
+  margin: 0 0 var(--s-4);
+  font: var(--t-heading);
+}
+
 .landing .hop {
   display: grid;
   gap: var(--s-6);
@@ -227,8 +354,17 @@
   max-width: 180px;
 }
 
+.landing .results > div + div {
+  margin-top: var(--s-7);
+}
+
 .landing .results h3 {
-  margin-top: 0;
+  margin: 0 0 var(--s-3);
+  font: var(--t-heading);
+}
+
+.landing .results .plain-list {
+  margin-top: var(--s-4);
 }
 
 .landing .results p {
@@ -278,8 +414,20 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .landing .demo-panels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .landing .figures {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .landing .figures.figures-three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .landing .points {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .landing .hop {
@@ -304,6 +452,18 @@
 
   .landing .landing-nav-extra {
     display: none;
+  }
+
+  .landing .demo-go {
+    flex: 1 1 100%;
+  }
+
+  .landing .demo-bar .field {
+    flex: 1 1 100%;
+  }
+
+  .landing .demo-fly {
+    margin-left: 0;
   }
 
   .landing .masthead-inner {

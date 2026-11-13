@@ -156,10 +156,10 @@ export function estimateTextWidth(text: string, size: number): number {
   return text.length * size * 0.56;
 }
 
-/** The label above an obstacle's box: "person 2.6 m", "object, very close". */
+/** The label above an obstacle's box: "person 2.6 m", "object, under 2.5 m". */
 export function obstacleLabel(o: Pick<SceneObstacle, "kind" | "distance_m">): string {
   const what = o.kind === "person" ? "person" : "object";
-  return o.distance_m === null ? `${what}, very close` : `${what} ${o.distance_m.toFixed(1)} m`;
+  return o.distance_m === null ? `${what}, under 2.5 m` : `${what} ${o.distance_m.toFixed(1)} m`;
 }
 
 // ---------------------------------------------------------------------------------------------- //

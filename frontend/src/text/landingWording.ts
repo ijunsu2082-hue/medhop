@@ -4,7 +4,10 @@
 
 export const HERO = {
   title: "MedHop reminds an older adult when a dose is due, and flies a toy drone to the medicine station.",
-  lead: "A student prototype. The simulator below runs in your browser: nothing to install, and no real drone moves.",
+  lead: "A student prototype. The simulator below runs in your browser: nothing to install, and no real drone moves. Choose what is in the corridor and run it.",
+  /** The build that talks to the Python backend on this computer shows no in-page simulator. */
+  leadLocal:
+    "A student prototype. This copy of the site is connected to the MedHop backend on this computer, so there is no simulator on this page: the drone, real or simulated, is flown from the Pilot page.",
   run: "Run the demo",
   runAgain: "Run it again",
   stop: "Stop",
@@ -21,6 +24,15 @@ export const DEMO = {
   steps: ["Dose is due", "Count down", "Take off", "Find the sign", "Fly to it", "Line up", "Land"],
   carePanel: "What the person sees",
   caregiverPanel: "What the caregiver sees",
+  speedLabel: "Twice as fast",
+  /** The dose a demo run is for. A run removes the one an earlier run left in the schedule. */
+  doseLabel: "Demo dose",
+  careIdle: "Nothing is due. Run the demo and a dose comes due.",
+  careLead: "It is time for:",
+  pickup: "I picked it up",
+  caregiverIdle: "No dose yet.",
+  caregiverNote: "Acknowledged is the person's own report. It does not confirm that medicine was taken.",
+  linkWait: "Connecting to the simulator.",
 } as const;
 
 export interface LoopStep {
@@ -43,6 +55,41 @@ export const LOOP: readonly LoopStep[] = [
   },
 ];
 
+/** The hospital scenario: what the drone does about people and objects in its way. Figures are simulator results. */
+export const HOSPITAL = {
+  lead: "The same hop could take a dose from a nurses' station to a station by a patient's bed. Corridors have people in them, so the drone now looks for them and waits.",
+  points: [
+    {
+      title: "It sees what is ahead",
+      body: "Each camera frame gives a box around every person or object in view. The drone judges how far away each one is from where it meets the floor in the picture.",
+    },
+    {
+      title: "It slows, then waits",
+      body: "Something in its lane within 3 m slows it down. Once it is too near for the camera to measure, about 2.5 m, the drone stops and holds its position. When the lane has been clear for a second, it carries on to the station.",
+    },
+    {
+      title: "It lands if the way stays blocked",
+      body: "After 25 seconds of waiting it lands where it is and reports that the path is blocked, so someone can clear the corridor and send it again.",
+    },
+    {
+      title: "It will not take off into an obstacle",
+      body: "If something is already standing in its lane, the run is refused before the motors start.",
+    },
+  ],
+  figuresNote: "In the simulator, 20 runs of each kind:",
+  figures: [
+    { value: "20 of 20", label: "reached the station after waiting for a person to cross" },
+    { value: "20 of 20", label: "landed and reported when the corridor stayed blocked" },
+    { value: "1.1 m", label: "the closest the drone came to anyone" },
+  ],
+  cannotTitle: "What it cannot do",
+  cannot: [
+    "It cannot go around an obstacle. Its one small forward camera cannot judge distance to anything nearer than about 2.5 m, so stepping around a trolley was built, tested and removed: it reached the station in 1 of 20 simulated runs.",
+    "On the real drone this is switched off unless the pilot turns it on. Only people can be detected there, and only with an optional detector running. With it off, a person in view stops the run.",
+    "All of it is tested in the simulator only. It is not a safety system, and the real drone has never been flown near people and must not be.",
+  ],
+} as const;
+
 export interface Figure {
   value: string;
   label: string;
@@ -64,6 +111,13 @@ export const HOP_POINTS: readonly string[] = [
 
 export const RESULTS = {
   simTitle: "In the simulator",
+  simNote:
+    "Twenty runs of each kind in the Python simulator, which draws the camera picture and finds the sign in it with the same code as the real drone. Every run had a sideways drift of 8 cm a second.",
+  sim: [
+    "Empty corridor, starting 2.5 m from the sign: 20 of 20 landed in front of it, 0.35 to 0.50 m away and within 4 cm of its centre line. A run took 27 to 37 seconds.",
+    "A person walks across, starting 4.2 m away: 20 of 20 waited for them and then reached the station.",
+    "A person, or three people, stay in the way: 40 of 40 waited 25 seconds, then landed where they were and reported the path blocked.",
+  ],
   realTitle: "On the real drone",
   real: [
     "The drone has flown station runs for real. There is no footage of them.",
@@ -76,6 +130,7 @@ export const LIMITS: readonly string[] = [
   "It is a prototype built for student hackathons, using demo data only.",
   "It is not a medical device, and it never confirms that medicine was taken.",
   "The drone never carries real medicine and is never flown near people. Every real flight is supervised, with a pilot at the controls.",
+  "Waiting for people and obstacles is tested in the simulator only. It is not a safety system.",
   "For most people a pill organiser or a phone reminder would be simpler, cheaper and more reliable. Whether the drone leg is worth having is unproven.",
 ];
 
@@ -103,6 +158,7 @@ export const BUILD: readonly { term: string; detail: string }[] = [
 
 export const SECTIONS = {
   how: "How it works",
+  hospital: "In a hospital corridor",
   hop: "The hop, in detail",
   results: "Results so far",
   limits: "What it is not",

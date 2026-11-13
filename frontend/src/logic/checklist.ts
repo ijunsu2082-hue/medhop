@@ -46,16 +46,16 @@ export function batteryLine(t: Telemetry | null): { verdict: Verdict; text: stri
  */
 export const PATH_DISTANCE_MAX_M = 8;
 
-/** "object about 2.7 m ahead", "person very close" (distance null), or "object ahead" when the estimate is not usable. */
+/** "object about 2.7 m ahead", "person closer than about 2.5 m" (distance null: its base is below the picture), or "object ahead" when the estimate is not usable. */
 function pathItem(o: Obstacle): string {
   const noun = obstacleNoun(o.kind);
   const d = o.distance_m;
-  if (d === null) return `${noun} very close`;
+  if (d === null) return `${noun} closer than about 2.5 m`;
   if (Number.isFinite(d) && d >= 0 && d <= PATH_DISTANCE_MAX_M) return `${noun} about ${d.toFixed(1)} m ahead`;
   return `${noun} ahead`;
 }
 
-/** Nearest first: very close (null) before any measured distance. */
+/** Nearest first: too near to measure (null) before any measured distance. */
 function nearer(a: Obstacle, b: Obstacle): number {
   const da = a.distance_m ?? -1;
   const db = b.distance_m ?? -1;

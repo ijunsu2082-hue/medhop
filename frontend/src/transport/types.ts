@@ -49,4 +49,14 @@ export interface Transport {
   /** The readyState of an open control socket (WebSocket.OPEN for a real one). */
   readonly controlOpenState: number;
   readonly camera: CameraSource;
+  /**
+   * Only the simulator inside the page has this: how fast its clock runs. The landing page's demo offers
+   * "twice as fast" with it. A backend that flies in real time has no such thing.
+   */
+  readonly simulator?: SimulatorControls;
+}
+
+export interface SimulatorControls {
+  /** 1 is real time. Returns false when refused: while flying by hand, or for a speed out of range. */
+  setSpeed(speed: number): boolean;
 }

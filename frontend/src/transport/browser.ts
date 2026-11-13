@@ -138,5 +138,6 @@ export function createTransport(engine: Engine = getEngine()): Transport {
         return engine.subscribeFrames(listener);
       },
     },
+    simulator: { setSpeed: (speed) => engine.setSpeed(speed) },
   };
 }
