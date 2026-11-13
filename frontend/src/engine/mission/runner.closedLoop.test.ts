@@ -2,8 +2,14 @@
 // (drone/sim.ts), the synthetic sign detector (vision/detector.ts), the mixer and the runner, in
 // simulated time (testing/missionHarness.ts). Not replays: the simulator's noise and the detector differ
 // from Python's, so these assert outcomes, with the bounds the Python closed-loop tests assert
-// (backend/tests/test_automatic.py, test_sim_closed_loop.py, test_avoid_sim.py). Clearance is simulator
-// truth (SimLink.clearanceM) while the drone is more than 0.2 m up. Every measured figure is printed.
+// (backend/tests/test_automatic.py, test_sim_closed_loop.py, test_avoid_sim.py). Where a Python test's
+// bound holds only on its few chosen seeds (Python itself misses it on others), the test here asserts a
+// property on every seed (the outcome, and a bound from the runner's own limits or from the measured
+// distributions with a margin) and Python's measured rate for the Python bound; the side-by-side
+// measurements (Python SimHarness with the OpenCV detector against this harness, 48 seeds each, same
+// scenario definitions) are in the comments. They found no offset between the two simulators. Clearance
+// is simulator truth (SimLink.clearanceM) while the drone is more than 0.2 m up. Every measured figure is
+// printed.
 //
 // Profiles: the display profile (highQualitySimConfig, 1280x720, the detector's default calibration)
 // starts where the interactive simulator starts (3.2 m out, reset_pose_on_takeoff, as backend/medhop/
@@ -170,6 +176,32 @@ function checkBounds(label: string, rows: Flight[], bounds: Bound[]): void {
 
 type Bound = [name: string, ok: (r: Flight) => boolean, value: (r: Flight) => unknown];
 
+/**
+ * At least `min` of the runs meet `ok`: for a bound that Python's own test asserts on a few chosen seeds
+ * but that Python itself does not meet on every seed. `min` is the 95 % (two-sided Clopper-Pearson) lower
+ * bound of the rate Python achieved on the same scenario and seeds, times the number of runs, rounded
+ * up: "no worse than Python", not "as lucky as Python's sample".
+ */
+function checkRate(label: string, rows: Flight[], name: string, ok: (r: Flight) => boolean, min: number, value: (r: Flight) => unknown): void {
+  const failing = rows.filter((r) => !ok(r));
+  const met = rows.length - failing.length;
+  console.info(
+    `${label}: ${name}: ${met} of ${rows.length} (at least ${min} required)` +
+      (failing.length ? ` (not met: ${failing.map((r) => `seed ${r.seed} ${JSON.stringify(value(r))}`).join(", ")})` : ""),
+  );
+  expect(met, `${label}: ${name}`).toBeGreaterThanOrEqual(min);
+}
+
+/**
+ * Landed distance from the wall, every automatic and drift-assist run. The runner's own limit: the line-up
+ * ends only within align_distance_tol_m (0.08 m) of the 0.45 m landing distance by its own measure (0.37 to
+ * 0.53 m), after which the settle and the descent let the drone drift a few centimetres (up to 9 cm in the
+ * measured runs). Measured (Python SimHarness with the OpenCV detector, and this harness, 48 seeds each):
+ * display start 0.441 sd 0.054 and 0.447 sd 0.054, drift assist 0.445 sd 0.039 and 0.440 sd 0.050; pooled
+ * mean minus and plus 3 sd: 0.28 to 0.61 m.
+ */
+const LANDED_DISTANCE_M: readonly [number, number] = [0.28, 0.61];
+
 function report(label: string, rows: Flight[]): void {
   const outcomes = new Map<string, number>();
   for (const r of rows) outcomes.set(`${r.state}/${r.reason ?? "-"}`, (outcomes.get(`${r.state}/${r.reason ?? "-"}`) ?? 0) + 1);
@@ -197,10 +229,36 @@ const display = (seed: number, extra: Partial<SimConfig> = {}): SimConfig =>
   highQualitySimConfig({ seed, start_airborne: false, start_distance_m: 3.2, reset_pose_on_takeoff: true, ...extra });
 
 describe("automatic runs in the closed loop (tests/test_automatic.py AutomaticClosedLoopTests)", () => {
-  it("from the display-profile start: 20 seeds end done and land on the sign's centre line", () => {
-    const rows = seeds(20).map((seed) => fly({ seed, config: display(seed), profile: "display", automatic: true, limitS: 70, settleS: 1.5 }));
+  // Measured side by side on seeds 0-47, the same scenario in Python (SimHarness: the rendered room and
+  // the OpenCV detector) and here:
+  //   done, 2 toggles, aligned      Python 48 of 48                      TypeScript 48 of 48
+  //   landed distance from the wall Python 0.441 sd 0.054 [0.356, 0.578]  TypeScript 0.447 sd 0.054 [0.327, 0.552]
+  //   sideways offset x             Python -0.003 sd 0.026 [-0.059, 0.074] TypeScript -0.011 sd 0.031 [-0.073, 0.083]
+  //   closest to the wall           Python 0.369 sd 0.020 [0.314, 0.413]  TypeScript 0.366 sd 0.021 [0.326, 0.409]
+  // No offset between the two: the distance means differ by 6 mm (Welch t -0.58), the sideways means by
+  // 8 mm (t 1.4); the sideways scatter is a little wider here (sd ratio 1.2, not significant at 48 runs).
+  it("from the display-profile start: 48 seeds end done and land in front of the sign", () => {
+    const rows = seeds(48).map((seed) => fly({ seed, config: display(seed), profile: "display", automatic: true, limitS: 70, settleS: 1.5 }));
     report("automatic, display profile, 3.2 m start", rows);
-    checkBounds("automatic, display profile", rows, AUTOMATIC_BOUNDS);
+    checkBounds("automatic, display profile", rows, [
+      ["done", (r) => r.state === "done" && r.reason === null, (r) => [r.state, r.reason]],
+      ["takeoff and landing toggles only (2)", (r) => r.toggles === 2, (r) => r.toggles],
+      ["on the ground at the end", (r) => !r.airborne, (r) => r.airborne],
+      ["last_arrival.aligned", (r) => r.aligned === true, (r) => r.aligned],
+      [
+        `landed ${LANDED_DISTANCE_M[0]} to ${LANDED_DISTANCE_M[1]} m from the wall`,
+        (r) => r.distanceM > LANDED_DISTANCE_M[0] && r.distanceM < LANDED_DISTANCE_M[1],
+        (r) => r.distanceM,
+      ],
+      // align_loose_m: the line-up never lands further off the centre line than this by its own measure;
+      // pooled sd of x 0.029 m, so this is also about 4 sd.
+      ["landed within 0.12 m of the centre line (align_loose_m)", (r) => Math.abs(r.xM) < 0.12, (r) => r.xM],
+    ]);
+    // The Python test's tighter bounds (0.33 to 0.6 m, |x| under 0.08 m) held on all 48 Python seeds (95 %
+    // lower bound of that rate 0.926, so at least 45 of 48); here 47 and 47 (seed 4 landed 0.327 m out,
+    // seed 8 0.083 m off the centre line).
+    checkRate("automatic, display profile", rows, "landed 0.33 to 0.6 m from the wall (Python test)", (r) => r.distanceM > 0.33 && r.distanceM < 0.6, 45, (r) => r.distanceM);
+    checkRate("automatic, display profile", rows, "landed within 0.08 m of the centre line (Python test)", (r) => Math.abs(r.xM) < 0.08, 45, (r) => r.xM);
   });
 
   it("from the Python test's start (drone profile, 2.5 m, 10 degrees off either way): 20 seeds", () => {
@@ -264,17 +322,39 @@ describe("manual runs in the closed loop (tests/test_sim_closed_loop.py)", () =>
     });
   });
 
-  it("drift with the drift assist on: cuts the sideways offset (test_h_on, 10 seeds)", () => {
-    const rows = seeds(10).map((seed) => station(seed, seed % 3 ? 0.08 : -0.08, { assist: true }));
+  // Measured side by side on seeds 0-47 (drift +-0.08 m/s by seed, 25 degrees off either way), Python
+  // (SimHarness, the OpenCV detector) and here:
+  //   outcome                       Python 48 done                       TypeScript 47 done, 1 not_lined_up (seed 12)
+  //   landed distance from the wall Python 0.445 sd 0.039 [0.354, 0.539]  TypeScript 0.440 sd 0.050 [0.313, 0.531]
+  //   sideways offset x             Python 0.001 sd 0.031 [-0.060, 0.099] TypeScript 0.001 sd 0.035 [-0.083, 0.081]
+  //   closest to the wall           Python 0.370 sd 0.019 [0.325, 0.414]  TypeScript 0.365 sd 0.023 [0.310, 0.405]
+  // No offset (Welch t: landed distance 0.60, closest 1.16, x 0.04).
+  it("drift with the drift assist on: lands in front of the sign, never near the wall (test_h_on, 48 seeds)", () => {
+    const rows = seeds(48).map((seed) => station(seed, seed % 3 ? 0.08 : -0.08, { assist: true }));
+    const done = rows.filter((r) => r.state === "done");
     report("manual, drift assist on, +-0.08 m/s", rows);
     checkBounds("manual, drift assist on", rows, [
-      ["done", (r) => r.state === "done" && r.reason === null, (r) => [r.state, r.reason]],
-      ["one toggle", (r) => r.toggles === 1, (r) => r.toggles],
-      ["within 0.30 m of the centre line", (r) => Math.abs(r.xM) < 0.3, (r) => r.xM],
-      ["never closer than 0.33 m to the wall", (r) => r.minWallM > 0.33, (r) => r.minWallM],
+      [
+        "done, or stopped by the approach or the line-up (off_axis, not_lined_up) without a toggle",
+        (r) =>
+          (r.state === "done" && r.reason === null && r.toggles === 1) ||
+          (r.state === "aborted" && (r.reason === "off_axis" || r.reason === "not_lined_up") && r.toggles === 0),
+        (r) => [r.state, r.reason, r.toggles],
+      ],
+      // align_too_close_floor_m: the line-up gives up closer than max(0.30, 0.7 x 0.45) m by its own
+      // measure; pooled mean of the closest approach 0.367 m, sd 0.021, so this is also about mean - 3 sd.
+      ["never closer than 0.30 m to the wall (align_too_close_floor_m)", (r) => r.minWallM > 0.3, (r) => r.minWallM],
       ["roll within 0.15", (r) => r.maxRoll <= 0.15 + 1e-9, (r) => r.maxRoll],
       ["no throttle", (r) => r.maxThrottle === 0.0, (r) => r.maxThrottle],
       ["the assist stayed on", (r) => r.assistDisabled === null, (r) => r.assistDisabled],
+    ]);
+    checkBounds("manual, drift assist on, the runs that arrived", done, [
+      [
+        `landed ${LANDED_DISTANCE_M[0]} to ${LANDED_DISTANCE_M[1]} m from the wall`,
+        (r) => r.distanceM > LANDED_DISTANCE_M[0] && r.distanceM < LANDED_DISTANCE_M[1],
+        (r) => r.distanceM,
+      ],
+      ["within 0.30 m of the centre line (Python test; held on all 96 measured runs)", (r) => Math.abs(r.xM) < 0.3, (r) => r.xM],
       [
         "a trim suggestion, also in the closing event",
         (r) => r.suggestedTrim !== null && r.closing["suggested_trim_roll"] === r.suggestedTrim,
@@ -286,24 +366,50 @@ describe("manual runs in the closed loop (tests/test_sim_closed_loop.py)", () =>
         (r) => r.suggestedTrim,
       ],
     ]);
-    expect(rows.reduce((s, r) => s + Math.abs(r.xM), 0) / rows.length).toBeLessThan(0.2);
+    expect(done.reduce((s, r) => s + Math.abs(r.xM), 0) / done.length).toBeLessThan(0.2);
+    // Python: done on 48 of 48 (95 % lower bound 0.926: at least 45 of 48).
+    checkRate("manual, drift assist on", rows, "done", (r) => r.state === "done", 45, (r) => [r.state, r.reason]);
+    // The Python test's "never closer than 0.33 m" holds only on its four chosen seeds: Python itself met
+    // it on 47 of these 48 (seed 24: 0.325 m; 95 % lower bound 0.889: at least 43 of 48).
+    checkRate("manual, drift assist on", rows, "never closer than 0.33 m to the wall (Python test)", (r) => r.minWallM > 0.33, 43, (r) => r.minWallM);
   });
 
-  it("the drone answers roll the other way: the assist switches itself off (test_i, 10 runs)", () => {
-    const rows = [0.08, 0.2].flatMap((drift) => seeds(5).map((seed) => station(seed, drift, { assist: true, lateral_gain: -1.0 })));
+  // Measured side by side on seeds 0-47 at each drift (96 runs), Python (SimHarness, the OpenCV detector)
+  // and here:
+  //   the assist switched itself off  Python 93 of 96 (3 runs at 0.20 m/s end off_axis first)
+  //                                   TypeScript 90 of 96 (1 at 0.08 m/s, 5 at 0.20 m/s end off_axis first)
+  //   ended aborted, no toggle        Python 96 of 96                TypeScript 96 of 96
+  //   closest to the wall, 0.08 m/s   Python 0.467 sd 0.075 [0.276, 0.683]  TypeScript 0.484 sd 0.093 [0.282, 0.777]
+  //   closest to the wall, 0.20 m/s   Python 1.114 sd 0.102 [0.899, 1.368]  TypeScript 1.078 sd 0.083 [0.912, 1.244]
+  // No offset that the spread does not explain (Welch t -0.98 and 1.91, in opposite directions).
+  it("the drone answers roll the other way: the run stops safely and the assist switches itself off (test_i, 96 runs)", () => {
+    const rows = [0.08, 0.2].flatMap((drift) => seeds(48).map((seed) => station(seed, drift, { assist: true, lateral_gain: -1.0 })));
     report("manual, drift assist on, roll reversed", rows);
     checkBounds("manual, roll reversed", rows, [
-      ["the assist switched itself off", (r) => r.assistDisabled === "off_axis_worsening", (r) => r.assistDisabled],
-      ["no trim suggestion", (r) => r.suggestedTrim === null, (r) => r.suggestedTrim],
-      ["drift_assist_disabled in the closing event", (r) => r.closing["drift_assist_disabled"] === true, (r) => r.closing["drift_assist_disabled"]],
-      ["roll within 0.15", (r) => r.maxRoll <= 0.15 + 1e-9, (r) => r.maxRoll],
-      ["never closer than 0.40 m to the wall", (r) => r.minWallM > 0.4, (r) => [r.minWallM, r.reason]],
       [
-        "ended done or aborted, never a toggle on an abort",
-        (r) => (r.state === "done" || r.state === "aborted") && (r.state !== "aborted" || r.toggles === 0),
-        (r) => [r.state, r.toggles],
+        "stopped by the approach or the line-up (off_axis, not_lined_up), never a toggle",
+        (r) => r.state === "aborted" && (r.reason === "off_axis" || r.reason === "not_lined_up") && r.toggles === 0,
+        (r) => [r.state, r.reason, r.toggles],
       ],
+      ["no trim suggestion", (r) => r.suggestedTrim === null, (r) => r.suggestedTrim],
+      [
+        "drift_assist_disabled in the closing event whenever the assist switched itself off",
+        (r) => r.assistDisabled === null || r.closing["drift_assist_disabled"] === true,
+        (r) => r.closing["drift_assist_disabled"],
+      ],
+      ["roll within 0.15", (r) => r.maxRoll <= 0.15 + 1e-9, (r) => r.maxRoll],
+      // tests/test_sim_closed_loop.py LineUpTests' bound for a reversed roll: the line-up starts at about
+      // 0.37 m and its too-close stop is seen one video delay late. Pooled at 0.08 m/s: mean 0.476 m, sd
+      // 0.085, so this is also about mean - 3 sd.
+      ["never closer than 0.20 m to the wall", (r) => r.minWallM > 0.2, (r) => [r.minWallM, r.reason]],
     ]);
+    // The Python test asserts the switch-off on its four chosen runs; on these 96 Python itself switched it
+    // off on 93 (95 % lower bound 0.911: at least 88 of 96).
+    checkRate("manual, roll reversed", rows, "the assist switched itself off", (r) => r.assistDisabled === "off_axis_worsening", 88, (r) => [r.reason, r.minWallM]);
+    // The Python test's "never closer than 0.40 m" holds only on its four chosen runs; Python itself met it
+    // on 89 of these 96 (seeds 4 and 29 at 0.08 m/s came to 0.276 and 0.289 m, ending not_lined_up; 95 %
+    // lower bound 0.856: at least 83 of 96).
+    checkRate("manual, roll reversed", rows, "never closer than 0.40 m to the wall (Python test)", (r) => r.minWallM > 0.4, 83, (r) => [r.minWallM, r.reason]);
   });
 });
 
