@@ -9,7 +9,7 @@ show or has reported.
 | Date | What | Who | Where it lives |
 |---|---|---|---|
 | 2025-04-29 to 2026-06-22 | **turbodrone** upstream: an open-source project that reverse-engineered the "WiFi UAV" phone app's protocol so a laptop can fly these toy drones. 70 commits in its public history over this period, 64 of them by its author Marshall Richards and 6 by three other contributors. Licence: Apache-2.0. Latest upstream commit in the author's checkout: `2c09cf8` ("README small update", 2026-06-22). | Marshall Richards and contributors. Not the MedHop author. | https://github.com/marshallrichards/turbodrone |
-| 2026-11-04 and 2026-11-05 | **The author's local changes inside their turbodrone checkout**, made with AI coding assistance, before MedHop started: fixes that made the takeoff/land commands reliable on this drone; logging of the drone's MCU status messages; a rewrite of the person-follow plugin; a redesign of the browser UI; a video recorder. | The author, with AI coding assistance. | The author's turbodrone checkout only (uncommitted working-tree changes on top of `2c09cf8`). **Not in this repo.** |
+| 2026-11-04 and 2026-11-05 | **The author's local changes inside their turbodrone checkout**, made with AI coding assistance, before MedHop started: fixes that made the takeoff/land commands reliable on this drone; logging of the drone's MCU status messages; a rewrite of the person-follow plugin; a redesign of the browser UI; a video recorder. | The author, with AI coding assistance. | Public compatibility branch: https://github.com/ijunsu2082-hue/turbodrone-medhop/tree/medhop-integration (fork commit `44a8b9898f232a8cc8efd17996c19c4c4ec4cdfd`). |
 | 2026-11-11 onward | **MedHop** (this repo): the care loop (schedule, reminders, arrival log, self-reported pickup acknowledgement, caregiver page), the station-run controller, the simulator, the loopback test double, the tests, the browser app and these docs. The repo was created on 2026-11-11 and all code in it was written from that date. | AI coding agents (Anthropic's Claude) under the author's direction (see the README's "AI disclosure"). | This repo. |
 | 2026-11-12 and 2026-11-13 | **MedHop rework** (branch `rework/browser-demo`): the browser engine, a TypeScript port of the backend's flight code, care store and API with the simulator, so the site can run with no backend (`frontend/src/engine/`), checked against traces recorded from the Python code (`backend/tools/parity_traces.py`); the start page with its live demo; waiting for people and obstacles (SPEC section 11, simulator-tested only); and the restyle of the pages to a small fixed palette (greys, one blue accent, amber for waiting, red only for the stop and faults; the simulated corridor has its own flat colours) and one typeface (Atkinson Hyperlegible Next, self-hosted). | AI coding agents (Anthropic's Claude) under the author's direction. | This repo. |
 
@@ -31,7 +31,7 @@ show or has reported.
   the packet formats it imitates are the ones turbodrone's adapters use: the protocol knowledge comes from
   turbodrone's reverse-engineering work.
 
-*[author: decide whether to publish the modified checkout as a fork so judges can run real mode]*
+Judges can use the published `medhop-integration` branch in the linked fork for the exact compatibility changes.
 
 ### Changes in the modified turbodrone checkout that MedHop's real mode relies on
 
@@ -93,7 +93,7 @@ MedHop's code and docs were written with Claude, Anthropic's AI assistant, direc
 the README's "AI disclosure" for who did what). The author's 2026-11-04/05 turbodrone changes were also
 made with AI coding assistance.
 
-## Apache-2.0 obligations if the author publishes the modified turbodrone checkout
+## Apache-2.0 notices for the published turbodrone compatibility branch
 
 turbodrone is licensed under the Apache License 2.0, and the checkout includes a `LICENSE` and a `NOTICE`
 file. Publishing (redistributing) the modified checkout brings the conditions of section 4 of that
@@ -114,5 +114,4 @@ licence into play. In short:
 
 This is a plain summary, not legal advice; the licence text itself is what applies.
 
-MedHop itself does not redistribute any turbodrone code, so these obligations do not arise from
-publishing this repo. The README credits turbodrone and its licence.
+MedHop itself does not redistribute turbodrone code. The README credits turbodrone and its licence.
