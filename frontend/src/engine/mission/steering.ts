@@ -183,10 +183,10 @@ export class Steering {
   }
 
   /** Rate-limit an arbitrary (yaw, pitch) target against the previous output. */
-  shape(yaw: number, pitch: number, now: number): [yaw: number, pitch: number] {
+  shape(yaw: number, pitch: number, now: number, previousTrackingYaw?: number): [yaw: number, pitch: number] {
     const dt = this._lastAt === null ? 0.0 : pyMax(0.0, pyMin(0.5, now - this._lastAt));
     const out: [number, number] = [
-      limitRise(this._last[0], yaw, dt, this.cfg.rise_per_s),
+      limitRise(previousTrackingYaw ?? this._last[0], yaw, dt, this.cfg.rise_per_s),
       limitRise(this._last[1], pitch, dt, this.cfg.rise_per_s),
     ];
     this._last = [out[0], out[1]];
@@ -200,9 +200,11 @@ export class Steering {
    * `noForward`: yaw only (the drone is already at the arrive distance and must not creep on toward the
    * wall while it lines up).
    */
-  update(history: readonly MarkerSample[], now: number, arriveWidth: number, noForward = false): [yaw: number, pitch: number] {
+  update(
+    history: readonly MarkerSample[], now: number, arriveWidth: number, noForward = false, previousTrackingYaw?: number,
+  ): [yaw: number, pitch: number] {
     const [yaw, pitch] = steer(history, this._yawLog.slice(), now, arriveWidth, this.cfg);
-    return this.shape(yaw, noForward ? 0.0 : pitch, now);
+    return this.shape(yaw, noForward ? 0.0 : pitch, now, previousTrackingYaw);
   }
 
   /**

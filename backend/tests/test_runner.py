@@ -360,12 +360,13 @@ class AbortTests(RunnerTestCase):
         self.link.new_frame(self.clock.t)
         self.start()
         self.assertEqual(self.runner.state, "searching")
-        yaws = []
         for index in range(30):                       # a speck decodes as id 7 now and then
-            seen = marker(cx=0.2, cy=0.3, width=0.02) if index % 10 == 5 else None
-            yaws.append(self.feed(seen)[1])
+            seen = marker(cx=0.2, cy=0.3, width=0.03) if index % 10 == 5 else None
+            self.feed(seen)
             self.assertEqual(self.runner.state, "searching")
-        self.assertAlmostEqual(yaws[-1], 0.12, msg="still turning to search")
+        for _ in range(8):
+            yaw = self.feed(None)[1]
+        self.assertNotEqual(yaw, 0.0, msg="the search resumes after the last candidate expires")
         # detections that jump around (centres more than 0.1 apart) do not confirm either
         for cx in (0.2, 0.5, 0.8, 0.5, 0.2):
             self.feed(marker(cx=cx, width=0.05))
@@ -724,6 +725,33 @@ class AbortTests(RunnerTestCase):
 class DropoutCoastTests(RunnerTestCase):
     """A detection missing for at most lost_coast_s (0.5 s) is a dropout: the approach coasts on."""
 
+    def test_intermittent_sightings_can_still_build_yaw_to_centre_a_distant_sign(self):
+        self.start()
+        for cx in (0.22, 0.78):
+            with self.subTest(cx=cx):
+                direction = 1 if cx > 0.5 else -1
+                for _ in range(8):
+                    hit = self.feed(marker(cx=cx))
+                    miss = self.feed(None)
+                    self.assertEqual(hit[2], 0.0)
+                    self.assertEqual(miss, (0.0, 0.0, 0.0, 0.0))
+                self.assertGreater(direction * hit[1], 0.09)
+
+    def test_video_gap_resets_the_turn_ramp(self):
+        self.start()
+        for _ in range(3):
+            hit = self.feed(marker(cx=0.78))
+        self.assertGreater(hit[1], DT)
+        self.assertEqual(self.idle(0.3), (0.0, 0.0, 0.0, 0.0))
+        self.assertEqual(self.feed(None), (0.0, 0.0, 0.0, 0.0))
+        self.assertAlmostEqual(self.feed(marker(cx=0.78))[1], DT)
+
+    def test_video_recovery_without_the_sign_does_not_revive_forward_motion(self):
+        self.start()
+        self.assertGreater(self.see(marker())[2], 0.0)
+        self.assertEqual(self.idle(0.3), (0.0, 0.0, 0.0, 0.0))
+        self.assertEqual(self.feed(None), (0.0, 0.0, 0.0, 0.0))
+
     def test_one_missed_frame_keeps_flying_forward_with_no_yaw(self):
         self.start()
         for _ in range(3):
@@ -818,6 +846,28 @@ class SearchConfirmTests(RunnerTestCase):
             self.feed(seen)
         self.start()
         self.assertEqual(self.runner.state, "approaching")
+
+    def test_search_holds_still_to_confirm_a_sign_on_the_left(self):
+        self.forget()
+        self.start()
+        for _ in range(4):
+            axes = self.feed(None)
+        self.assertGreater(axes[1], 0.0)
+        for seen in (marker(cx=0.393), None, marker(cx=0.370), None):
+            self.assertEqual(self.feed(seen), (0.0, 0.0, 0.0, 0.0))
+            self.assertEqual(self.runner.state, "searching")
+        self.feed(marker(cx=0.385))
+        self.assertEqual(self.runner.state, "approaching")
+
+    def test_search_resumes_toward_the_last_sighting_if_confirmation_fails(self):
+        self.forget()
+        self.start()
+        self.feed(marker(cx=0.38))
+        for _ in range(8):
+            axes = self.feed(None)
+        self.assertEqual(self.runner.state, "searching")
+        self.assertLess(axes[1], 0.0)
+        self.assertEqual(axes[2], 0.0)
 
     def test_a_gap_longer_than_a_dropout_does_not_confirm(self):
         self.forget()

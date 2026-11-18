@@ -365,6 +365,7 @@ class MissionRunner:
         self._off_axis_count = 0
         self._lost_since: Optional[float] = None
         self._coast_pitch = 0.0                          # forward stick to coast on through a dropout
+        self._tracking_yaw = 0.0
         self._last_cx = 0.5
         self._marker_seen_at = 0.0
         self._arrived_width = 0.0
@@ -480,6 +481,12 @@ class MissionRunner:
         self._first_width = statistics.median(m.size for m in self._candidates)
         self._last_cx = self._candidates[-1].cx
         self._coast_pitch = 0.0
+        self._tracking_yaw = 0.0
+
+    def _remember_search_direction_locked(self, marker: MarkerObs) -> None:
+        offset = marker.cx - 0.5
+        if abs(offset) > self._steering.cfg.yaw_deadband:
+            self._search_direction = 1.0 if offset > 0.0 else -1.0
 
     def _no_pilot_link(self) -> bool:
         return self._pilot_connected is not None and not self._pilot_connected()
@@ -573,6 +580,7 @@ class MissionRunner:
             self._off_axis_count = 0
             self._lost_since = None
             self._coast_pitch = 0.0
+            self._tracking_yaw = 0.0
             self._last_cx = 0.5
             self._toggle_sent = False
             self._last_landing = None
@@ -603,8 +611,11 @@ class MissionRunner:
             self._needs_pilot = False
             self._state = COUNTDOWN if automatic else SEARCHING
             self._phase_at = now
-            if not automatic and self._current_marker(now) is not None and self._marker_confirmed_locked():
-                self._seed_approach_locked()
+            marker = self._current_marker(now)
+            if not automatic and marker is not None:
+                self._remember_search_direction_locked(marker)
+                if self._marker_confirmed_locked():
+                    self._seed_approach_locked()
             self._queue_event("run_started", {
                 "arrive_width": round(self._arrive_width, 4),
                 "land_on_arrival": self._lands_on_arrival_locked(),
@@ -878,6 +889,7 @@ class MissionRunner:
         self._size_count = 0
         self._off_axis_count = 0
         self._coast_pitch = 0.0
+        self._tracking_yaw = 0.0
         self._assist.pause()
         self._research_pending = True
         pitch = cmd.pitch if cmd.pitch is not None and cmd.pitch < 0.0 else 0.0
@@ -903,6 +915,7 @@ class MissionRunner:
         self._off_axis_count = 0
         self._at_size_since = None
         self._coast_pitch = 0.0
+        self._tracking_yaw = 0.0
         self._align = {}
         self._assist.pause()
         logger.info("run %s: the way is clear but the sign is not in view; searching again (%d of %d)",
@@ -990,6 +1003,7 @@ class MissionRunner:
                 self._record(now, obs.marker)
                 if obs.marker is not None:
                     self._climb_cy.append((obs.ts, obs.marker.cy))
+                    self._remember_search_direction_locked(obs.marker)
             if now - self._phase_at >= self.cfg.takeoff_wait_s:
                 self._takeoff_seen = self._takeoff_seen_locked()
                 marker = self._current_marker(now)
@@ -1006,6 +1020,7 @@ class MissionRunner:
         if obs is None:
             if now - self._last_frame_ts > self.cfg.frame_gap_hold_s:
                 self._assist.pause()
+                self._coast_pitch = self._tracking_yaw = 0.0
                 self._send(*self._steering.neutral(now), now)
             return
 
@@ -1026,6 +1041,8 @@ class MissionRunner:
                         return
                 return self._abort_locked("path_blocked", now, self._path_blocked_detail_locked(cmd))
         if self._state == SEARCHING:
+            if marker is not None:
+                self._remember_search_direction_locked(marker)
             if marker is None or not self._marker_confirmed_locked():
                 if cmd is not None and cmd.state in NOT_MOVING_ON:
                     # Something close in the way: stop turning, back off if it is very close.
@@ -1033,10 +1050,16 @@ class MissionRunner:
                     self._send(*self._steering.shape(0.0, pitch, now), now, cmd.roll or 0.0)
                     self._record(now, marker)
                     return
-                # Not seen, or not yet seen on enough consecutive frames at one place: keep searching.
                 if now - self._search_started > self.cfg.search_timeout_s:
                     return self._abort_locked("marker_not_found", now)
-                self._send(*self._steering.search(now, direction=self._search_direction), now)
+                # A sweep can move a real sign out of frame before its detections agree. Pause on
+                # a candidate, including brief dropouts, then sweep toward the last observed side.
+                candidate_recent = (self._candidates and self._candidate_at is not None
+                                    and now - self._candidate_at <= self.cfg.lost_coast_s)
+                if marker is not None or candidate_recent:
+                    self._send(*self._steering.neutral(now), now)
+                else:
+                    self._send(*self._steering.search(now, direction=self._search_direction), now)
                 self._record(now, marker)
                 return
             self._seed_approach_locked()
@@ -1067,8 +1090,8 @@ class MissionRunner:
                 return
             if cfg.lost_coast_s > 0 and lost_for <= min(cfg.lost_coast_s, cfg.lost_hold_s):
                 # A detection dropout, not (yet) a loss: coast on the last forward stick and assist roll,
-                # fading to zero over lost_coast_s, with no yaw (where the marker is now is unknown). The
-                # arrival counts and the assist's state are kept.
+                # fading to zero over lost_coast_s, with no yaw. The arrival counts and assist state
+                # are kept.
                 fade = 1.0 - lost_for / cfg.lost_coast_s
                 assist_on = (self._assist_run and (self._drift_assist or self._automatic)
                              and self._assist.disabled_reason is None)
@@ -1079,6 +1102,7 @@ class MissionRunner:
             self._arrive_count = 0
             self._size_count = 0
             self._off_axis_count = 0
+            self._tracking_yaw = 0.0
             self._assist.pause()               # no roll without the marker in view
             if lost_for <= cfg.lost_hold_s:
                 self._send(*self._steering.neutral(now), now)
@@ -1089,7 +1113,15 @@ class MissionRunner:
                 self._abort_locked("marker_lost", now)
             return
 
+        previous_tracking_yaw = None
+        offset = marker.cx - 0.5
+        off_centre = abs(offset) > self._steering.cfg.forward_window
         if self._lost_since is not None:
+            # A miss sends zero yaw. Resume the ramp only on a recent, same-side sighting so
+            # intermittent detections can still build a turn strong enough to centre the sign.
+            if (now - self._marker_seen_at <= min(cfg.lost_coast_s, cfg.frame_gap_hold_s)
+                    and off_centre and self._tracking_yaw * offset > 0.0):
+                previous_tracking_yaw = self._tracking_yaw
             if now - self._lost_since > cfg.lost_coast_s:
                 self._history.clear()      # a real loss: start again from the reacquired marker
             self._lost_since = None
@@ -1151,7 +1183,8 @@ class MissionRunner:
         hold = grown and apparent >= self._arrive_width * 1.05
         limited = cmd is not None and (cmd.pitch_cap is not None or cmd.pitch is not None)
         if not limited:
-            yaw, pitch = self._steering.update(list(self._history), now, self._arrive_width, no_forward=hold)
+            yaw, pitch = self._steering.update(list(self._history), now, self._arrive_width, no_forward=hold,
+                                               previous_tracking_yaw=previous_tracking_yaw)
         else:
             # Something in the way: the same pursuit, with the forward stick capped (slow), or holding:
             # no yaw and no forward stick (a little backward when very close). Steering.update is
@@ -1175,6 +1208,7 @@ class MissionRunner:
         # What a dropout right after this step may coast on: never forward blind near the wall, nor
         # while something is in the way.
         self._coast_pitch = 0.0 if (hold or limited or apparent >= 0.9 * self._arrive_width) else pitch
+        self._tracking_yaw = yaw if not limited and off_centre and yaw * offset > 0.0 else 0.0
 
     def _assist_roll_locked(self, marker: MarkerObs, ts: float, aspect: float, pitch: float,
                             now: float) -> float:

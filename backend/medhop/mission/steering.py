@@ -129,11 +129,13 @@ class Steering:
         self._last_at = None
         self._yaw_log.clear()
 
-    def shape(self, yaw: float, pitch: float, now: float) -> Tuple[float, float]:
-        """Rate-limit an arbitrary (yaw, pitch) target against the previous output."""
+    def shape(self, yaw: float, pitch: float, now: float, *,
+              previous_tracking_yaw: Optional[float] = None) -> Tuple[float, float]:
+        """Rate-limit a target, optionally resuming yaw from a recent tracking command."""
         dt = 0.0 if self._last_at is None else max(0.0, min(0.5, now - self._last_at))
+        previous_yaw = self._last[0] if previous_tracking_yaw is None else previous_tracking_yaw
         out = (
-            limit_rise(self._last[0], yaw, dt, self.cfg.rise_per_s),
+            limit_rise(previous_yaw, yaw, dt, self.cfg.rise_per_s),
             limit_rise(self._last[1], pitch, dt, self.cfg.rise_per_s),
         )
         self._last = out
@@ -144,11 +146,11 @@ class Steering:
         return out
 
     def update(self, history: Sequence[MarkerSample], now: float, arrive_width: float,
-               no_forward: bool = False) -> Tuple[float, float]:
+               no_forward: bool = False, *, previous_tracking_yaw: Optional[float] = None) -> Tuple[float, float]:
         """`no_forward`: yaw only (the drone is already at the arrive distance and must not creep on
         toward the wall while it lines up)."""
         yaw, pitch = steer(history, tuple(self._yaw_log), now, arrive_width, self.cfg)
-        return self.shape(yaw, 0.0 if no_forward else pitch, now)
+        return self.shape(yaw, 0.0 if no_forward else pitch, now, previous_tracking_yaw=previous_tracking_yaw)
 
     def yaw_seen_between(self, earlier_ts: float, later_ts: float) -> float:
         """Integral (stick x seconds) of the yaw commands whose effect appears in the video between

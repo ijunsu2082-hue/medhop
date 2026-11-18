@@ -378,8 +378,9 @@ Print it at 100 % and measure it; `backend/tools/make_marker.py` makes other siz
   reached the station at HH:MM.", or "(simulator) The drone reached the station at HH:MM." for a
   simulator run. Simulator arrivals are also labelled on the Caregiver page.
 - The sign must be at least about 25 px wide in the picture for reliable detection (detections under
-  0.025 of the frame width are ignored), and a run starts approaching only after 3 detections in a row. In the simulator this
-  cut-off ends detection at about 4.7 m (simulator figure only).
+  0.025 of the frame width are ignored). The drone pauses its search turn while it waits for 3 agreeing
+  detections. If confirmation fails, it resumes the search toward the side it last saw the sign.
+  In the simulator this cut-off ends detection at about 4.7 m (simulator figure only).
   The real start distance has to be measured (checklist section C).
 - Care status is per calendar day and resets at local midnight: an unacknowledged dose goes back to
   "upcoming" for the new day, and a dose whose time plus the grace period falls after midnight never
