@@ -679,6 +679,7 @@ export class MissionRunner {
   private _lostSince: number | null = null;
   /** forward stick to coast on through a dropout */
   private _coastPitch = 0.0;
+  private _trackingYaw = 0.0;
   private _lastCx = 0.5;
   private _markerSeenAt = 0.0;
   private _arrivedWidth = 0.0;
@@ -842,6 +843,14 @@ export class MissionRunner {
     this._firstWidth = pyMedian(this._candidates.map((m) => m.size));
     this._lastCx = this._candidates[this._candidates.length - 1]!.cx;
     this._coastPitch = 0.0;
+    this._trackingYaw = 0.0;
+  }
+
+  private _rememberSearchDirection(marker: MarkerObs): void {
+    const offset = marker.cx - 0.5;
+    if (Math.abs(offset) > this._steering.cfg.yaw_deadband) {
+      this._searchDirection = offset > 0.0 ? 1.0 : -1.0;
+    }
   }
 
   private _noPilotLink(): boolean {
@@ -928,6 +937,7 @@ export class MissionRunner {
     this._offAxisCount = 0;
     this._lostSince = null;
     this._coastPitch = 0.0;
+    this._trackingYaw = 0.0;
     this._lastCx = 0.5;
     this._toggleSent = false;
     this._lastLanding = null;
@@ -958,7 +968,11 @@ export class MissionRunner {
     this._needsPilot = false;
     this._state = auto ? COUNTDOWN : SEARCHING;
     this._phaseAt = t;
-    if (!auto && this._currentMarker(t) !== null && this._markerConfirmed()) this._seedApproach();
+    const marker = this._currentMarker(t);
+    if (!auto && marker !== null) {
+      this._rememberSearchDirection(marker);
+      if (this._markerConfirmed()) this._seedApproach();
+    }
     this._queueEvent("run_started", {
       arrive_width: pyRound(this._arriveWidth, 4),
       land_on_arrival: this._landsOnArrival(),
@@ -1265,6 +1279,7 @@ export class MissionRunner {
     this._sizeCount = 0;
     this._offAxisCount = 0;
     this._coastPitch = 0.0;
+    this._trackingYaw = 0.0;
     this._assist.pause();
     this._researchPending = true;
     const pitch = cmd.pitch !== null && cmd.pitch < 0.0 ? cmd.pitch : 0.0;
@@ -1295,6 +1310,7 @@ export class MissionRunner {
     this._offAxisCount = 0;
     this._atSizeSince = null;
     this._coastPitch = 0.0;
+    this._trackingYaw = 0.0;
     this._align = null;
     this._assist.pause();
     this._logger.log(
@@ -1382,7 +1398,10 @@ export class MissionRunner {
       this._send(y, p, now);
       if (obs !== null) {
         this._record(now, obs.marker);
-        if (obs.marker !== null) this._climbCy.push([obs.ts, obs.marker.cy]);
+        if (obs.marker !== null) {
+          this._climbCy.push([obs.ts, obs.marker.cy]);
+          this._rememberSearchDirection(obs.marker);
+        }
       }
       if (now - this._phaseAt >= this.cfg.takeoff_wait_s) {
         this._takeoffSeen = this._takeoffSeenNow();
@@ -1403,6 +1422,8 @@ export class MissionRunner {
     if (obs === null) {
       if (now - this._lastFrameTs > this.cfg.frame_gap_hold_s) {
         this._assist.pause();
+        this._coastPitch = 0.0;
+        this._trackingYaw = 0.0;
         const [y, p] = this._steering.neutral(now);
         this._send(y, p, now);
       }
@@ -1430,6 +1451,7 @@ export class MissionRunner {
       }
     }
     if (this._state === SEARCHING) {
+      if (marker !== null) this._rememberSearchDirection(marker);
       if (marker === null || !this._markerConfirmed()) {
         if (cmd !== null && NOT_MOVING_ON.includes(cmd.state)) {
           // Something close in the way: stop turning, back off if it is very close.
@@ -1439,9 +1461,13 @@ export class MissionRunner {
           this._record(now, marker);
           return;
         }
-        // Not seen, or not yet seen on enough consecutive frames at one place: keep searching.
         if (now - this._searchStarted > this.cfg.search_timeout_s) return this._abort("marker_not_found", now);
-        const [y, p] = this._steering.search(now, this._searchDirection);
+        // Pause on a candidate so the search sweep does not turn it out of view during confirmation.
+        const candidateRecent = this._candidates.length > 0 && this._candidateAt !== null
+          && now - this._candidateAt <= this.cfg.lost_coast_s;
+        const [y, p] = marker !== null || candidateRecent
+          ? this._steering.neutral(now)
+          : this._steering.search(now, this._searchDirection);
         this._send(y, p, now);
         this._record(now, marker);
         return;
@@ -1471,9 +1497,7 @@ export class MissionRunner {
         return;
       }
       if (cfg.lost_coast_s > 0 && lostFor <= pyMin(cfg.lost_coast_s, cfg.lost_hold_s)) {
-        // A detection dropout, not (yet) a loss: coast on the last forward stick and assist roll, fading
-        // to zero over lost_coast_s, with no yaw (where the marker is now is unknown). The arrival counts
-        // and the assist's state are kept.
+        // Fade forward stick and assist roll over lost_coast_s, with no yaw.
         const fade = 1.0 - lostFor / cfg.lost_coast_s;
         const assistOn = this._assistRun && (this._driftAssist || this._automatic) && this._assist.disabledReason === null;
         const roll = assistOn ? this._assist.roll * fade : 0.0;
@@ -1484,6 +1508,7 @@ export class MissionRunner {
       this._arriveCount = 0;
       this._sizeCount = 0;
       this._offAxisCount = 0;
+      this._trackingYaw = 0.0;
       this._assist.pause(); // no roll without the marker in view
       if (lostFor <= cfg.lost_hold_s) {
         const [y, p] = this._steering.neutral(now);
@@ -1498,7 +1523,15 @@ export class MissionRunner {
       return;
     }
 
+    let previousTrackingYaw: number | undefined;
+    const offset = marker.cx - 0.5;
+    const offCentre = Math.abs(offset) > this._steering.cfg.forward_window;
     if (this._lostSince !== null) {
+      // Resume the ramp only when the sign is seen again on the same side after a short dropout.
+      if (now - this._markerSeenAt <= pyMin(cfg.lost_coast_s, cfg.frame_gap_hold_s)
+        && offCentre && this._trackingYaw * offset > 0.0) {
+        previousTrackingYaw = this._trackingYaw;
+      }
       if (now - this._lostSince > cfg.lost_coast_s) this._history = []; // a real loss: start again from the reacquired marker
       this._lostSince = null;
     }
@@ -1570,7 +1603,7 @@ export class MissionRunner {
     let yaw: number;
     let pitch: number;
     if (!limited) {
-      [yaw, pitch] = this._steering.update([...this._history], now, this._arriveWidth, hold);
+      [yaw, pitch] = this._steering.update([...this._history], now, this._arriveWidth, hold, previousTrackingYaw);
     } else {
       // Something in the way: the same pursuit, with the forward stick capped (slow), or holding: no yaw
       // and no forward stick (a little backward when very close). Steering.update is steer() then
@@ -1593,6 +1626,7 @@ export class MissionRunner {
     // What a dropout right after this step may coast on: never forward blind near the wall, nor while
     // something is in the way.
     this._coastPitch = hold || limited || apparent >= 0.9 * this._arriveWidth ? 0.0 : pitch;
+    this._trackingYaw = !limited && offCentre && yaw * offset > 0.0 ? yaw : 0.0;
   }
 
   /**

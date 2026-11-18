@@ -160,11 +160,16 @@ Start requires `confirm_airborne: true` from the pilot (the runner never takes o
 refuse a start: `no_video`, `estop_active`, `already_running`, `person_in_view` (when the person check is on),
 `battery_low` (when telemetry is available), `marker_too_close` (marker already at or above arrive width).
 
-- searching: marker not visible. Yaw at a slow fixed rate (default 0.12) for at most 12 s, then abort `marker_not_found`.
+- searching: yaw at a slow fixed rate (default 0.12). Pause while waiting for three agreeing
+  detections, including short gaps of up to `lost_coast_s`. If confirmation fails, turn toward the
+  last observed side. Abort `marker_not_found` if the search has not succeeded after 12 s.
 - approaching: pursuit guidance. Yaw to centre the marker, with compensation for command-to-video latency
   (default 0.45 s; do not steer on the stale position alone). Fly forward only when the marker is within
   0.15 frame-widths of centre. Forward stick is capped (default 0.22) and tapers as the marker grows
-  (default 0.07 near arrival). Commands rise at most 1.0 per second; reductions are immediate.
+  (default 0.07 near arrival). Commands rise at most 1.0 per second and reductions are immediate.
+  If an off-centre marker reappears on the same side within 0.25 s of the last sighting, yaw can
+  resume its ramp from the last tracking command. Missed detections still send zero yaw, so the
+  first new pulse can step directly back toward the last tracked value, within the yaw cap.
 - Marker lost: for up to 0.5 s (`lost_coast_s`) it is treated as a detection dropout: coast on the last
   forward stick and drift-assist roll, fading to zero over that time, with no yaw, and keep the arrival
   counts (so "3 consecutive detections" means 3 detections with gaps of at most 0.5 s). No forward coast
